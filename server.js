@@ -8,6 +8,12 @@
  *
  * Deployment + DNS steps for www.idreamofthought.org are in README.md.
  */
+const express = require('express');
+const path = require('path');
+const app = express();
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
