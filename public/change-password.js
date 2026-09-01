@@ -1,0 +1,3 @@
+import { apiPost } from "./app.js";
+const form=document.getElementById("change-password-form"),msg=document.getElementById("msg");
+form?.addEventListener("submit",async e=>{e.preventDefault();if(form.newPassword.value.length<8){msg.textContent="Password must be at least 8 characters.";return}msg.textContent="Updating…";const r=await apiPost("/api/change-password",{oldPassword:form.oldPassword.value,newPassword:form.newPassword.value});if(r.ok){msg.textContent="Password updated. Please log in again.";setTimeout(()=>location.href="/login.html",900)}else msg.textContent=r.error||"Update failed."});

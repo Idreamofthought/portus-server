@@ -1,0 +1,3 @@
+import { apiPost } from "./app.js";
+const form=document.getElementById("reset-password-form"),msg=document.getElementById("msg"),token=new URLSearchParams(location.search).get("token");
+form?.addEventListener("submit",async e=>{e.preventDefault();if(!token){msg.textContent="Missing reset token.";return}if(form.newPassword.value.length<8){msg.textContent="Password must be at least 8 characters.";return}msg.textContent="Updating password…";const r=await apiPost("/api/reset-password",{token,newPassword:form.newPassword.value});if(r.ok){msg.textContent="Password changed. You can now log in.";form.reset()}else msg.textContent=r.error||"Reset failed."});
