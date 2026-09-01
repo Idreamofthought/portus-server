@@ -1,0 +1,6 @@
+const API_BASE = "";
+let csrfToken = null;
+export async function getCsrfToken(){if(csrfToken)return csrfToken;const r=await fetch(`${API_BASE}/api/csrf-token`,{credentials:"include"});if(!r.ok)throw new Error("Could not initialise security token");const d=await r.json();csrfToken=d.csrfToken;return csrfToken;}
+export const loadCsrf=getCsrfToken; export const ensureCsrfToken=getCsrfToken;
+async function request(path,options={}){const method=(options.method||"GET").toUpperCase();const headers=new Headers(options.headers||{});headers.set("Accept","application/json");if(method!=="GET"&&method!=="HEAD"){headers.set("Content-Type","application/json");headers.set("X-CSRF-Token",await getCsrfToken());}const r=await fetch(`${API_BASE}${path}`,{...options,method,headers,credentials:"include"});const d=await r.json().catch(()=>({}));if(!r.ok)return{ok:false,status:r.status,...d};return{ok:true,status:r.status,...d};}
+export const apiGet=p=>request(p); export const apiPost=(p,b={})=>request(p,{method:"POST",body:JSON.stringify(b)}); export const apiPut=(p,b={})=>request(p,{method:"PUT",body:JSON.stringify(b)}); export const apiDelete=(p,b={})=>request(p,{method:"DELETE",body:JSON.stringify(b)}); export const getCurrentUser=()=>apiGet("/api/me");
