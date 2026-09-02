@@ -1,5 +1,4 @@
 import Database from "better-sqlite3";
-
 export const db = new Database(process.env.DATABASE_PATH || "portus2.db");
 db.pragma("foreign_keys = ON");
 db.pragma("journal_mode = WAL");
