@@ -1,0 +1,64 @@
+/* === Portus Ambience === */
+
+body {
+  background: radial-gradient(circle at 50% 20%, #0f0f1a, #1a1a2e);
+  color: #e0e0f0;
+  font-family: Georgia, serif;
+  margin: 0;
+  padding: 20px;
+  animation: fadeIn 2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* === Time Remaining Box === */
+
+.time-box {
+  background: rgba(255,255,255,0.05);
+  padding: 12px 20px;
+  border-radius: 8px;
+  color: #e0e0f0;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  animation: fadeIn 2s ease-out;
+}
+
+/* === Game Container === */
+
+#game-container {
+  max-width: 900px;
+  margin: auto;
+  background: rgba(255,255,255,0.03);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(255,255,255,0.05);
+}
+
+/* === Buttons === */
+
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #e0e0f0;
+  text-decoration: none;
+  margin: 10px 0;
+  transition: background 0.3s ease;
+}
+
+.button:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+/* === Titles === */
+
+h1, h2, h3 {
+  text-align: center;
+  letter-spacing: 1px;
+}
