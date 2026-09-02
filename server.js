@@ -6,7 +6,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
-import { db, cleanupExpired } from "./database.js";
+import { db, cleanupExpired } from "./database2.js";
 import { resend } from "./resend.js";
 import { normalizeEmail, validCredentials, hashToken, issueAuthCookie, authenticateRequest, revokeSession, revokeAllSessions, hashPassword, verifyPassword } from "./auth.js";
 import { issueCsrfCookie, requireCsrf, requireVerified, requirePaid, authLimiter, passwordResetLimiter, checkoutLimiter, generalApiLimiter } from "./middleware.js";
