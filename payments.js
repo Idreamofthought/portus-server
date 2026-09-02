@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import paypal from "@paypal/checkout-server-sdk";
 import Stripe from "stripe";
-import { db } from "./database.js";
+import { db } from "./database2.js";
 import { PRODUCTS, getProduct } from "./products.js";
 
 const paypalEnv = process.env.NODE_ENV === "production"
