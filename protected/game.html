@@ -1,10 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+
+</div>
+
+<head>
       <div id="time-remaining" class="time-box">
   Loading your remaining time...
 </div>
 
-<head>
+<script>
+async function loadTime() {
+  const res = await fetch("/api/user/time");
+  const data = await res.json();
+
+  let seconds = data.remaining_seconds;
+
+  function update() {
+    if (seconds <= 0) {
+      document.getElementById("time-remaining").innerText =
+        "Your time has expired. The island grows quiet.";
+      return;
+    }
+
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+
+    document.getElementById("time-remaining").innerText =
+      `Time remaining: ${m}m ${s}s`;
+
+    seconds--;
+  }
+
+  update();
+  setInterval(update, 1000);
+}
+
+loadTime();
+</script>
 
 <meta charset="UTF-8">
 <meta name="viewport"
