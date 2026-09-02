@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { db } from "./database.js";
+import { db } from "./database2.js";
 
 export function issueCsrfCookie(res) {
   const token = crypto.randomBytes(32).toString("hex");
