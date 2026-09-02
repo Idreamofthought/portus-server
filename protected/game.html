@@ -1,45 +1,68 @@
 <!DOCTYPE html>
-
-</div>
-
+<html lang="en">
 <head>
-      <div id="time-remaining" class="time-box">
-  Loading your remaining time...
-</div>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Portus — Town Builder</title>
 
-<script>
-async function loadTime() {
-  const res = await fetch("/api/user/time");
-  const data = await res.json();
+  <!-- Link to your atmospheric game CSS -->
+  <link rel="stylesheet" href="/css/game.css">
+</head>
 
-  let seconds = data.remaining_seconds;
+<body>
 
-  function update() {
-    if (seconds <= 0) {
-      document.getElementById("time-remaining").innerText =
-        "Your time has expired. The island grows quiet.";
-      return;
+  <!-- Time Remaining Box -->
+  <div id="time-remaining" class="time-box">
+    Loading your remaining time...
+  </div>
+
+  <!-- Main Game Container -->
+  <div id="game-container">
+    <h1>Portus</h1>
+    <p>Welcome back to the island. Build, explore, and shape the town by the sea.</p>
+
+    <!-- Your game UI goes here -->
+    <!-- Example placeholder -->
+    <div id="game-ui">
+      <!-- Add your buttons, map, actions, etc. -->
+    </div>
+  </div>
+
+  <!-- Time Remaining Script -->
+  <script>
+    async function loadTime() {
+      const res = await fetch("/api/user/time");
+      const data = await res.json();
+
+      let seconds = data.remaining_seconds;
+
+      function update() {
+        if (seconds <= 0) {
+          document.getElementById("time-remaining").innerText =
+            "Your time has expired. The island grows quiet.";
+          return;
+        }
+
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+
+        document.getElementById("time-remaining").innerText =
+          `Time remaining: ${m}m ${s}s`;
+
+        seconds--;
+      }
+
+      update();
+      setInterval(update, 1000);
     }
 
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
+    loadTime();
+  </script>
 
-    document.getElementById("time-remaining").innerText =
-      `Time remaining: ${m}m ${s}s`;
+</body>
+</html>
 
-    seconds--;
-  }
-
-  update();
-  setInterval(update, 1000);
-}
-
-loadTime();
-</script>
-
-<meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Portus — Town Builder</title>
 <style>
   :root{
