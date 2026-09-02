@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { db } from "./database.js";
+import { db } from "./database2.js";
 
 export const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 const COOKIE_SECURE = process.env.NODE_ENV === "production";
