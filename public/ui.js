@@ -108,6 +108,19 @@ export function renderNotifications(state) {
         box.appendChild(div);
     }
 }
+/* ============================================================
+   SOUND TOGGLE INTERFACE
+   ============================================================ */
+<div id="audio-controls">
+    <label>
+        <input type="checkbox" id="toggle-music" checked>
+        Music
+    </label>
+    <label>
+        <input type="checkbox" id="toggle-sfx" checked>
+        Sound
+    </label>
+</div>
 
 /* ============================================================
    PANEL RENDERING
