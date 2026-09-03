@@ -1,3 +1,6 @@
-export function initSound() {
-    console.log("Sound system loaded (placeholder)");
-}
+export const Sound = {
+  init() {
+    console.log("Sound system initialized");
+    // your audio setup code here
+  }
+};
