@@ -25,6 +25,7 @@ export function setupUI(state) {
 
     setupBuildingButtons(state);
     setupPanelButtons(state);
+    setupAudioControls();
 }
 
 /* ============================================================
@@ -33,7 +34,6 @@ export function setupUI(state) {
 
 function setupBuildingButtons(state) {
     const container = document.getElementById("buildings");
-
     if (!container) return;
 
     container.innerHTML = "";
@@ -78,6 +78,36 @@ function setupPanelButtons(state) {
 }
 
 /* ============================================================
+   AUDIO CONTROLS (JS VERSION — NO HTML)
+   ============================================================ */
+
+function setupAudioControls() {
+    const container = document.getElementById("audio-controls");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const musicLabel = document.createElement("label");
+    const musicToggle = document.createElement("input");
+    musicToggle.type = "checkbox";
+    musicToggle.id = "toggle-music";
+    musicToggle.checked = true;
+    musicLabel.appendChild(musicToggle);
+    musicLabel.append(" Music");
+
+    const sfxLabel = document.createElement("label");
+    const sfxToggle = document.createElement("input");
+    sfxToggle.type = "checkbox";
+    sfxToggle.id = "toggle-sfx";
+    sfxToggle.checked = true;
+    sfxLabel.appendChild(sfxToggle);
+    sfxLabel.append(" Sound");
+
+    container.appendChild(musicLabel);
+    container.appendChild(sfxLabel);
+}
+
+/* ============================================================
    NOTIFICATIONS
    ============================================================ */
 
@@ -108,19 +138,6 @@ export function renderNotifications(state) {
         box.appendChild(div);
     }
 }
-/* ============================================================
-   SOUND TOGGLE INTERFACE
-   ============================================================ */
-<div id="audio-controls">
-    <label>
-        <input type="checkbox" id="toggle-music" checked>
-        Music
-    </label>
-    <label>
-        <input type="checkbox" id="toggle-sfx" checked>
-        Sound
-    </label>
-</div>
 
 /* ============================================================
    PANEL RENDERING
