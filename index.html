@@ -1,173 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Portus</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Portus</title>
 
-    <style>
-        body {
-            margin: 0;
-            background: #111;
-            color: #eee;
-            font-family: "Segoe UI", sans-serif;
-        }
-
-        #game {
-            display: flex;
-            height: 100vh;
-        }
-
-        #left {
-            width: 70%;
-            background: #000;
-            position: relative;
-        }
-
-        #right {
-            width: 30%;
-            background: #1a1a1a;
-            overflow-y: auto;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-
-        .panel {
-            background: #222;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-        }
-
-        .panel h2 {
-            margin: 0 0 8px 0;
-            font-size: 18px;
-            color: #ffd37a;
-        }
-
-        .notif {
-            background: #333;
-            padding: 6px;
-            margin-bottom: 4px;
-            border-left: 4px solid #888;
-        }
-
-        .notif.warning { border-color: #e6c14a; }
-        .notif.disaster { border-color: #e65a5a; }
-        .notif.blessing { border-color: #7ae67a; }
-        .notif.penalty { border-color: #e69a3a; }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            background: #000;
-        }
-    </style>
+  <!-- Ambience + Game CSS -->
+  <link rel="stylesheet" href="/css/ambience-payments.css">
+  <link rel="stylesheet" href="/css/game.css">
 </head>
 
 <body>
-<div id="game">
-    <div id="left">
-        <canvas id="canvas"></canvas>
-    </div>
 
-    <div id="right">
-        <div id="panel-resources" class="panel">
-            <h2>Resources</h2>
-            <div id="resources"></div>
-        </div>
+  <!-- Time Remaining -->
+  <div id="time-remaining" class="time-box"></div>
 
-        <div id="panel-favour" class="panel">
-            <h2>Favour</h2>
-            <div id="favour"></div>
-        </div>
+  <!-- Audio Controls -->
+  <div id="audio-controls"></div>
 
-        <div id="panel-warnings" class="panel">
-            <h2>Warnings</h2>
-            <div id="warnings"></div>
-        </div>
+  <!-- Notifications -->
+  <div id="notifications"></div>
 
-        <div id="panel-disasters" class="panel">
-            <h2>Disasters</h2>
-            <div id="disasters"></div>
-        </div>
+  <!-- Building Buttons -->
+  <div id="buildings"></div>
 
-        <div id="panel-codex" class="panel">
-            <h2>Codex</h2>
-            <div id="codex"></div>
-        </div>
+  <!-- Panel Toggles -->
+  <div id="panel-buttons">
+    <button id="panel-resources">Resources</button>
+    <button id="panel-research">Research</button>
+    <button id="panel-codex">Codex</button>
+    <button id="panel-warnings">Warnings</button>
+    <button id="panel-disasters">Disasters</button>
+    <button id="panel-favour">Favour</button>
+  </div>
 
-        <div id="panel-notifications" class="panel">
-            <h2>Notifications</h2>
-            <div id="notifications"></div>
-        </div>
-    </div>
-</div>
+  <!-- Panel Boxes -->
+  <div id="panel-resources-box"></div>
+  <div id="panel-research-box"></div>
+  <div id="panel-codex-box"></div>
+  <div id="panel-warnings-box"></div>
+  <div id="panel-disasters-box"></div>
+  <div id="panel-favour-box"></div>
 
-<script type="module">
-    import { initGame, startGameLoop } from "./game.js";
+  <!-- Game Canvas (if needed later) -->
+  <canvas id="gameCanvas" width="900" height="600"></canvas>
 
-    const state = initGame();
-
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-
-    function render(frame) {
-        const resDiv = document.getElementById("resources");
-        resDiv.innerHTML = "";
-        for (const r of frame.ui.resources) {
-            const div = document.createElement("div");
-            div.textContent = r.name + ": " + Math.floor(r.amount) + " / " + r.cap;
-            resDiv.appendChild(div);
-        }
-
-        const favDiv = document.getElementById("favour");
-        favDiv.innerHTML = "";
-        favDiv.textContent =
-            "Time: " + frame.favour.time +
-            " | Chaos: " + frame.favour.chaos +
-            " | Destiny: " + frame.favour.destiny +
-            " | Twilight: " + (frame.favour.twilight ? "Yes" : "No");
-
-        const warnDiv = document.getElementById("warnings");
-        warnDiv.innerHTML = "";
-        for (const w of frame.ui.warnings) {
-            const div = document.createElement("div");
-            div.textContent = w.message;
-            warnDiv.appendChild(div);
-        }
-
-        const disDiv = document.getElementById("disasters");
-        disDiv.innerHTML = "";
-        for (const d of frame.ui.disasters) {
-            const div = document.createElement("div");
-            div.textContent = d.name + " (" + d.severity + ")";
-            disDiv.appendChild(div);
-        }
-
-        const codDiv = document.getElementById("codex");
-        codDiv.innerHTML = "";
-        for (const c of frame.ui.codex) {
-            const div = document.createElement("div");
-            div.textContent = c.title + ": " + c.text;
-            codDiv.appendChild(div);
-        }
-
-        const notifDiv = document.getElementById("notifications");
-        notifDiv.innerHTML = "";
-        for (const n of frame.ui.notifications) {
-            const div = document.createElement("div");
-            div.className = "notif " + n.type;
-            div.textContent = n.msg;
-            notifDiv.appendChild(div);
-        }
-
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    startGameLoop(state, render);
-</script>
+  <!-- Main Game Script -->
+  <script type="module" src="./main.js"></script>
 
 </body>
 </html>
