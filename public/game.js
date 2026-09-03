@@ -22,7 +22,19 @@ export function initGame() {
 
     return state;
 }
+/* ============================================================
+   MAP
+   ============================================================ */
+import { genMap } from "./map.js";
 
+export function initGame() {
+    const state = {
+        tick: 0,
+        grid: genMap(),
+        ui: {
+            selectedBuilding: null
+        }
+    };
 /* ============================================================
    PLACE BUILDING
    ============================================================ */
