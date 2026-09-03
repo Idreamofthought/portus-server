@@ -1,13 +1,11 @@
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 
-// Open database (pure JS, safe on Railway)
 export const db = await open({
   filename: process.env.DATABASE_PATH || "portus.db",
   driver: sqlite3.Database
 });
 
-// Simple transaction helper
 db.transaction = (fn) => async (...args) => {
   await db.exec("BEGIN");
   try {
@@ -20,7 +18,6 @@ db.transaction = (fn) => async (...args) => {
   }
 };
 
-// Cleanup expired tokens / orders
 export async function cleanupExpired() {
   try {
     await db.run(
