@@ -1,299 +1,204 @@
 /* ============================================================
    FAVOUR MODULE — Portus
-   Expanded version: Time, Chaos, Destiny, Twilight Mode,
-   Blessings, Penalties, Rituals, Offerings, Codex unlocks,
-   Disaster influence, Seasonal influence, Payment hooks.
+   Handles divine favour, twilight mode, blessings, penalties,
+   and integration with disasters and research.
    ============================================================ */
 
-/* ---------------- INITIAL STATE ---------------- */
+/* ============================================================
+   INITIAL FAVOUR STATE
+   ============================================================ */
 
-export function initFavourState() {
+export function initFavour() {
     return {
-        timeFavour: 40,        // 0–100
-        chaosTolerance: 40,    // 0–100
-        destinyJudgement: 40,  // 0–100
+        value: 10,              // base favour
+        chaosTolerance: 10,     // reduces disaster severity
+        destinyJudgement: 10,   // affects blessings / penalties
 
         twilightMode: false,
-        twilightProgress: 0,   // 0–100
+        twilightProgress: 0,
 
-        ritualCooldowns: {},   // { ritualId: ticksLeft }
-        lastOfferingTick: 0,
-
-        codexUnlocks: new Set()
+        lastOfferingTime: 0,
+        ritualCooldown: 0
     };
 }
 
-/* ---------------- BASIC MODIFIERS ---------------- */
+/* ============================================================
+   ADD / REDUCE FAVOUR
+   ============================================================ */
 
-export function addTimeFavour(state, amt) {
-    state.timeFavour = Math.min(100, state.timeFavour + amt);
+export function addFavour(state, amount) {
+    state.favour.value += amount;
+    if (state.favour.value > 100) state.favour.value = 100;
 }
 
-export function reduceTimeFavour(state, amt) {
-    state.timeFavour = Math.max(0, state.timeFavour - amt);
+export function reduceFavour(state, amount) {
+    state.favour.value -= amount;
+    if (state.favour.value < 0) state.favour.value = 0;
 }
 
-export function addChaosTolerance(state, amt) {
-    state.chaosTolerance = Math.min(100, state.chaosTolerance + amt);
-}
+/* ============================================================
+   OFFERINGS (player action)
+   ============================================================ */
 
-export function reduceChaosTolerance(state, amt) {
-    state.chaosTolerance = Math.max(0, state.chaosTolerance - amt);
-}
+export function performOffering(state) {
+    const F = state.favour;
 
-export function addDestinyJudgement(state, amt) {
-    state.destinyJudgement = Math.min(100, state.destinyJudgement + amt);
-}
-
-export function reduceDestinyJudgement(state, amt) {
-    state.destinyJudgement = Math.max(0, state.destinyJudgement - amt);
-}
-
-/* ---------------- OFFERINGS ---------------- */
-
-export function performOffering(state, res, offering) {
-    // offering = { cost:{}, effects:{time:?, chaos:?, destiny:?} }
-
-    // Check cost
-    for (const [k, v] of Object.entries(offering.cost)) {
-        if ((res[k] || 0) < v) return false;
+    // Offering cost
+    if (state.resources.food < 5) {
+        pushNotification(state, "Not enough food for offering", "warning");
+        return false;
     }
 
-    // Pay cost
-    for (const [k, v] of Object.entries(offering.cost)) {
-        res[k] -= v;
-    }
+    state.resources.food -= 5;
+    addFavour(state, 5);
 
-    // Apply effects
-    if (offering.effects.time) addTimeFavour(state, offering.effects.time);
-    if (offering.effects.chaos) addChaosTolerance(state, offering.effects.chaos);
-    if (offering.effects.destiny) addDestinyJudgement(state, offering.effects.destiny);
+    F.lastOfferingTime = state.tick;
 
-    state.lastOfferingTick = state.tickCount || 0;
-
+    pushNotification(state, "The gods accept your offering", "success");
     return true;
 }
 
-/* ---------------- RITUALS ---------------- */
+/* ============================================================
+   RITUALS (stronger action)
+   ============================================================ */
 
-export const RITUALS = {
-    "ritual_light": {
-        name: "Ritual of Light",
-        desc: "Restore Time and soften Chaos.",
-        cooldown: 300,
-        effects: { time: 8, chaos: 5, destiny: 0 },
-        cost: { scrolls: 4, pottery: 2 }
-    },
+export function performRitual(state) {
+    const F = state.favour;
 
-    "ritual_order": {
-        name: "Ritual of Order",
-        desc: "Reduce Chaos and increase Destiny.",
-        cooldown: 400,
-        effects: { time: 0, chaos: 10, destiny: 6 },
-        cost: { tools: 3, pottery: 3 }
-    },
-
-    "ritual_fate": {
-        name: "Ritual of Fate",
-        desc: "Increase Destiny and Time.",
-        cooldown: 500,
-        effects: { time: 6, chaos: 0, destiny: 12 },
-        cost: { gold: 2, scrolls: 3 }
-    }
-};
-
-export function canPerformRitual(state, ritualId) {
-    const r = RITUALS[ritualId];
-    if (!r) return false;
-
-    const cd = state.ritualCooldowns[ritualId] || 0;
-    return cd <= 0;
-}
-
-export function performRitual(state, res, ritualId) {
-    const r = RITUALS[ritualId];
-    if (!r) return false;
-
-    if (!canPerformRitual(state, ritualId)) return false;
-
-    // Check cost
-    for (const [k, v] of Object.entries(r.cost)) {
-        if ((res[k] || 0) < v) return false;
+    if (F.ritualCooldown > 0) {
+        pushNotification(state, "Ritual is on cooldown", "warning");
+        return false;
     }
 
-    // Pay cost
-    for (const [k, v] of Object.entries(r.cost)) {
-        res[k] -= v;
+    if (state.resources.wood < 20 || state.resources.stone < 10) {
+        pushNotification(state, "Not enough resources for ritual", "warning");
+        return false;
     }
 
-    // Apply effects
-    if (r.effects.time) addTimeFavour(state, r.effects.time);
-    if (r.effects.chaos) addChaosTolerance(state, r.effects.chaos);
-    if (r.effects.destiny) addDestinyJudgement(state, r.effects.destiny);
+    state.resources.wood -= 20;
+    state.resources.stone -= 10;
 
-    // Set cooldown
-    state.ritualCooldowns[ritualId] = r.cooldown;
+    addFavour(state, 15);
+    F.chaosTolerance += 5;
+    F.destinyJudgement += 5;
 
+    F.ritualCooldown = 300; // 300 ticks cooldown
+
+    pushNotification(state, "A powerful ritual strengthens the world", "success");
     return true;
 }
 
-/* ---------------- COOLDOWN TICK ---------------- */
-
-export function favourTickCooldowns(state) {
-    for (const id of Object.keys(state.ritualCooldowns)) {
-        state.ritualCooldowns[id] = Math.max(0, state.ritualCooldowns[id] - 1);
-    }
-}
-
-/* ---------------- BLESSINGS ---------------- */
-
-export function checkBlessings(state, res) {
-    const out = [];
-
-    if (state.destinyJudgement > 80) {
-        // Small blessing: random resource
-        const keys = ["wheat","fish","wood","stone","tools"];
-        const k = keys[Math.floor(Math.random() * keys.length)];
-        res[k] += 2;
-        out.push(`Blessing of Destiny: +2 ${k}`);
-    }
-
-    if (state.timeFavour > 85 && !state.twilightMode) {
-        out.push("Blessing of Time: production stability increased");
-    }
-
-    if (state.chaosTolerance > 75) {
-        out.push("Blessing of Order: disasters softened");
-    }
-
-    return out;
-}
-
-/* ---------------- PENALTIES ---------------- */
-
-export function checkPenalties(state) {
-    const out = [];
-
-    if (state.timeFavour < 15) {
-        out.push("Time is thinning. Twilight approaches.");
-        state.twilightProgress += 1.5;
-    }
-
-    if (state.chaosTolerance < 20) {
-        out.push("Chaos stirs. Disasters intensify.");
-    }
-
-    if (state.destinyJudgement < 20) {
-        out.push("The gods judge your city harshly.");
-        state.twilightProgress += 1;
-    }
-
-    return out;
-}
-
-/* ---------------- TWILIGHT MODE ---------------- */
+/* ============================================================
+   TWILIGHT MODE
+   ============================================================ */
 
 export function enterTwilightMode(state) {
-    state.twilightMode = true;
-    state.twilightProgress = 100;
+    const F = state.favour;
+
+    if (F.twilightMode) return;
+
+    F.twilightMode = true;
+    F.twilightProgress = 0;
+
+    pushNotification(state, "Twilight descends upon the world...", "danger");
 }
 
 export function exitTwilightMode(state) {
-    state.twilightMode = false;
-    state.twilightProgress = 0;
-    state.timeFavour = Math.max(20, state.timeFavour);
+    const F = state.favour;
+
+    if (!F.twilightMode) return;
+
+    F.twilightMode = false;
+    F.twilightProgress = 0;
+
+    pushNotification(state, "The world returns to balance", "success");
 }
 
-export function twilightTick(state) {
-    if (!state.twilightMode) return;
+/* ============================================================
+   TWILIGHT TICK
+   ============================================================ */
 
-    // Twilight drains Time and Destiny
-    reduceTimeFavour(state, 0.5);
-    reduceDestinyJudgement(state, 0.3);
+function twilightTick(state) {
+    const F = state.favour;
 
-    // Twilight increases Chaos
-    addChaosTolerance(state, 0.2);
+    if (!F.twilightMode) return;
 
-    // Twilight slowly ends if Time is restored
-    if (state.timeFavour > 40) {
-        exitTwilightMode(state);
-    }
-}
+    F.twilightProgress += 0.5;
 
-/* ---------------- DISASTER INFLUENCE ---------------- */
+    // Twilight penalties
+    reduceFavour(state, 0.1);
 
-export function disasterInfluence(state, disasterSeverity) {
-    // disasterSeverity = "minor" | "medium" | "major"
-
-    if (disasterSeverity === "minor") {
-        reduceChaosTolerance(state, 2);
-        reduceDestinyJudgement(state, 1);
-    }
-
-    if (disasterSeverity === "medium") {
-        reduceChaosTolerance(state, 5);
-        reduceDestinyJudgement(state, 3);
-        reduceTimeFavour(state, 2);
-    }
-
-    if (disasterSeverity === "major") {
-        reduceChaosTolerance(state, 10);
-        reduceDestinyJudgement(state, 6);
-        reduceTimeFavour(state, 6);
-        state.twilightProgress += 4;
+    if (F.twilightProgress >= 100) {
+        pushNotification(state, "Twilight consumes the land!", "danger");
+        // Trigger major disaster
+        if (state.disasters) {
+            state.disasters.forceMajor = true;
+        }
+        F.twilightProgress = 0;
     }
 }
 
-/* ---------------- SEASONAL INFLUENCE ---------------- */
+/* ============================================================
+   BLESSINGS & PENALTIES
+   ============================================================ */
 
-export function seasonalInfluence(state, season) {
-    // season = "spring" | "summer" | "autumn" | "winter"
+function checkBlessings(state) {
+    const F = state.favour;
 
-    if (season === "spring") {
-        addDestinyJudgement(state, 2);
-    }
-
-    if (season === "summer") {
-        addTimeFavour(state, 2);
-    }
-
-    if (season === "autumn") {
-        reduceChaosTolerance(state, 2);
-    }
-
-    if (season === "winter") {
-        reduceTimeFavour(state, 3);
-        reduceDestinyJudgement(state, 2);
+    if (F.destinyJudgement > 80 && Math.random() < 0.01) {
+        addFavour(state, 5);
+        pushNotification(state, "A divine blessing improves your lands", "success");
     }
 }
 
-/* ---------------- CODEX UNLOCKS ---------------- */
+function checkPenalties(state) {
+    const F = state.favour;
 
-export function unlockCodex(state, entryId) {
-    state.codexUnlocks.add(entryId);
+    if (F.value < 10 && Math.random() < 0.02) {
+        reduceFavour(state, 2);
+        pushNotification(state, "The gods are displeased...", "warning");
+    }
 }
 
-export function hasCodexEntry(state, entryId) {
-    return state.codexUnlocks.has(entryId);
-}
+/* ============================================================
+   UPDATE FAVOUR (called every tick)
+   ============================================================ */
 
-/* ---------------- MAIN FAVOUR TICK ---------------- */
+export function updateFavour(state) {
+    const F = state.favour;
 
-export function favourTick(state, res, season) {
-    // Cooldowns
-    favourTickCooldowns(state);
+    // Natural decay
+    reduceFavour(state, 0.005);
 
-    // Seasonal influence
-    seasonalInfluence(state, season);
+    // Twilight check
+    if (F.value <= 0 || F.destinyJudgement <= 0) {
+        enterTwilightMode(state);
+    }
 
-    // Blessings
-    const blessings = checkBlessings(state, res);
-
-    // Penalties
-    const penalties = checkPenalties(state);
-
-    // Twilight
     twilightTick(state);
 
-    return { blessings, penalties };
+    // Blessings / penalties
+    checkBlessings(state);
+    checkPenalties(state);
+
+    // Ritual cooldown
+    if (F.ritualCooldown > 0) F.ritualCooldown--;
+}
+
+/* ============================================================
+   UI NOTIFICATION HELPER
+   ============================================================ */
+
+function pushNotification(state, msg, type = "info") {
+    if (!state.ui || !state.ui.notifications) return;
+
+    state.ui.notifications.push({
+        msg,
+        type,
+        time: Date.now()
+    });
+
+    if (state.ui.notifications.length > 40) {
+        state.ui.notifications.shift();
+    }
 }
