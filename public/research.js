@@ -1,133 +1,174 @@
 /* ============================================================
    RESEARCH MODULE — Portus
-   Full extraction: tech catalogue, unlock logic, cost validation,
-   application of bonuses, and state integration.
+   Handles tech definitions, progress, unlocking, and tick updates.
    ============================================================ */
 
-/* ---------------- TECH CATALOGUE ---------------- */
+/* ---------------- TECH DEFINITIONS ---------------- */
 
 export const TECHS = [
-
     {
-        id: 'irrigation',
-        name: 'Irrigation',
-        desc: '+25% field yield',
-        cost: 8,
-        apply: (state) => { state.techBonus.field *= 1.25; }
+        id: "agriculture",
+        name: "Agriculture",
+        desc: "Unlocks Farms. +10% food production.",
+        cost: { wood: 20, food: 10 },
+        unlocksBuildings: ["farm"],
+        apply(state) {
+            state.research.bonus.food += 0.10;
+        }
     },
 
     {
-        id: 'masonry',
-        name: 'Masonry',
-        desc: '+25% quarry output',
-        cost: 8,
-        apply: (state) => { state.techBonus.quarry *= 1.25; }
+        id: "masonry",
+        name: "Masonry",
+        desc: "Unlocks Quarry. +10% stone production.",
+        cost: { wood: 10, stone: 20 },
+        unlocksBuildings: ["quarry"],
+        apply(state) {
+            state.research.bonus.stone += 0.10;
+        }
     },
 
     {
-        id: 'seafaring',
-        name: 'Seafaring',
-        desc: '+25% fish catch',
-        cost: 10,
-        apply: (state) => { state.techBonus.fish *= 1.25; }
-    },
-
-    {
-        id: 'metallurgy',
-        name: 'Metallurgy',
-        desc: '+25% foundry refining',
-        cost: 14,
-        apply: (state) => { state.techBonus.foundry *= 1.25; }
-    },
-
-    {
-        id: 'currency',
-        name: 'Currency',
-        desc: '+30% trade income from markets',
-        cost: 16,
-        apply: (state) => { state.techBonus.trade *= 1.3; }
+        id: "forestry",
+        name: "Forestry",
+        desc: "Unlocks Lumberyard. +10% wood production.",
+        cost: { wood: 30 },
+        unlocksBuildings: ["lumberyard"],
+        apply(state) {
+            state.research.bonus.wood += 0.10;
+        }
     }
-
 ];
 
 /* ---------------- INDEX ---------------- */
 
 export const TECH_BY_ID = Object.fromEntries(TECHS.map(t => [t.id, t]));
 
-/* ---------------- STATE INITIALIZATION ---------------- */
+/* ============================================================
+   INITIAL RESEARCH STATE
+   ============================================================ */
 
-export function initResearchState() {
+export function initResearch() {
     return {
-        research: 0,              // banked research points
-        unlockedTechs: new Set(), // unlocked tech IDs
-        techBonus: {              // production multipliers
-            field: 1,
-            quarry: 1,
-            fish: 1,
-            foundry: 1,
-            trade: 1
+        points: 0,
+        current: null,          // tech ID being researched
+        progress: 0,            // 0 → cost
+        unlocked: [],           // completed tech IDs
+        bonus: {                // production bonuses
+            wood: 0,
+            stone: 0,
+            food: 0
         }
     };
 }
 
-/* ---------------- ACCESSORS ---------------- */
+/* ============================================================
+   START RESEARCH
+   ============================================================ */
 
-export function getTechDefinition(id) {
-    return TECH_BY_ID[id] || null;
-}
-
-export function listAvailableTechs(state) {
-    return TECHS.filter(t => !state.unlockedTechs.has(t.id));
-}
-
-export function listUnlockedTechs(state) {
-    return TECHS.filter(t => state.unlockedTechs.has(t.id));
-}
-
-/* ---------------- VALIDATION ---------------- */
-
-export function canResearch(state, id) {
-    const tech = TECH_BY_ID[id];
-    if (!tech) return false;
-    if (state.unlockedTechs.has(id)) return false;
-    return state.research >= tech.cost;
-}
-
-/* ---------------- UNLOCK ---------------- */
-
-export function unlockTech(state, id) {
-    const tech = TECH_BY_ID[id];
+export function startResearch(state, techId) {
+    const tech = TECH_BY_ID[techId];
     if (!tech) return false;
 
-    if (!canResearch(state, id)) return false;
+    if (state.research.unlocked.includes(techId)) return false;
 
-    // Pay research points
-    state.research -= tech.cost;
-
-    // Unlock
-    state.unlockedTechs.add(id);
-
-    // Apply effect
-    tech.apply(state);
+    state.research.current = techId;
+    state.research.progress = 0;
 
     return true;
 }
 
-/* ---------------- RESEARCH POINTS ---------------- */
+/* ============================================================
+   RESEARCH TICK
+   ============================================================ */
 
-export function addResearchPoints(state, amount) {
-    state.research += amount;
+export function updateResearch(state) {
+    const R = state.research;
+
+    // No active research
+    if (!R.current) return;
+
+    const tech = TECH_BY_ID[R.current];
+    if (!tech) return;
+
+    // Gain research points per tick
+    R.points += 1;
+
+    // Apply favour bonus (if favour.js exists)
+    if (state.favour) {
+        R.points += state.favour.value * 0.01;
+    }
+
+    // Progress increases with points
+    R.progress += R.points * 0.05;
+
+    // Completed?
+    const totalCost = Object.values(tech.cost).reduce((a, b) => a + b, 0);
+
+    if (R.progress >= totalCost) {
+        completeResearch(state, tech.id);
+    }
 }
 
-/* ---------------- UI HELPERS ---------------- */
+/* ============================================================
+   COMPLETE RESEARCH
+   ============================================================ */
 
-export function getTechDisplayInfo(state) {
+export function completeResearch(state, techId) {
+    const tech = TECH_BY_ID[techId];
+    if (!tech) return;
+
+    const R = state.research;
+
+    // Mark as unlocked
+    R.unlocked.push(techId);
+
+    // Apply bonuses
+    tech.apply(state);
+
+    // Unlock buildings
+    if (!state.buildingsUnlocked) state.buildingsUnlocked = [];
+    for (const b of tech.unlocksBuildings) {
+        state.buildingsUnlocked.push(b);
+    }
+
+    // Notify UI
+    if (state.ui && state.ui.notifications) {
+        state.ui.notifications.push({
+            msg: `Research completed: ${tech.name}`,
+            type: "success",
+            time: Date.now()
+        });
+    }
+
+    // Reset current research
+    R.current = null;
+    R.progress = 0;
+    R.points = 0;
+}
+
+/* ============================================================
+   LIST AVAILABLE TECHS
+   ============================================================ */
+
+export function listAvailableTechs(state) {
+    return TECHS.filter(t => !state.research.unlocked.includes(t.id));
+}
+
+/* ============================================================
+   UI DISPLAY INFO
+   ============================================================ */
+
+export function getResearchDisplayInfo(state) {
+    const R = state.research;
+
     return TECHS.map(t => ({
         id: t.id,
         name: t.name,
         desc: t.desc,
         cost: t.cost,
-        unlocked: state.unlockedTechs.has(t.id),
-        affordable: state.research >= t.cost
+        unlocked: R.unlocked.includes(t.id),
+        researching: R.current === t.id,
+        progress: R.current === t.id ? R.progress : 0
     }));
 }
