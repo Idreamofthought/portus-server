@@ -1,199 +1,244 @@
 /* ============================================================
    UI MODULE — Portus
-   Full version: resource bar, notifications, Codex, panels,
-   disaster/warning display, favour bars, twilight UI, research UI.
+   Handles building selection, panels, notifications, and UI state.
    ============================================================ */
 
-/* ---------------- INITIAL STATE ---------------- */
+import { BUILDINGS } from "./buildings.js";
 
-export function initUIState() {
-    return {
-        notifications: [],
-        codex: {},
+/* ============================================================
+   INITIAL UI STATE
+   ============================================================ */
+
+export function setupUI(state) {
+    state.ui = {
+        selectedBuilding: null,
         panels: {
             resources: true,
             research: false,
             codex: false,
-            favour: false,
             warnings: false,
-            disasters: false
+            disasters: false,
+            favour: false
         },
-        lastTickData: null
+        notifications: []
     };
+
+    setupBuildingButtons(state);
+    setupPanelButtons(state);
 }
 
-/* ---------------- NOTIFICATIONS ---------------- */
+/* ============================================================
+   BUILDING SELECTION BUTTONS
+   ============================================================ */
 
-export function pushNotification(ui, msg, type = "info") {
-    ui.notifications.push({
+function setupBuildingButtons(state) {
+    const container = document.getElementById("buildings");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    for (const id in BUILDINGS) {
+        const def = BUILDINGS[id];
+
+        const btn = document.createElement("button");
+        btn.textContent = def.name;
+
+        btn.onclick = () => {
+            state.ui.selectedBuilding = id;
+            pushNotification(state, `Selected: ${def.name}`, "info");
+        };
+
+        container.appendChild(btn);
+    }
+}
+
+/* ============================================================
+   PANEL BUTTONS
+   ============================================================ */
+
+function setupPanelButtons(state) {
+    const panels = [
+        "resources",
+        "research",
+        "codex",
+        "warnings",
+        "disasters",
+        "favour"
+    ];
+
+    for (const p of panels) {
+        const btn = document.getElementById(`panel-${p}`);
+        if (!btn) continue;
+
+        btn.onclick = () => {
+            state.ui.panels[p] = !state.ui.panels[p];
+        };
+    }
+}
+
+/* ============================================================
+   NOTIFICATIONS
+   ============================================================ */
+
+export function pushNotification(state, msg, type = "info") {
+    state.ui.notifications.push({
         msg,
         type,
         time: Date.now()
     });
 
-    if (ui.notifications.length > 40) {
-        ui.notifications.shift();
+    if (state.ui.notifications.length > 40) {
+        state.ui.notifications.shift();
     }
 }
 
-export function renderNotifications(ui) {
-    return ui.notifications.slice(-6);
-}
+export function renderNotifications(state) {
+    const box = document.getElementById("notifications");
+    if (!box) return;
 
-/* ---------------- RESOURCE BAR ---------------- */
+    box.innerHTML = "";
 
-export function renderResourceBar(state) {
-    const out = [];
+    const recent = state.ui.notifications.slice(-6);
 
-    for (const [name, amount] of Object.entries(state.resources.resources)) {
-        const cap = state.resources.capacity[name];
-        out.push({
-            name,
-            amount,
-            cap,
-            percent: Math.min(100, (amount / cap) * 100)
-        });
-    }
-
-    return out;
-}
-
-/* ---------------- FAVOUR PANEL ---------------- */
-
-export function renderFavourPanel(favourState) {
-    return {
-        time: favourState.timeFavour,
-        chaos: favourState.chaosTolerance,
-        destiny: favourState.destinyJudgement,
-        twilight: favourState.twilightMode,
-        twilightProgress: favourState.twilightProgress
-    };
-}
-
-/* ---------------- WARNINGS PANEL ---------------- */
-
-export function renderWarningsPanel(warningsState) {
-    return warningsState.lastWarnings.map(w => ({
-        id: w.id,
-        message: w.message,
-        severity: w.severity
-    }));
-}
-
-/* ---------------- DISASTERS PANEL ---------------- */
-
-export function renderDisastersPanel(disasterState) {
-    return disasterState.lastDisasters.map(d => ({
-        id: d.id,
-        name: d.name,
-        severity: d.severity,
-        tick: d.tick
-    }));
-}
-
-/* ---------------- RESEARCH PANEL ---------------- */
-
-export function renderResearchPanel(researchState, techDefs) {
-    const out = [];
-
-    for (const t of techDefs) {
-        out.push({
-            id: t.id,
-            name: t.name,
-            desc: t.desc,
-            cost: t.cost,
-            unlocked: researchState.unlockedTechs.has(t.id),
-            affordable: researchState.research >= t.cost
-        });
-    }
-
-    return out;
-}
-
-/* ---------------- CODEX ---------------- */
-
-export function initCodexEntries(ui) {
-    ui.codex = {
-        drought: { title: "Drought", unlocked: false, text: "Fields dry, wells weaken." },
-        wildfire: { title: "Wildfire", unlocked: false, text: "Forest burns, chaos rises." },
-        blight: { title: "Blight", unlocked: false, text: "Disease spreads through crops." },
-        flood: { title: "Flood", unlocked: false, text: "Rivers overflow, buildings damaged." },
-        plague: { title: "Plague", unlocked: false, text: "Population suffers, destiny falters." },
-        forest_thin: { title: "Forest Thinning", unlocked: false, text: "The forest weakens." },
-        fish_scarce: { title: "Fish Scarcity", unlocked: false, text: "The sea grows silent." },
-        quarry_hollow: { title: "Quarry Hollow", unlocked: false, text: "Stone veins weaken." },
-        crop_weak: { title: "Crop Weakness", unlocked: false, text: "Fields lose vitality." },
-        livestock_risk: { title: "Livestock Risk", unlocked: false, text: "Illness may spread." },
-        storm_approach: { title: "Storm Approaches", unlocked: false, text: "Clouds gather." },
-        fire_risk: { title: "Fire Risk", unlocked: false, text: "Flames threaten the city." }
-    };
-}
-
-export function unlockCodexEntry(ui, id) {
-    if (ui.codex[id]) {
-        ui.codex[id].unlocked = true;
+    for (const n of recent) {
+        const div = document.createElement("div");
+        div.className = `note note-${n.type}`;
+        div.textContent = n.msg;
+        box.appendChild(div);
     }
 }
 
-export function renderCodex(ui) {
-    const out = [];
+/* ============================================================
+   PANEL RENDERING
+   ============================================================ */
 
-    for (const [id, entry] of Object.entries(ui.codex)) {
-        if (entry.unlocked) {
-            out.push({
-                id,
-                title: entry.title,
-                text: entry.text
-            });
-        }
-    }
-
-    return out;
+export function renderUI(state) {
+    renderNotifications(state);
+    renderResourcePanel(state);
+    renderResearchPanel(state);
+    renderCodexPanel(state);
+    renderWarningsPanel(state);
+    renderDisastersPanel(state);
+    renderFavourPanel(state);
 }
 
-/* ---------------- PANEL TOGGLE ---------------- */
+/* ============================================================
+   RESOURCES PANEL
+   ============================================================ */
 
-export function togglePanel(ui, panelName) {
-    if (!ui.panels[panelName]) {
-        ui.panels[panelName] = true;
-    } else {
-        ui.panels[panelName] = false;
+function renderResourcePanel(state) {
+    if (!state.ui.panels.resources) return;
+
+    const box = document.getElementById("panel-resources-box");
+    if (!box) return;
+
+    const r = state.resources;
+
+    box.innerHTML = `
+        <div>Wood: ${r.wood}</div>
+        <div>Stone: ${r.stone}</div>
+        <div>Food: ${r.food}</div>
+    `;
+}
+
+/* ============================================================
+   RESEARCH PANEL
+   ============================================================ */
+
+function renderResearchPanel(state) {
+    if (!state.ui.panels.research) return;
+
+    const box = document.getElementById("panel-research-box");
+    if (!box) return;
+
+    const unlocked = state.research.unlocked;
+
+    box.innerHTML = "<h3>Research</h3>";
+
+    for (const tech of unlocked) {
+        const div = document.createElement("div");
+        div.textContent = tech;
+        box.appendChild(div);
     }
 }
 
-/* ---------------- MAIN UI TICK ---------------- */
+/* ============================================================
+   CODEX PANEL
+   ============================================================ */
 
-export function uiTick(ui, tickData) {
-    ui.lastTickData = tickData;
+function renderCodexPanel(state) {
+    if (!state.ui.panels.codex) return;
 
-    for (const w of tickData.warnings) {
-        pushNotification(ui, w.message, "warning");
-        unlockCodexEntry(ui, w.id);
+    const box = document.getElementById("panel-codex-box");
+    if (!box) return;
+
+    box.innerHTML = "<h3>Codex</h3>";
+
+    for (const id in state.codex) {
+        const entry = state.codex[id];
+        if (!entry.unlocked) continue;
+
+        const div = document.createElement("div");
+        div.innerHTML = `<strong>${entry.title}</strong><br>${entry.text}`;
+        box.appendChild(div);
     }
+}
 
-    for (const d of tickData.disasters) {
-        pushNotification(ui, d.name + " (" + d.severity + ")", "disaster");
-        unlockCodexEntry(ui, d.id);
+/* ============================================================
+   WARNINGS PANEL
+   ============================================================ */
+
+function renderWarningsPanel(state) {
+    if (!state.ui.panels.warnings) return;
+
+    const box = document.getElementById("panel-warnings-box");
+    if (!box) return;
+
+    box.innerHTML = "<h3>Warnings</h3>";
+
+    for (const w of state.warnings.alerts) {
+        const div = document.createElement("div");
+        div.textContent = `${w.message} (${w.severity})`;
+        box.appendChild(div);
     }
+}
 
-    if (tickData.favour.blessings.length > 0) {
-        for (const b of tickData.favour.blessings) {
-            pushNotification(ui, b, "blessing");
-        }
+/* ============================================================
+   DISASTERS PANEL
+   ============================================================ */
+
+function renderDisastersPanel(state) {
+    if (!state.ui.panels.disasters) return;
+
+    const box = document.getElementById("panel-disasters-box");
+    if (!box) return;
+
+    box.innerHTML = "<h3>Disasters</h3>";
+
+    for (const d of state.disasters.lastEvents || []) {
+        const div = document.createElement("div");
+        div.textContent = `${d.name} — severity ${d.severity}`;
+        box.appendChild(div);
     }
+}
 
-    if (tickData.favour.penalties.length > 0) {
-        for (const p of tickData.favour.penalties) {
-            pushNotification(ui, p, "penalty");
-        }
-    }
+/* ============================================================
+   FAVOUR PANEL
+   ============================================================ */
 
-    return {
-        notifications: renderNotifications(ui),
-        resources: renderResourceBar(tickData.state),
-        favour: renderFavourPanel(tickData.state.favourState),
-        warnings: renderWarningsPanel(tickData.state.warningsState),
-        disasters: renderDisastersPanel(tickData.state.disasterState),
-        codex: renderCodex(ui)
-    };
-                    }
+function renderFavourPanel(state) {
+    if (!state.ui.panels.favour) return;
+
+    const box = document.getElementById("panel-favour-box");
+    if (!box) return;
+
+    const f = state.favour;
+
+    box.innerHTML = `
+        <h3>Favour</h3>
+        <div>Favour: ${f.value}</div>
+        <div>Twilight: ${f.twilightMode ? "Active" : "Inactive"}</div>
+        <div>Progress: ${f.twilightProgress || 0}</div>
+    `;
+}
