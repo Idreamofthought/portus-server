@@ -1,19 +1,11 @@
 /* ============================================================
    CODEX MODULE — Portus
-   Full version: dynamic unlocks, categories, entries, UI sync,
-   integration with favour, warnings, disasters, research.
+   Handles lore entries, categories, unlocking, and UI display.
    ============================================================ */
 
-/* ---------------- INITIAL STATE ---------------- */
-
-export function initCodexState() {
-    return {
-        entries: {},
-        unlocked: new Set()
-    };
-}
-
-/* ---------------- ENTRY REGISTRY ---------------- */
+/* ============================================================
+   CODEX ENTRIES
+   ============================================================ */
 
 export const CODEX_ENTRIES = {
     drought: {
@@ -129,87 +121,95 @@ export const CODEX_ENTRIES = {
     }
 };
 
-/* ---------------- INITIALIZATION ---------------- */
+/* ============================================================
+   INITIAL STATE
+   ============================================================ */
 
-export function loadCodexEntries(codexState) {
-    codexState.entries = { ...CODEX_ENTRIES };
-}
+export function initCodex() {
+    const codex = {};
 
-/* ---------------- UNLOCK ---------------- */
-
-export function unlockCodex(codexState, id) {
-    if (codexState.entries[id]) {
-        codexState.unlocked.add(id);
-    }
-}
-
-/* ---------------- CHECK ---------------- */
-
-export function hasCodex(codexState, id) {
-    return codexState.unlocked.has(id);
-}
-
-/* ---------------- RENDER ---------------- */
-
-export function renderCodex(codexState) {
-    const out = [];
-
-    for (const id of codexState.unlocked) {
-        const entry = codexState.entries[id];
-        if (!entry) continue;
-
-        out.push({
-            id: entry.id,
-            title: entry.title,
-            text: entry.text,
-            category: entry.category
-        });
+    for (const id in CODEX_ENTRIES) {
+        codex[id] = {
+            ...CODEX_ENTRIES[id],
+            unlocked: false
+        };
     }
 
-    return out;
+    return codex;
 }
 
-/* ---------------- CATEGORY FILTER ---------------- */
+/* ============================================================
+   UNLOCK ENTRY
+   ============================================================ */
 
-export function renderCodexByCategory(codexState, category) {
+export function unlockCodex(state, id) {
+    if (!state.codex[id]) return;
+    state.codex[id].unlocked = true;
+}
+
+/* ============================================================
+   CATEGORY FILTER
+   ============================================================ */
+
+export function getCodexByCategory(state, category) {
     const out = [];
 
-    for (const id of codexState.unlocked) {
-        const entry = codexState.entries[id];
-        if (!entry) continue;
-
-        if (entry.category === category) {
-            out.push({
-                id: entry.id,
-                title: entry.title,
-                text: entry.text
-            });
+    for (const id in state.codex) {
+        const entry = state.codex[id];
+        if (entry.category === category && entry.unlocked) {
+            out.push(entry);
         }
     }
 
     return out;
 }
 
-/* ---------------- MAIN CODEX TICK ---------------- */
+/* ============================================================
+   AUTO-UNLOCK BASED ON GAME EVENTS
+   ============================================================ */
 
-export function codexTick(codexState, tickData) {
-    for (const w of tickData.warnings) {
-        unlockCodex(codexState, w.id);
-    }
+export function codexTick(state) {
+    const warnings = state.warnings.alerts;
+    const disasters = state.disasters.lastEvents;
 
-    for (const d of tickData.disasters) {
-        unlockCodex(codexState, d.id);
-    }
-
-    if (tickData.favour) {
-        unlockCodex(codexState, "time_favour");
-        unlockCodex(codexState, "chaos_tolerance");
-        unlockCodex(codexState, "destiny_judgement");
-
-        if (tickData.favour.twilight) {
-            unlockCodex(codexState, "twilight_mode");
+    // Unlock warnings
+    for (const w of warnings) {
+        const id = w.id || w.message?.toLowerCase().replace(/\s+/g, "_");
+        if (state.codex[id]) {
+            unlockCodex(state, id);
         }
     }
 
-    return renderCodex(codexState);
+    // Unlock disasters
+    for (const d of disasters) {
+        if (state.codex[d.id]) {
+            unlockCodex(state, d.id);
+        }
+    }
+
+    // Unlock favour entries
+    unlockCodex(state, "time_favour");
+    unlockCodex(state, "chaos_tolerance");
+    unlockCodex(state, "destiny_judgement");
+
+    if (state.favour.twilightMode) {
+        unlockCodex(state, "twilight_mode");
+    }
+}
+
+/* ============================================================
+   RENDER FOR UI
+   ============================================================ */
+
+export function renderCodex(state) {
+    const out = [];
+
+    for (const id in state.codex) {
+        const entry = state.codex[id];
+        if (entry.unlocked) {
+            out.push(entry);
+        }
+    }
+
+    return out;
 }
