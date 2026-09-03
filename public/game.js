@@ -10,7 +10,7 @@ import { BUILDINGS } from "./buildings.js";
 /* ============================================================
    INIT GAME STATE
    ============================================================ */
-
+import { genMap } from "./map.js";
 export function initGame() {
     const state = {
         tick: 0,
@@ -22,19 +22,8 @@ export function initGame() {
 
     return state;
 }
-/* ============================================================
-   MAP
-   ============================================================ */
-import { genMap } from "./map.js";
 
-export function initGame() {
-    const state = {
-        tick: 0,
-        grid: genMap(),
-        ui: {
-            selectedBuilding: null
-        }
-    };
+
 /* ============================================================
    PLACE BUILDING
    ============================================================ */
