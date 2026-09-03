@@ -1,47 +1,24 @@
 /* ============================================================
    DISASTERS MODULE — Portus
-   Full version: disaster catalogue, triggers, severity scaling,
-   integration with favour.js, warnings.js, seasonal influence,
-   twilight acceleration, Codex unlocks.
+   Handles disaster definitions, chances, severity, triggering,
+   twilight integration, favour influence, and UI notifications.
    ============================================================ */
 
-import {
-    reduceChaosTolerance,
-    reduceTimeFavour,
-    reduceDestinyJudgement,
-    disasterInfluence,
-    unlockCodex
-} from "./favour.js";
+import { reduceFavour } from "./favour.js";
 
-/* ---------------- INITIAL STATE ---------------- */
-
-export function initDisasterState() {
-    return {
-        lastDisasters: [],
-        cooldown: 0,
-        history: [],
-        seasonModifier: {
-            spring: 0.8,
-            summer: 1.2,
-            autumn: 1.0,
-            winter: 1.4
-        }
-    };
-}
-
-/* ---------------- DISASTER CATALOGUE ---------------- */
+/* ============================================================
+   DISASTER DEFINITIONS
+   ============================================================ */
 
 export const DISASTERS = {
     drought: {
         id: "drought",
         name: "Drought",
         desc: "Fields dry, wells weaken, crops fail.",
-        baseChance: 0.015,
-        apply: (state, grid, res) => {
-            reduceTimeFavour(state.favourState, 4);
-            reduceChaosTolerance(state.favourState, 2);
-            res.wheat = Math.max(0, res.wheat - 6);
-            res.olives = Math.max(0, res.olives - 4);
+        baseChance: 0.01,
+        apply(state) {
+            state.resources.food = Math.max(0, state.resources.food - 8);
+            reduceFavour(state, 2);
         }
     },
 
@@ -49,18 +26,18 @@ export const DISASTERS = {
         id: "wildfire",
         name: "Wildfire",
         desc: "Forest burns, wooden buildings damaged.",
-        baseChance: 0.012,
-        apply: (state, grid, res) => {
-            reduceChaosTolerance(state.favourState, 6);
-            reduceTimeFavour(state.favourState, 3);
-
+        baseChance: 0.008,
+        apply(state) {
+            const grid = state.grid;
             for (let y = 0; y < grid.length; y++) {
                 for (let x = 0; x < grid[0].length; x++) {
-                    if (grid[y][x].terrain === "forest" && Math.random() < 0.25) {
-                        grid[y][x].terrain = "grass";
+                    const tile = grid[y][x];
+                    if (tile.terrain === "forest" && Math.random() < 0.15) {
+                        tile.terrain = "grass";
                     }
                 }
             }
+            reduceFavour(state, 3);
         }
     },
 
@@ -68,12 +45,10 @@ export const DISASTERS = {
         id: "blight",
         name: "Crop Blight",
         desc: "Disease spreads through fields.",
-        baseChance: 0.014,
-        apply: (state, grid, res) => {
-            reduceTimeFavour(state.favourState, 5);
-            reduceDestinyJudgement(state.favourState, 3);
-            res.wheat = Math.max(0, res.wheat - 8);
-            res.grapes = Math.max(0, res.grapes - 5);
+        baseChance: 0.009,
+        apply(state) {
+            state.resources.food = Math.max(0, state.resources.food - 12);
+            reduceFavour(state, 4);
         }
     },
 
@@ -81,19 +56,18 @@ export const DISASTERS = {
         id: "flood",
         name: "Flood",
         desc: "Coastal and river buildings damaged.",
-        baseChance: 0.010,
-        apply: (state, grid, res) => {
-            reduceChaosTolerance(state.favourState, 4);
-            reduceDestinyJudgement(state.favourState, 2);
-
+        baseChance: 0.006,
+        apply(state) {
+            const grid = state.grid;
             for (let y = 0; y < grid.length; y++) {
                 for (let x = 0; x < grid[0].length; x++) {
-                    const t = grid[y][x].terrain;
-                    if ((t === "river" || t === "sea") && grid[y][x].building) {
-                        grid[y][x].building = null;
+                    const tile = grid[y][x];
+                    if ((tile.terrain === "river" || tile.terrain === "sea") && tile.building) {
+                        tile.building = null;
                     }
                 }
             }
+            reduceFavour(state, 3);
         }
     },
 
@@ -101,86 +75,120 @@ export const DISASTERS = {
         id: "plague",
         name: "Plague",
         desc: "Population suffers, happiness drops.",
-        baseChance: 0.008,
-        apply: (state, grid, res) => {
-            reduceChaosTolerance(state.favourState, 8);
-            reduceDestinyJudgement(state.favourState, 6);
-            state.pop.happiness = Math.max(0, state.pop.happiness - 12);
+        baseChance: 0.004,
+        apply(state) {
+            if (!state.population) state.population = { happiness: 50 };
+            state.population.happiness = Math.max(0, state.population.happiness - 15);
+            reduceFavour(state, 5);
         }
     }
 };
 
-/* ---------------- INTERNAL HELPERS ---------------- */
+/* ============================================================
+   INITIAL DISASTER STATE
+   ============================================================ */
 
-function pushDisaster(state, id, severity) {
-    const d = DISASTERS[id];
-    const entry = {
-        id,
-        name: d.name,
-        severity,
-        tick: state.tickCount || 0
+export function initDisasters() {
+    return {
+        lastEvents: [],
+        cooldown: 0,
+        forceMajor: false
     };
-
-    state.lastDisasters.push(entry);
-    state.history.push(entry);
-
-    unlockCodex(state.favourState, id);
 }
 
-function computeSeverity(state) {
-    const time = state.favourState.timeFavour;
-    const chaos = state.favourState.chaosTolerance;
-    const destiny = state.favourState.destinyJudgement;
+/* ============================================================
+   SEVERITY CALCULATION
+   ============================================================ */
 
-    if (time < 20 || chaos < 20 || destiny < 20) return "major";
-    if (time < 40 || chaos < 40 || destiny < 40) return "medium";
+function computeSeverity(state) {
+    const F = state.favour;
+
+    const score = (F.value + F.chaosTolerance + F.destinyJudgement) / 3;
+
+    if (state.disasters.forceMajor) {
+        state.disasters.forceMajor = false;
+        return "major";
+    }
+
+    if (score < 20) return "major";
+    if (score < 50) return "medium";
     return "minor";
 }
 
-function disasterChance(state, season, id) {
-    const d = DISASTERS[id];
-    const base = d.baseChance;
-    const seasonMod = state.seasonModifier[season] || 1.0;
+/* ============================================================
+   CHANCE CALCULATION
+   ============================================================ */
 
-    const time = state.favourState.timeFavour;
-    const chaos = state.favourState.chaosTolerance;
-    const destiny = state.favourState.destinyJudgement;
+function disasterChance(state, id) {
+    const base = DISASTERS[id].baseChance;
 
-    const favourMod = (100 - (time + chaos + destiny) / 3) / 100;
+    const F = state.favour;
 
-    return base * seasonMod * (1 + favourMod);
+    // Lower favour → higher disaster chance
+    const favourMod = (100 - F.value) / 100;
+
+    // Twilight mode → double chance
+    const twilightMod = F.twilightMode ? 2.0 : 1.0;
+
+    return base * (1 + favourMod) * twilightMod;
 }
 
-/* ---------------- MAIN DISASTER TICK ---------------- */
+/* ============================================================
+   TRIGGER DISASTER
+   ============================================================ */
 
-export function disastersTick(state, grid, res, season) {
-    state.lastDisasters = [];
+function triggerOneDisaster(state, id) {
+    const severity = computeSeverity(state);
+    const def = DISASTERS[id];
 
-    if (state.cooldown > 0) {
-        state.cooldown -= 1;
-        return [];
+    // Apply disaster effects
+    def.apply(state);
+
+    // Record event
+    const event = {
+        id,
+        name: def.name,
+        severity,
+        tick: state.tick
+    };
+
+    state.disasters.lastEvents.push(event);
+
+    // UI notification
+    if (state.ui && state.ui.notifications) {
+        state.ui.notifications.push({
+            msg: `${def.name} (${severity})`,
+            type: severity === "major" ? "danger" : "warning",
+            time: Date.now()
+        });
     }
 
-    for (const id of Object.keys(DISASTERS)) {
-        const chance = disasterChance(state, season, id);
+    // Cooldown
+    state.disasters.cooldown = severity === "major" ? 200 : 120;
+}
+
+/* ============================================================
+   UPDATE DISASTERS (called every tick)
+   ============================================================ */
+
+export function triggerDisasters(state) {
+    const D = state.disasters;
+
+    // Cooldown active
+    if (D.cooldown > 0) {
+        D.cooldown--;
+        return;
+    }
+
+    // Reset last events
+    D.lastEvents = [];
+
+    // Try each disaster
+    for (const id in DISASTERS) {
+        const chance = disasterChance(state, id);
 
         if (Math.random() < chance) {
-            const severity = computeSeverity(state);
-
-            pushDisaster(state, id, severity);
-
-            const d = DISASTERS[id];
-            d.apply(state, grid, res);
-
-            disasterInfluence(state.favourState, severity);
-
-            if (severity === "major") {
-                state.favourState.twilightProgress += 4;
-            }
-
-            state.cooldown = 120;
+            triggerOneDisaster(state, id);
         }
     }
-
-    return state.lastDisasters;
-                          }
+}
