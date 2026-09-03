@@ -106,20 +106,15 @@ app.post(
 // STATIC FILES
 // ============================================================
 
-// Homepage static files
 app.use(express.static(path.join(__dirname, "homepage")));
-
-// Public static files (Portus lives here)
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
-// PORTUS GAME ROUTING — CLEAN VERSION
+// PORTUS GAME ROUTING
 // ============================================================
 
-// Serve Portus static files
 app.use("/portus", express.static(path.join(__dirname, "public")));
 
-// Serve Portus index.html
 app.get("/portus", (_req, res) => {
   res.sendFile(path.join(__dirname, "public/index.html"));
 });
@@ -599,13 +594,94 @@ app.post(
 // PayPal webhook
 app.post("/api/webhooks/paypal", async (req, res) => {
   try {
-    if (!(await verifyPayPalWebhookSignature(req.headers, req.body)))
+    const valid = await verifyPayPalWebhookSignature(req.headers, req.body);
+    if (!valid) {
       return res.status(400).json({ error: "invalid signature" });
+    }
 
-    if (req.body.event_type !== "PAYMENT.CAPTURE.COMPLETED")
+    if (req.body.event_type !== "PAYMENT.CAPTURE.COMPLETED") {
       return res.json({ ok: true, ignored: true });
+    }
 
     const capture = req.body.resource;
+    const orderId =
+      capture?.supplementary_data?.related_ids?.order_id;
+    const eventId = capture?.id;
+    const capturedAmount = capture?.amount?.value;
 
-    const orderId = capture?.supplementary_data?.related_ids?.order_id;
-    const eventId = capture?.id
+    if (!orderId || !eventId || !capturedAmount) {
+      return res.status(400).json({ error: "malformed event" });
+    }
+
+    const pending = db
+      .prepare(
+        `SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal'`
+      )
+      .get(orderId);
+
+    if (!pending) {
+      return res.json({ ok: true, unknownOrder: true });
+    }
+
+    const result = creditPayment({ pending, eventId, capturedAmount });
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("paypal webhook error", err);
+    return res.status(400).json({ error: "webhook error" });
+  }
+});
+
+// Save game state
+app.post("/api/save", authenticateRequest, requireCsrf, (req, res) => {
+  const json = JSON.stringify(req.body ?? {});
+  if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
+    return res.status(413).json({ error: "save too large" });
+  }
+
+  db.prepare(
+    `INSERT INTO saves (user_id,state,updated_at)
+     VALUES (?,?,?)
+     ON CONFLICT(user_id)
+     DO UPDATE SET state=excluded.state,updated_at=excluded.updated_at`
+  ).run(req.user.uid, json, Date.now());
+
+  if (typeof req.body?.captain === "string") {
+    db.prepare(`UPDATE users SET captain_name=? WHERE id=?`).run(
+      req.body.captain.slice(0, 24),
+      req.user.uid
+    );
+  }
+
+  res.json({ ok: true });
+});
+
+// Load game state
+app.get("/api/save", authenticateRequest, (req, res) => {
+  const row = db
+    .prepare(`SELECT state FROM saves WHERE user_id=?`)
+    .get(req.user.uid);
+
+  let state = null;
+  try {
+    state = row ? JSON.parse(row.state) : null;
+  } catch {
+    state = null;
+  }
+
+  res.json({ state });
+});
+
+// Global error handler
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: "internal server error" });
+});
+
+// Cleanup expired tokens / orders
+cleanupExpired();
+setInterval(cleanupExpired, 24 * 60 * 60 * 1000).unref();
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Portus server listening on ${PORT}`);
+});
