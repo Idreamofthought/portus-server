@@ -62,7 +62,21 @@ app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "homepage/index.ht
 app.get("/about", (_req, res) => res.sendFile(path.join(__dirname, "homepage/about.html")));
 app.get("/contact", (_req, res) => res.sendFile(path.join(__dirname, "homepage/contact.html")));
 app.get("/portus/info", (_req, res) => res.sendFile(path.join(__dirname, "homepage/portus-info.html")));
-app.get("/portus", (_req, res) => res.sendFile(path.join(__dirname, "public/portus.html")));
+// Serve Portus BEFORE static middleware so /portus works
+app.get("/portus", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public/portus.html"));
+});
+
+// Static files
+app.use(express.static(path.join(__dirname, "homepage")));
+app.use(express.static(path.join(__dirname, "public")));
+
+// Homepage routes
+app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "homepage/index.html")));
+app.get("/about", (_req, res) => res.sendFile(path.join(__dirname, "homepage/about.html")));
+app.get("/contact", (_req, res) => res.sendFile(path.join(__dirname, "homepage/contact.html")));
+app.get("/portus-info", (_req, res) => res.sendFile(path.join(__dirname, "homepage/portus-info.html")));
+
 
 // Protected game: never place game.html in a statically served directory.
 app.get("/game", authenticateRequest, requireVerified, requirePaid, (_req, res) => res.sendFile(path.join(__dirname, "protected/game.html")));
