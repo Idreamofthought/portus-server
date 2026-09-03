@@ -1,14 +1,52 @@
 /* ============================================================
    MAIN MODULE — Portus
-   Player controller: canvas rendering, camera, zoom, clicks,
-   building placement, interaction with game.js.
+   Player controller + game orchestration
    ============================================================ */
 
 import { initGame, startGameLoop, placeBuilding } from "./game.js";
 
+import { initResources, updateResources } from "./resources.js";
+import { initResearch, updateResearch } from "./research.js";
+import { initFavour, updateFavour } from "./favour.js";
+import { initDisasters, triggerDisasters } from "./disasters.js";
+import { initWarnings, updateWarnings } from "./warnings.js";
+import { initCodex } from "./codex.js";
+import { setupUI } from "./ui.js";
+
+/* ============================================================
+   INITIALIZE GAME STATE
+   ============================================================ */
+
 const state = initGame();
 
-/* ---------------- CANVAS SETUP ---------------- */
+/* ============================================================
+   INITIALIZE ALL GAME SYSTEMS
+   ============================================================ */
+
+function initSystems(state) {
+    state.resources = initResources();
+    state.research = initResearch();
+    state.favour = initFavour();
+    state.disasters = initDisasters();
+    state.warnings = initWarnings();
+    state.codex = initCodex();
+
+    setupUI(state);
+}
+
+function updateSystems(state) {
+    updateResources(state);
+    updateResearch(state);
+    updateFavour(state);
+    triggerDisasters(state);
+    updateWarnings(state);
+}
+
+initSystems(state);
+
+/* ============================================================
+   CANVAS SETUP
+   ============================================================ */
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -16,13 +54,17 @@ const ctx = canvas.getContext("2d");
 canvas.width = canvas.clientWidth;
 canvas.height = canvas.clientHeight;
 
-/* ---------------- CAMERA ---------------- */
+/* ============================================================
+   CAMERA
+   ============================================================ */
 
 let camX = 0;
 let camY = 0;
 let zoom = 1.0;
 
-/* ---------------- RENDER MAP ---------------- */
+/* ============================================================
+   RENDER MAP
+   ============================================================ */
 
 function drawTile(x, y, terrain) {
     if (terrain === "grass") ctx.fillStyle = "#2b5d2b";
@@ -62,7 +104,9 @@ function renderMap() {
     ctx.restore();
 }
 
-/* ---------------- INPUT: CLICK ---------------- */
+/* ============================================================
+   INPUT: CLICK (place building)
+   ============================================================ */
 
 canvas.addEventListener("click", (ev) => {
     const rect = canvas.getBoundingClientRect();
@@ -83,7 +127,9 @@ canvas.addEventListener("click", (ev) => {
     }
 });
 
-/* ---------------- INPUT: ZOOM ---------------- */
+/* ============================================================
+   INPUT: ZOOM
+   ============================================================ */
 
 canvas.addEventListener("wheel", (ev) => {
     ev.preventDefault();
@@ -91,7 +137,9 @@ canvas.addEventListener("wheel", (ev) => {
     zoom = Math.max(0.5, Math.min(3.0, zoom + delta));
 });
 
-/* ---------------- INPUT: DRAG ---------------- */
+/* ============================================================
+   INPUT: DRAG (camera movement)
+   ============================================================ */
 
 let dragging = false;
 let lastX = 0;
@@ -120,9 +168,12 @@ canvas.addEventListener("mousemove", (ev) => {
     lastY = ev.clientY;
 });
 
-/* ---------------- GAME LOOP ---------------- */
+/* ============================================================
+   GAME LOOP
+   ============================================================ */
 
 startGameLoop(state, (frame) => {
+    updateSystems(state);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     renderMap();
 });
