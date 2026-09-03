@@ -3,17 +3,12 @@
    Initializes game state, map, and building placement.
    The main game loop is controlled from main.js.
    ============================================================ */
-
-import { genMap } from "./map.js";
+import { genMap } from "./map.js";   
 import { BUILDINGS } from "./buildings.js";
-
-/* ============================================================
-   INIT GAME STATE
-   ============================================================ */
 export function initGame() {
     const state = {
         tick: 0,
-        grid: generateMap(),
+        grid: genMap(),              
         ui: {
             selectedBuilding: null
         }
@@ -21,6 +16,7 @@ export function initGame() {
 
     return state;
 }
+
 
 
 /* ============================================================
