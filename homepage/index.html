@@ -4,47 +4,98 @@
     <meta charset="UTF-8">
     <title>I Dream of Thought</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
         body {
             margin: 0;
-            background: #111;
-            color: #eee;
+            background: linear-gradient(180deg, #0d0d0d, #1a1a1a);
+            color: #f2e9d8;
             font-family: "Segoe UI", sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
+            text-align: center;
+            padding: 40px 20px;
         }
+
         h1 {
-            font-size: 2.4rem;
+            font-size: 2.8rem;
             margin-bottom: 1rem;
             color: #ffd37a;
+            letter-spacing: 1px;
         }
+
         p {
-            font-size: 1.2rem;
-            max-width: 600px;
-            text-align: center;
-            line-height: 1.6;
+            font-size: 1.25rem;
+            max-width: 700px;
+            line-height: 1.7;
+            margin-bottom: 2rem;
+            opacity: 0.9;
         }
+
         nav {
             margin-top: 2rem;
+            display: flex;
+            gap: 2rem;
         }
+
         nav a {
             color: #ffd37a;
             text-decoration: none;
-            margin: 0 1rem;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
+            padding-bottom: 4px;
+            border-bottom: 2px solid transparent;
+            transition: 0.3s;
         }
+
         nav a:hover {
-            text-decoration: underline;
+            border-bottom: 2px solid #ffd37a;
+        }
+
+        .fragments {
+            margin-top: 3rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .fragment {
+            background: #222;
+            padding: 20px;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        .fragment:hover {
+            background: #2d2d2d;
+            transform: translateY(-4px);
+        }
+
+        .fragment h3 {
+            margin: 0 0 10px 0;
+            color: #ffd37a;
+            font-size: 1.3rem;
+        }
+
+        .fragment p {
+            margin: 0;
+            font-size: 1rem;
+            opacity: 0.85;
         }
     </style>
 </head>
+
 <body>
 
     <h1>I Dream of Thought</h1>
-    <p>A quiet place for fragments — dreams, symbols, memory, and the slow ecology of imagination.</p>
+    <p>
+        A quiet place for fragments — dreams, symbols, memory, and the slow ecology of imagination.
+        Between sea and sky, thought gathers. Portus is a threshold. Step inside.
+    </p>
 
     <nav>
         <a href="/about">About</a>
@@ -52,6 +103,27 @@
         <a href="/portus-info">Portus</a>
     </nav>
 
+    <div class="fragments">
+        <div class="fragment">
+            <h3>Dream Fragment</h3>
+            <p>An echo from the night, caught in daylight.</p>
+        </div>
+
+        <div class="fragment">
+            <h3>Ecological Note</h3>
+            <p>The quiet life of places.</p>
+        </div>
+
+        <div class="fragment">
+            <h3>Symbolic Image</h3>
+            <p>A sign, a pattern, a resonance.</p>
+        </div>
+
+        <div class="fragment">
+            <h3>Memory Vignette</h3>
+            <p>A small piece of time.</p>
+        </div>
+    </div>
+
 </body>
 </html>
-
