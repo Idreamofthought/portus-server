@@ -4,13 +4,12 @@
    The main game loop is controlled from main.js.
    ============================================================ */
 
-import { generateMap } from "./map.js";
+import { genMap } from "./map.js";
 import { BUILDINGS } from "./buildings.js";
 
 /* ============================================================
    INIT GAME STATE
    ============================================================ */
-import { genMap } from "./map.js";
 export function initGame() {
     const state = {
         tick: 0,
