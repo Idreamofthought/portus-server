@@ -8,10 +8,29 @@
 </head>
 
 <body>
-  <!-- Game Canvas -->
+  <div id="time-remaining" class="time-box"></div>
+  <div id="audio-controls"></div>
+  <div id="notifications"></div>
+  <div id="buildings"></div>
+
+  <div id="panel-buttons">
+    <button id="panel-resources">Resources</button>
+    <button id="panel-research">Research</button>
+    <button id="panel-codex">Codex</button>
+    <button id="panel-warnings">Warnings</button>
+    <button id="panel-disasters">Disasters</button>
+    <button id="panel-favour">Favour</button>
+  </div>
+
+  <div id="panel-resources-box"></div>
+  <div id="panel-research-box"></div>
+  <div id="panel-codex-box"></div>
+  <div id="panel-warnings-box"></div>
+  <div id="panel-disasters-box"></div>
+  <div id="panel-favour-box"></div>
+
   <canvas id="canvas" width="900" height="600"></canvas>
 
-  <!-- Main Game Script -->
   <script type="module" src="./main.js"></script>
 </body>
 </html>
