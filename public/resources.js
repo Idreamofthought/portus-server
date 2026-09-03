@@ -1,179 +1,88 @@
 /* ============================================================
    RESOURCES MODULE — Portus
-   Full version: storage, production, consumption, depletion,
-   seasonal modifiers, building multipliers, favour influence.
+   Handles storage, production, consumption, and tick updates.
    ============================================================ */
 
-import { RESOURCE_TYPES } from "./resources_types.js"; // your registry
-import { buildingProduces, buildingConsumes } from "./buildings.js";
+import { BUILDINGS } from "./buildings.js";
 
-/* ---------------- INITIAL STATE ---------------- */
+/* ============================================================
+   INITIAL RESOURCE STATE
+   ============================================================ */
 
-export function initResourceState() {
-    const res = {};
-    const cap = {};
-    const dep = {};
-
-    for (const name of Object.keys(RESOURCE_TYPES)) {
-        res[name] = 0;
-        cap[name] = 100;
-        dep[name] = 100;
-    }
-
+export function initResources() {
     return {
-        resources: res,
-        capacity: cap,
-        depletion: dep,
-        productionLog: [],
-        consumptionLog: []
+        wood: 20,
+        stone: 10,
+        food: 15
     };
 }
 
-/* ---------------- INTERNAL HELPERS ---------------- */
+/* ============================================================
+   GET RESOURCE
+   ============================================================ */
 
-function addResource(state, name, amount) {
-    const cap = state.capacity[name] || 999999;
-    state.resources[name] = Math.min(cap, state.resources[name] + amount);
+export function getResource(state, name) {
+    return state.resources[name] || 0;
 }
 
-function consumeResource(state, name, amount) {
-    if (state.resources[name] < amount) return false;
+/* ============================================================
+   ADD RESOURCE
+   ============================================================ */
+
+export function addResource(state, name, amount) {
+    if (!state.resources[name] && state.resources[name] !== 0) return;
+    state.resources[name] += amount;
+}
+
+/* ============================================================
+   CONSUME RESOURCE
+   ============================================================ */
+
+export function consumeResource(state, name, amount) {
+    if (getResource(state, name) < amount) return false;
     state.resources[name] -= amount;
     return true;
 }
 
-function applyDepletion(state, name, amount) {
-    state.depletion[name] = Math.max(0, state.depletion[name] - amount);
-}
+/* ============================================================
+   CHECK MULTIPLE COSTS
+   ============================================================ */
 
-function regenDepletion(state, name, amount) {
-    state.depletion[name] = Math.min(100, state.depletion[name] + amount);
-}
-
-/* ---------------- PRODUCTION TICK ---------------- */
-
-export function applyProductionTick(state, grid, res) {
-    const log = [];
-
-    for (let y = 0; y < grid.length; y++) {
-        for (let x = 0; x < grid[0].length; x++) {
-            const b = grid[y][x].building;
-            if (!b) continue;
-
-            const def = state.buildingDefs[b.id];
-            if (!def) continue;
-
-            const prod = buildingProduces(def);
-            if (!prod) continue;
-
-            for (const [name, base] of Object.entries(prod)) {
-                const dep = state.depletion[name] || 100;
-                const depFactor = dep / 100;
-
-                const season = state.time.season;
-                let seasonFactor = 1;
-                if (season === "winter") seasonFactor = 0.6;
-                if (season === "summer") seasonFactor = 1.2;
-
-                const favour = state.favourState;
-                const chaosFactor = 1 - (100 - favour.chaosTolerance) / 300;
-
-                const amount = base * depFactor * seasonFactor * chaosFactor;
-
-                addResource(state, name, amount);
-
-                log.push({
-                    building: b.id,
-                    resource: name,
-                    amount: amount
-                });
-
-                applyDepletion(state, name, amount * 0.05);
-            }
-        }
+export function hasResources(state, cost) {
+    for (const key in cost) {
+        if (getResource(state, key) < cost[key]) return false;
     }
-
-    state.productionLog = log;
-    return log;
+    return true;
 }
 
-/* ---------------- CONSUMPTION TICK ---------------- */
+export function spendResources(state, cost) {
+    for (const key in cost) {
+        state.resources[key] -= cost[key];
+    }
+}
 
-export function applyConsumptionTick(state, grid, res) {
-    const log = [];
+/* ============================================================
+   PRODUCTION TICK
+   ============================================================ */
 
+export function updateResources(state) {
+    const grid = state.grid;
+
+    // Loop through all tiles
     for (let y = 0; y < grid.length; y++) {
         for (let x = 0; x < grid[0].length; x++) {
-            const b = grid[y][x].building;
-            if (!b) continue;
+            const tile = grid[y][x];
+            if (!tile.building) continue;
 
-            const def = state.buildingDefs[b.id];
+            const def = BUILDINGS[tile.building.id];
             if (!def) continue;
 
-            const cons = buildingConsumes(def);
-            if (!cons) continue;
-
-            let ok = true;
-
-            for (const [name, amount] of Object.entries(cons)) {
-                if (state.resources[name] < amount) {
-                    ok = false;
-                    break;
+            // Building production
+            if (def.produces) {
+                for (const res in def.produces) {
+                    addResource(state, res, def.produces[res]);
                 }
             }
-
-            if (!ok) continue;
-
-            for (const [name, amount] of Object.entries(cons)) {
-                consumeResource(state, name, amount);
-                log.push({
-                    building: b.id,
-                    resource: name,
-                    amount: amount
-                });
-            }
         }
     }
-
-    state.consumptionLog = log;
-    return log;
-}
-
-/* ---------------- STORAGE CAPACITY ---------------- */
-
-export function increaseCapacity(state, name, amount) {
-    state.capacity[name] += amount;
-}
-
-export function increaseGeneralCapacity(state, amount) {
-    for (const key of Object.keys(state.capacity)) {
-        state.capacity[key] += amount;
-    }
-}
-
-/* ---------------- DEPLETION REGEN ---------------- */
-
-export function regenTick(state) {
-    for (const name of Object.keys(state.depletion)) {
-        const type = RESOURCE_TYPES[name];
-        if (!type) continue;
-
-        if (type.renewable) {
-            regenDepletion(state, name, 0.2);
-        }
-    }
-}
-
-/* ---------------- MAIN RESOURCE TICK ---------------- */
-
-export function resourceTick(state, grid) {
-    const prod = applyProductionTick(state, grid, state.resources);
-    const cons = applyConsumptionTick(state, grid, state.resources);
-    regenTick(state);
-
-    return {
-        production: prod,
-        consumption: cons,
-        depletion: state.depletion
-    };
 }
