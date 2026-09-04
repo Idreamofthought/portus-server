@@ -70,6 +70,8 @@ const my = (event.clientY - rect.top) / zoom;
 const gx = Math.floor(mx - camX);
 const gy = Math.floor(my - camY);
  camX = 0;
+const tileX = Math.floor(gx / TILE_SIZE);
+const tileY = Math.floor(gy / TILE_SIZE);
 
 
 /* ============================================================
