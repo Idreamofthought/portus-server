@@ -13,7 +13,8 @@ export function initResources() {
     return {
         wood: 20,
         stone: 10,
-        food: 15
+        food: 15,
+        gold: 0
     };
 }
 

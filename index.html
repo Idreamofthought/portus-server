@@ -7,30 +7,28 @@
   <link rel="stylesheet" href="/portus/css/ambience-payments.css">
 </head>
 
-<body>
-  <div id="time-remaining" class="time-box"></div>
-  <div id="audio-controls"></div>
-  <div id="notifications"></div>
-  <div id="buildings"></div>
-
-  <div id="panel-buttons">
-    <button id="panel-resources">Resources</button>
-    <button id="panel-research">Research</button>
-    <button id="panel-codex">Codex</button>
-    <button id="panel-warnings">Warnings</button>
-    <button id="panel-disasters">Disasters</button>
-    <button id="panel-favour">Favour</button>
+<body class="portus-shell">
+  <header class="topbar">
+    <div id="time-remaining" class="time-box">DAY 1 <span>•</span> SPRING</div>
+    <div id="panel-resources-box" class="resource-bar" aria-label="Resources"></div>
+    <div id="audio-controls" class="audio-controls"></div>
+  </header>
+  <div id="notifications" class="notifications"></div>
+  <aside class="side-panel codex-panel"><div class="panel-heading"><span>Archive</span><strong>Codex</strong></div><div id="panel-codex-box"></div></aside>
+  <main class="game-stage"><canvas id="canvas" width="900" height="600"></canvas></main>
+  <aside class="side-panel warnings-panel"><div class="panel-heading"><span>Live watch</span><strong>Warnings</strong></div><div id="panel-warnings-box"></div></aside>
+  <nav id="buildings" class="building-toolbar" aria-label="Building toolbar"></nav>
+  <section class="research-bar"><div class="panel-heading"><span>Knowledge</span><strong>Research</strong></div><div id="panel-research-box"></div></section>
+  <div id="panel-buttons" class="utility-buttons" aria-label="Additional panels">
+    <button id="panel-resources" type="button" aria-label="Toggle resources">Resources</button>
+    <button id="panel-research" type="button" aria-label="Toggle research">Research</button>
+    <button id="panel-codex" type="button" aria-label="Toggle codex">Codex</button>
+    <button id="panel-warnings" type="button" aria-label="Toggle warnings">Warnings</button>
+    <button id="panel-disasters" type="button" aria-label="Toggle disasters">Disasters</button>
+    <button id="panel-favour" type="button" aria-label="Toggle favour">Favour</button>
   </div>
-
-  <div id="panel-resources-box"></div>
-  <div id="panel-research-box"></div>
-  <div id="panel-codex-box"></div>
-  <div id="panel-warnings-box"></div>
-  <div id="panel-disasters-box"></div>
-  <div id="panel-favour-box"></div>
-
-  <canvas id="canvas" width="900" height="600"></canvas>
-
+  <div id="panel-disasters-box" hidden></div>
+  <div id="panel-favour-box" hidden></div>
   <script type="module" src="/portus/main.js"></script>
 </body>
 </html>

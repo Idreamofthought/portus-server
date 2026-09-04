@@ -4,6 +4,7 @@
    ============================================================ */
 
 import { BUILDINGS } from "./buildings.js";
+import { Sound } from "./sound.js";
 
 /* ============================================================
    INITIAL UI STATE
@@ -14,9 +15,9 @@ export function setupUI(state) {
         selectedBuilding: null,
         panels: {
             resources: true,
-            research: false,
-            codex: false,
-            warnings: false,
+            research: true,
+            codex: true,
+            warnings: true,
             disasters: false,
             favour: false
         },
@@ -100,6 +101,9 @@ function setupAudioControls() {
     sfxToggle.type = "checkbox";
     sfxToggle.id = "toggle-sfx";
     sfxToggle.checked = true;
+    sfxToggle.onchange = (event) => {
+        Sound.enabled = event.target.checked;
+    };
     sfxLabel.appendChild(sfxToggle);
     sfxLabel.append(" Sound");
 
@@ -169,6 +173,7 @@ function renderResourcePanel(state) {
         <div>Wood: ${r.wood}</div>
         <div>Stone: ${r.stone}</div>
         <div>Food: ${r.food}</div>
+        <div>Gold: ${r.gold}</div>
     `;
 }
 
