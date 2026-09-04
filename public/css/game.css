@@ -1,18 +1,18 @@
 :root {
-  --ink: #e6e6f0;
-  --muted: #aaaabd;
-  --line: rgba(74, 74, 112, 0.7);
-  --panel: rgba(15, 15, 25, 0.9);
-  --panel-strong: #2a2a40;
-  --accent: #8888c2;
-  --accent-soft: #cfcfe8;
-  --danger: #e08383;
+  --ink: #e8e8f5;
+  --muted: #aaaac4;
+  --line: rgba(200, 200, 255, 0.25);
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-strong: rgba(255, 255, 255, 0.08);
+  --accent: #a7a7e2;
+  --accent-soft: #d5d5f0;
+  --danger: #ee929f;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  background: #0f0f15;
+  background: radial-gradient(circle at 50% 20%, #1a1a2a, #0b0b12 60%);
   color: var(--ink);
   font-family: "Georgia", serif;
   margin: 0;
@@ -58,18 +58,23 @@ button { font: inherit; }
 .time-box span { color: var(--accent); padding: 0 5px; }
 
 .resource-bar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
   width: 220px;
-  padding: 15px;
-  border: 1px solid #4a4a70;
-  border-radius: 8px;
-  background: rgba(20, 20, 30, 0.85);
-  box-shadow: 0 0 15px rgba(120, 120, 180, 0.3);
+  padding: 18px;
+  border: 1px solid rgba(200, 200, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px rgba(150, 150, 255, 0.25);
   display: flex;
   justify-content: flex-start;
   gap: 24px;
   color: var(--ink);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: 0.5px;
   flex-wrap: wrap;
 }
 
@@ -107,17 +112,25 @@ canvas {
   aspect-ratio: 3 / 2;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  border: 2px solid #3a3a55;
-  box-shadow: 0 0 20px rgba(80, 80, 120, 0.4);
+  border: 2px solid rgba(180, 180, 255, 0.15);
+  box-shadow: 0 0 40px rgba(120, 120, 200, 0.25);
 }
 
 #canvas { width: 1200px; height: 792px; }
 
 .side-panel, .research-bar {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(200, 200, 255, 0.25);
   background: var(--panel);
+  backdrop-filter: blur(14px);
+  border-radius: 14px;
   min-width: 0;
   overflow: hidden;
+  animation: fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .side-panel { grid-row: 2; padding: 16px; }
@@ -165,23 +178,31 @@ canvas {
   background: rgba(20, 31, 32, 0.95);
   overflow-x: auto;
   scrollbar-width: thin;
+  position: fixed;
+  bottom: 25px;
+  left: 25px;
+  z-index: 3;
+  max-width: calc(100vw - 50px);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
 }
 
 .building-toolbar button, .utility-buttons button {
   flex: 0 0 auto;
-  border: 1px solid rgba(232, 196, 142, 0.2);
-  border-radius: 6px;
-  background: #2a2a40;
-  color: #e6e6f0;
+  border: 1px solid rgba(200, 200, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f0ff;
   cursor: pointer;
   transition: 0.2s;
 }
 
-.building-toolbar button { padding: 10px 14px; font-size: 15px; letter-spacing: 1px; white-space: nowrap; }
+.building-toolbar button { padding: 12px 16px; font-size: 15px; letter-spacing: 1px; white-space: nowrap; }
 .building-toolbar button:hover, .building-toolbar button:focus-visible {
-  border-color: #4a4a70;
-  background: #3a3a55;
-  box-shadow: 0 0 10px rgba(120, 120, 180, 0.4);
+  border-color: rgba(200, 200, 255, 0.45);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 15px rgba(180, 180, 255, 0.35);
   outline: none;
 }
 
@@ -224,20 +245,22 @@ canvas {
   width: 120px;
   gap: 10px;
   z-index: 3;
+  backdrop-filter: blur(10px);
 }
 
 .utility-buttons button {
   padding: 8px 12px;
-  border: 1px solid #4a4a70;
-  background: #1a1a28;
-  color: #cfcfe8;
+  border: 1px solid rgba(200, 200, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8e8f5;
   font-size: 14px;
   text-align: left;
 }
 
 .utility-buttons button:hover, .utility-buttons button:focus-visible {
-  background: #2a2a40;
-  box-shadow: 0 0 10px rgba(120, 120, 180, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 15px rgba(180, 180, 255, 0.35);
   outline: none;
 }
 
@@ -263,8 +286,9 @@ canvas {
   .game-stage { order: 2; min-height: 0; padding: 5px; }
   .codex-panel { order: 3; }
   .warnings-panel { order: 4; }
-  .building-toolbar { order: 5; }
+  .building-toolbar { order: 5; position: static; max-width: none; }
   .research-bar { order: 6; }
+  .resource-bar { position: static; width: auto; }
   .utility-buttons { position: static; order: 7; width: auto; flex-direction: row; flex-wrap: wrap; }
   .utility-buttons button { flex: 1 1 auto; }
   .side-panel { min-height: 100px; }
