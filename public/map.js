@@ -134,7 +134,8 @@ export function genMap() {
         }
     }
 
-   // Clay deposits
+
+  // Clay deposits
 for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
         let t = grid[y][x].terrain;
