@@ -11,7 +11,7 @@ import { initFavour, updateFavour } from "./favour.js";
 import { initDisasters, triggerDisasters } from "./disasters.js";
 import { initWarnings, updateWarnings } from "./warnings.js";
 import { initCodex } from "./codex.js";
-import { setupUI } from "./ui.js";
+import { setupUI, renderUI } from "./ui.js";
 import { Sound } from "./sound.js";
 Sound.init();
 
@@ -141,6 +141,8 @@ canvas.addEventListener("click", (ev) => {
 
         if (!result.ok) {
             console.log("Cannot place:", result.reason);
+        } else {
+            Sound.playBuilding(buildingToPlace);
         }
     }
 });
@@ -192,6 +194,7 @@ canvas.addEventListener("mousemove", (ev) => {
 
 startGameLoop(state, (frame) => {
     updateSystems(state);
+    renderUI(state);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     renderMap();
 });
