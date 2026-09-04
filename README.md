@@ -75,6 +75,16 @@ npm start
 
 For local development set `NODE_ENV=development` and use an HTTP `SITE_URL`, for example `http://localhost:8080`.
 
+## PayPal webhook
+
+Create a webhook in the PayPal Developer Dashboard for the same app credentials used by the server. Set the URL to:
+
+```text
+https://www.idreamofthought.org/api/webhooks/paypal
+```
+
+Subscribe to `PAYMENT.CAPTURE.COMPLETED`, then copy the webhook ID into `PAYPAL_WEBHOOK_ID` in the deployment environment. The endpoint verifies PayPal's transmission signature, credits only matching pending orders, and safely ignores duplicate delivery events. For local testing, expose the server through an HTTPS tunnel and use that tunnel URL instead of `localhost`.
+
 ## Before production
 
 1. Configure `JWT_SECRET`, Resend, Stripe and PayPal credentials.
