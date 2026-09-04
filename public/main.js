@@ -63,9 +63,14 @@ canvas.height = canvas.clientHeight;
    CAMERA
    ============================================================ */
 
-let camX = 0;
-let camY = 0;
-let zoom = 1.0;
+const rect = canvas.getBoundingClientRect();
+const mx = (event.clientX - rect.left) / zoom;
+const my = (event.clientY - rect.top) / zoom;
+
+const gx = Math.floor(mx - camX);
+const gy = Math.floor(my - camY);
+ camX = 0;
+
 
 /* ============================================================
    RENDER MAP
