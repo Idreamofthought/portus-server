@@ -4,6 +4,7 @@
    ============================================================ */
 
 import { initGame, startGameLoop, placeBuilding } from "./game.js";
+import { COLS, ROWS, TS } from "./map.js";
 
 import { initResources, updateResources } from "./resources.js";
 import { initResearch, updateResearch } from "./research.js";
@@ -56,8 +57,8 @@ initSystems(state);
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = canvas.clientWidth;
-canvas.height = canvas.clientHeight;
+canvas.width = COLS * TS;
+canvas.height = ROWS * TS;
 
 /* ============================================================
    CAMERA
@@ -84,12 +85,12 @@ function drawTile(x, y, terrain) {
     else if (terrain === "river") ctx.fillStyle = "#2a5f8a";
     else ctx.fillStyle = "#444";
 
-    ctx.fillRect(x, y, 16, 16);
+    ctx.fillRect(x, y, TS, TS);
 }
 
 function drawBuilding(x, y, building) {
     ctx.fillStyle = "#d9c27a";
-    ctx.fillRect(x + 3, y + 3, 10, 10);
+    ctx.fillRect(x + 4, y + 4, TS - 8, TS - 8);
 }
 
 function renderMap() {
@@ -101,8 +102,8 @@ function renderMap() {
 
     for (let y = 0; y < grid.length; y++) {
         for (let x = 0; x < grid[0].length; x++) {
-            const px = x * 16;
-            const py = y * 16;
+            const px = x * TS;
+            const py = y * TS;
 
             drawTile(px, py, grid[y][x].terrain);
 
@@ -131,8 +132,8 @@ canvas.addEventListener("click", (ev) => {
     const worldY = my - camY;
 
     // Convert to tile coordinates
-    const gx = Math.floor(worldX / 16);
-    const gy = Math.floor(worldY / 16);
+    const gx = Math.floor(worldX / TS);
+    const gy = Math.floor(worldY / TS);
 
     const buildingToPlace = state.ui.selectedBuilding;
 

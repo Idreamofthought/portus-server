@@ -1,33 +1,33 @@
 :root {
-  --ink: #f3ead7;
-  --muted: #9b9a8e;
-  --line: rgba(243, 234, 215, 0.14);
-  --panel: rgba(16, 25, 27, 0.92);
-  --panel-strong: #162528;
-  --accent: #d99b53;
-  --accent-soft: #e8c48e;
-  --danger: #d67661;
+  --ink: #e6e6f0;
+  --muted: #aaaabd;
+  --line: rgba(74, 74, 112, 0.7);
+  --panel: rgba(15, 15, 25, 0.9);
+  --panel-strong: #2a2a40;
+  --accent: #8888c2;
+  --accent-soft: #cfcfe8;
+  --danger: #e08383;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  background: #0d1516;
-  background-image: radial-gradient(circle at 50% 35%, #213435 0, #0d1516 62%);
+  background: #0f0f15;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: "Georgia", serif;
   margin: 0;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 button { font: inherit; }
 
 .portus-shell {
   display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(560px, 900px) minmax(180px, 230px);
+  grid-template-columns: minmax(180px, 230px) minmax(560px, 1fr) minmax(180px, 230px);
   grid-template-rows: auto minmax(360px, 1fr) auto auto;
   gap: 14px;
-  max-width: 1420px;
+  max-width: 1740px;
   min-height: 100vh;
   margin: 0 auto;
   padding: 14px;
@@ -58,11 +58,19 @@ button { font: inherit; }
 .time-box span { color: var(--accent); padding: 0 5px; }
 
 .resource-bar {
+  width: 220px;
+  padding: 15px;
+  border: 1px solid #4a4a70;
+  border-radius: 8px;
+  background: rgba(20, 20, 30, 0.85);
+  box-shadow: 0 0 15px rgba(120, 120, 180, 0.3);
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 24px;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 16px;
+  line-height: 1.5;
+  flex-wrap: wrap;
 }
 
 .resource-bar div { white-space: nowrap; }
@@ -94,14 +102,16 @@ button { font: inherit; }
 canvas {
   display: block;
   width: 100%;
-  max-width: 900px;
+  max-width: 1200px;
   height: auto;
   aspect-ratio: 3 / 2;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  border: 2px solid #3a3a55;
+  box-shadow: 0 0 20px rgba(80, 80, 120, 0.4);
 }
 
-#canvas { width: 900px; height: 600px; }
+#canvas { width: 1200px; height: 792px; }
 
 .side-panel, .research-bar {
   border: 1px solid var(--line);
@@ -160,18 +170,18 @@ canvas {
 .building-toolbar button, .utility-buttons button {
   flex: 0 0 auto;
   border: 1px solid rgba(232, 196, 142, 0.2);
-  border-radius: 3px;
-  background: #1c2c2e;
-  color: var(--ink);
+  border-radius: 6px;
+  background: #2a2a40;
+  color: #e6e6f0;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: 0.2s;
 }
 
-.building-toolbar button { padding: 9px 12px; font-size: 0.76rem; white-space: nowrap; }
+.building-toolbar button { padding: 10px 14px; font-size: 15px; letter-spacing: 1px; white-space: nowrap; }
 .building-toolbar button:hover, .building-toolbar button:focus-visible {
-  border-color: var(--accent);
-  background: #284042;
-  transform: translateY(-1px);
+  border-color: #4a4a70;
+  background: #3a3a55;
+  box-shadow: 0 0 10px rgba(120, 120, 180, 0.4);
   outline: none;
 }
 
@@ -206,19 +216,28 @@ canvas {
 .utility-buttons {
   grid-column: 1 / -1;
   display: flex;
-  justify-content: flex-end;
-  gap: 6px;
+  flex-direction: column;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  align-items: stretch;
+  width: 120px;
+  gap: 10px;
+  z-index: 3;
 }
 
 .utility-buttons button {
-  padding: 5px 9px;
-  color: var(--muted);
-  font-size: 0.68rem;
+  padding: 8px 12px;
+  border: 1px solid #4a4a70;
+  background: #1a1a28;
+  color: #cfcfe8;
+  font-size: 14px;
+  text-align: left;
 }
 
 .utility-buttons button:hover, .utility-buttons button:focus-visible {
-  border-color: var(--accent);
-  color: var(--ink);
+  background: #2a2a40;
+  box-shadow: 0 0 10px rgba(120, 120, 180, 0.4);
   outline: none;
 }
 
@@ -229,7 +248,7 @@ canvas {
   }
   .topbar { grid-column: 1 / -1; grid-template-columns: 1fr; gap: 7px; }
   .resource-bar { justify-content: flex-start; flex-wrap: wrap; gap: 12px 18px; }
-  .audio-controls { position: absolute; top: 18px; right: 18px; }
+  .audio-controls { position: absolute; top: 18px; right: 160px; }
   .game-stage { grid-column: 1 / -1; grid-row: 3; min-height: 300px; }
   .codex-panel { grid-column: 1; grid-row: 2; }
   .warnings-panel { grid-column: 2; grid-row: 2; }
@@ -237,6 +256,7 @@ canvas {
 }
 
 @media (max-width: 600px) {
+  body { overflow: auto; }
   .portus-shell { display: flex; flex-direction: column; padding: 8px; gap: 8px; }
   .topbar { min-height: 0; }
   .audio-controls { position: static; }
@@ -245,6 +265,8 @@ canvas {
   .warnings-panel { order: 4; }
   .building-toolbar { order: 5; }
   .research-bar { order: 6; }
+  .utility-buttons { position: static; order: 7; width: auto; flex-direction: row; flex-wrap: wrap; }
+  .utility-buttons button { flex: 1 1 auto; }
   .side-panel { min-height: 100px; }
   #canvas { width: 100%; height: auto; }
 }
