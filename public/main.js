@@ -194,7 +194,9 @@ canvas.addEventListener("mousemove", (ev) => {
    ============================================================ */
 
 startGameLoop(state, (frame) => {
-    updateSystems(state);
+    if (frame !== null) {
+        updateSystems(state);
+    }
     renderUI(state);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     renderMap();

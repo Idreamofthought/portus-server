@@ -4,6 +4,8 @@
    and sends alerts to the UI.
    ============================================================ */
 
+import { queueNotification } from "./ui.js";
+
 /* ============================================================
    INITIAL WARNING STATE
    ============================================================ */
@@ -34,11 +36,7 @@ function pushWarning(state, message, severity = "low") {
 
     // UI notification
     if (state.ui && state.ui.notifications) {
-        state.ui.notifications.push({
-            msg: message,
-            type: severity === "high" ? "danger" : "warning",
-            time: Date.now()
-        });
+        queueNotification(state, message, severity === "high" ? "danger" : "warning");
     }
 }
 

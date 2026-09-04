@@ -3,6 +3,8 @@
    Handles tech definitions, progress, unlocking, and tick updates.
    ============================================================ */
 
+import { queueNotification } from "./ui.js";
+
 /* ---------------- TECH DEFINITIONS ---------------- */
 
 export const TECHS = [
@@ -134,11 +136,7 @@ export function completeResearch(state, techId) {
 
     // Notify UI
     if (state.ui && state.ui.notifications) {
-        state.ui.notifications.push({
-            msg: `Research completed: ${tech.name}`,
-            type: "success",
-            time: Date.now()
-        });
+        queueNotification(state, `Research completed: ${tech.name}`, "success");
     }
 
     // Reset current research

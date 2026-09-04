@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { reduceFavour } from "./favour.js";
+import { queueNotification } from "./ui.js";
 
 /* ============================================================
    DISASTER DEFINITIONS
@@ -162,11 +163,11 @@ function triggerOneDisaster(state, id) {
 
     // UI notification
     if (state.ui && state.ui.notifications) {
-        state.ui.notifications.push({
-            msg: `${def.name} (${severity})`,
-            type: severity === "major" ? "danger" : "warning",
-            time: Date.now()
-        });
+        queueNotification(
+            state,
+            `${def.name} (${severity})`,
+            severity === "major" ? "danger" : "warning"
+        );
     }
 
     // Cooldown
