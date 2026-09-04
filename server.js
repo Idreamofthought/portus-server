@@ -107,6 +107,7 @@ app.post(
 // ============================================================
 
 app.use(express.static(path.join(__dirname, "homepage")));
+app.use("/homepage", express.static(path.join(__dirname, "homepage")));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
@@ -131,6 +132,9 @@ app.get("/about", (_req, res) =>
 );
 app.get("/contact", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/contact.html"))
+);
+app.get("/fragments", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/fragments.html"))
 );
 app.get("/portus-info", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
@@ -606,7 +610,7 @@ app.post("/api/webhooks/paypal", async (req, res) => {
     const capture = req.body.resource;
     const orderId =
       capture?.supplementary_data?.related_ids?.order_id;
-    const eventId = capture?.id;
+    const eventId = req.body?.id || capture?.id;
     const capturedAmount = capture?.amount?.value;
 
     if (!orderId || !eventId || !capturedAmount) {
