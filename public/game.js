@@ -37,17 +37,11 @@ export function placeBuilding(state, gx, gy, buildingId) {
 }
 
 
-
-
-/* ============================================================
-   PLACE BUILDING
-   ============================================================ */
 /* ============================================================
    PLACE BUILDING
    ============================================================ */
 export function placeBuilding(state, gx, gy, buildingId) {
 
-    // Prevent out-of-bounds placement
     if (gy < 0 || gy >= state.grid.length ||
         gx < 0 || gx >= state.grid[0].length) {
         return { ok: false, reason: "Invalid tile" };
@@ -75,7 +69,6 @@ export function placeBuilding(state, gx, gy, buildingId) {
 
     return { ok: true };
 }
-
 
 /* ============================================================
    GAME LOOP
