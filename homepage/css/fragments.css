@@ -1,0 +1,135 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --ink: #e8e8f5;
+    --muted: #b5b4c8;
+    --line: rgba(200, 200, 255, 0.25);
+    --glass: rgba(255, 255, 255, 0.06);
+    --glow: rgba(150, 150, 255, 0.3);
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 40px 20px;
+    background: radial-gradient(circle at 50% 20%, #1a1a2a, #0b0b12 60%);
+    color: var(--ink);
+    font-family: Georgia, serif;
+}
+
+.container {
+    width: min(100%, 1040px);
+    margin: 0 auto;
+}
+
+.title {
+    margin: 0 0 10px;
+    color: #f0f0ff;
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    font-weight: normal;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+.subtitle {
+    max-width: 680px;
+    margin: 0 auto 42px;
+    color: var(--muted);
+    font-size: 1.1rem;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.fragment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+}
+
+.fragment-card,
+.content {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--glass);
+    box-shadow: 0 0 35px var(--glow);
+    backdrop-filter: blur(14px);
+}
+
+.fragment-card {
+    display: block;
+    min-height: 180px;
+    padding: 24px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.fragment-card:hover,
+.fragment-card:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 45px rgba(180, 180, 255, 0.4);
+    outline: none;
+    transform: translateY(-4px);
+}
+
+.fragment-card:focus-visible {
+    border-color: rgba(220, 220, 255, 0.7);
+}
+
+.fragment-card h2 {
+    margin: 0;
+    color: #f0f0ff;
+    font-size: 1.35rem;
+    font-weight: normal;
+    letter-spacing: 0.04em;
+}
+
+.fragment-card p {
+    margin: 14px 0 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.content {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: clamp(24px, 5vw, 48px);
+}
+
+.content p {
+    margin: 0 0 1.5rem;
+    color: var(--muted);
+    font-size: 1.12rem;
+    line-height: 1.9;
+}
+
+.content p:last-child {
+    margin-bottom: 0;
+}
+
+.back-link {
+    display: block;
+    width: fit-content;
+    margin: 28px auto 0;
+    color: #c8c8ee;
+    text-decoration: none;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+    color: #ffffff;
+    outline: none;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 28px 16px;
+    }
+
+    .subtitle {
+        margin-bottom: 28px;
+        font-size: 1rem;
+    }
+}
