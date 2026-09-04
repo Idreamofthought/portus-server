@@ -13,9 +13,9 @@ This repository contains the full Portus server, including the public game clien
 - Serif typography and floating glyph-style buttons
 - Portus wordmark and inharmonic ambient soundscape
 
-### Pixel-Art World
+### Pixel-Art World (24x24 Tiles)
 
-- 24px terrain tiles on a 50x33 map
+- 24x24 terrain tiles on a 50x33 map
 - Grass, forest, mountain, river, sea, sand, and resource deposits
 - Camera movement by dragging and zoom controls
 - Building placement with terrain validation and distinct placement sounds
@@ -74,6 +74,7 @@ payments.js               Stripe and PayPal logic
 products.js               commercial catalogue
 database2.js              SQLite access and migrations
 resend.js                 email delivery
+```
 
 
 ## Running Locally
