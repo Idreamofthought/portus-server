@@ -42,6 +42,10 @@ export function placeBuilding(state, gx, gy, buildingId) {
 /* ============================================================
    PLACE BUILDING
    ============================================================ */
+/* ============================================================
+   PLACE BUILDING
+   ============================================================ */
+export function placeBuilding(state, gx, gy, buildingId) {
 
     // Prevent out-of-bounds placement
     if (gy < 0 || gy >= state.grid.length ||
@@ -52,22 +56,17 @@ export function placeBuilding(state, gx, gy, buildingId) {
     const tile = state.grid[gy][gx];
     if (!tile) return { ok: false, reason: "Invalid tile" };
 
-
-
-    const def = BUILDINGS[buildingId];
+    const def = BLD_BY_ID[buildingId];
     if (!def) return { ok: false, reason: "Unknown building" };
 
-    // Terrain requirement
-    if (def.requires.length > 0 && !def.requires.includes(tile.terrain)) {
+    if (!def.valid(state.grid, gx, gy)) {
         return { ok: false, reason: "Wrong terrain" };
     }
 
-    // Tile occupied
     if (tile.building) {
         return { ok: false, reason: "Tile occupied" };
     }
 
-    // Place building
     tile.building = {
         id: buildingId,
         progress: 0,
@@ -76,6 +75,7 @@ export function placeBuilding(state, gx, gy, buildingId) {
 
     return { ok: true };
 }
+
 
 /* ============================================================
    GAME LOOP
