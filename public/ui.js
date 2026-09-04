@@ -38,8 +38,8 @@ function setupBuildingButtons(state) {
 
     container.innerHTML = "";
 
-    for (const id in BUILDINGS) {
-        const def = BUILDINGS[id];
+    for (const def of BUILDINGS) {
+        const id = def.id;
 
         const btn = document.createElement("button");
         btn.textContent = def.name;
