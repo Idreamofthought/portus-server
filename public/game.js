@@ -42,7 +42,6 @@ export function placeBuilding(state, gx, gy, buildingId) {
 /* ============================================================
    PLACE BUILDING
    ============================================================ */
-export function placeBuilding(state, gx, gy, buildingId) {
 
     // Prevent out-of-bounds placement
     if (gy < 0 || gy >= state.grid.length ||
