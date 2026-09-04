@@ -93,6 +93,9 @@ function setupAudioControls() {
     musicToggle.type = "checkbox";
     musicToggle.id = "toggle-music";
     musicToggle.checked = true;
+    musicToggle.onchange = (event) => {
+        Sound.setMusicEnabled(event.target.checked);
+    };
     musicLabel.appendChild(musicToggle);
     musicLabel.append(" Music");
 

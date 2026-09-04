@@ -37,7 +37,7 @@ button { font: inherit; }
 .topbar {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 190px 1fr auto;
+  grid-template-columns: auto 190px 1fr auto;
   align-items: center;
   gap: 14px;
   min-height: 62px;
@@ -46,6 +46,28 @@ button { font: inherit; }
   background: rgba(12, 20, 21, 0.86);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
 }
+
+.portus-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--accent-soft);
+  letter-spacing: 0.22em;
+}
+
+.logo-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(200, 200, 255, 0.5);
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 1rem;
+  box-shadow: 0 0 14px rgba(150, 150, 255, 0.35);
+}
+
+.logo-type { font-size: 0.8rem; font-weight: bold; }
 
 .time-box {
   color: var(--accent-soft);
