@@ -134,19 +134,19 @@ export function genMap() {
         }
     }
 
-    // Clay deposits
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            let t = grid[y][x].terrain;
-            if ((t === "grass" || t === "sand") &&return grid;
-                nearTerrain(x, y, ["river", "sea"], 1) &&
-                Math.random() < 0.22) {
-                grid[y][x].deposit = "clay";
-            }
+   // Clay deposits
+for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+        let t = grid[y][x].terrain;
+        if ((t === "grass" || t === "sand") &&
+            nearTerrain(x, y, ["river", "sea"], 1) &&
+            Math.random() < 0.22) {
+            grid[y][x].deposit = "clay";
         }
     }
+}
 
-    // Salt flats
+// Salt flats
 for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
         let t = grid[y][x].terrain;
@@ -161,4 +161,3 @@ for (let y = 0; y < ROWS; y++) {
 
 return grid;   // ⭐ MUST be here, outside all loops
 }              // ⭐ This closes the genMap() function
-
