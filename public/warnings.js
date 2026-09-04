@@ -89,7 +89,6 @@ function checkFavourWarnings(state) {
 /* ============================================================
    ENVIRONMENT WARNINGS
    ============================================================ */
-
 function checkEnvironmentWarnings(state) {
     const grid = state.grid;
     if (!grid || !grid.length || !grid[0]) return;
@@ -114,6 +113,7 @@ function checkEnvironmentWarnings(state) {
         pushWarning(state, "Coastal flooding risk increasing");
     }
 }
+
 
 
 /* ============================================================
