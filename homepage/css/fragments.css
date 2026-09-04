@@ -123,6 +123,30 @@ body {
     outline: none;
 }
 
+.exit-button {
+    display: block;
+    width: fit-content;
+    margin: 28px auto 0;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--glass);
+    box-shadow: 0 0 20px rgba(150, 150, 255, 0.18);
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.exit-button:hover,
+.exit-button:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 30px rgba(180, 180, 255, 0.35);
+    color: #ffffff;
+    outline: none;
+    transform: translateY(-2px);
+}
+
 @media (max-width: 600px) {
     body {
         padding: 28px 16px;

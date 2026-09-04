@@ -45,15 +45,29 @@ function setupBuildingButtons(state) {
         const id = def.id;
 
         const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.id = id;
+        btn.setAttribute("aria-pressed", "false");
         btn.textContent = def.name;
 
         btn.onclick = () => {
             state.ui.selectedBuilding = id;
+            updateBuildingSelectionUI(state);
             pushNotification(state, `Selected: ${def.name}`, "info");
         };
 
         container.appendChild(btn);
     }
+}
+
+function updateBuildingSelectionUI(state) {
+    const selected = state.ui.selectedBuilding;
+
+    document.querySelectorAll("#buildings button").forEach((button) => {
+        const isSelected = button.dataset.id === selected;
+        button.classList.toggle("selected", isSelected);
+        button.setAttribute("aria-pressed", String(isSelected));
+    });
 }
 
 /* ============================================================
@@ -188,6 +202,7 @@ export function renderNotifications(state) {
    ============================================================ */
 
 export function renderUI(state) {
+    updateBuildingSelectionUI(state);
     renderNotifications(state);
     renderResourcePanel(state);
     renderResearchPanel(state);
