@@ -62,16 +62,15 @@ canvas.height = canvas.clientHeight;
 /* ============================================================
    CAMERA
    ============================================================ */
+/* ============================================================
+   CAMERA
+   ============================================================ */
 
-const rect = canvas.getBoundingClientRect();
-const mx = (event.clientX - rect.left) / zoom;
-const my = (event.clientY - rect.top) / zoom;
+let camX = 0;
+let camY = 0;
+let zoom = 1;
 
-const gx = Math.floor(mx - camX);
-const gy = Math.floor(my - camY);
- camX = 0;
-const tileX = Math.floor(gx / TILE_SIZE);
-const tileY = Math.floor(gy / TILE_SIZE);
+
 
 
 /* ============================================================
