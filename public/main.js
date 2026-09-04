@@ -122,11 +122,18 @@ function renderMap() {
 
 canvas.addEventListener("click", (ev) => {
     const rect = canvas.getBoundingClientRect();
-    const cx = (ev.clientX - rect.left) / zoom - camX;
-    const cy = (ev.clientY - rect.top) / zoom - camY;
 
-    const gx = Math.floor(cx / 16);
-    const gy = Math.floor(cy / 16);
+    // Undo zoom
+    const mx = (ev.clientX - rect.left) / zoom;
+    const my = (ev.clientY - rect.top) / zoom;
+
+    // Undo camera translation
+    const worldX = mx - camX;
+    const worldY = my - camY;
+
+    // Convert to tile coordinates
+    const gx = Math.floor(worldX / 16);
+    const gy = Math.floor(worldY / 16);
 
     const buildingToPlace = state.ui.selectedBuilding;
 
