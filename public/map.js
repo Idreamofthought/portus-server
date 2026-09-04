@@ -8,9 +8,9 @@ import { rnd, clamp } from "./helpers.js";
 
 /* ---------------- CONSTANTS ---------------- */
 
-export const COLS = 30;
-export const ROWS = 20;
-export const TS = 30;
+export const COLS = 50;
+export const ROWS = 33;
+export const TS = 24;
 
 /* ---------------- MAP STATE ---------------- */
 
