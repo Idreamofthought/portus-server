@@ -203,7 +203,9 @@ canvas {
   position: fixed;
   bottom: 25px;
   left: 25px;
-  z-index: 3;
+  z-index: 1000;
+  pointer-events: auto;
+  visibility: visible;
   max-width: calc(100vw - 50px);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
@@ -226,6 +228,12 @@ canvas {
   background: rgba(255, 255, 255, 0.15);
   box-shadow: 0 0 15px rgba(180, 180, 255, 0.35);
   outline: none;
+}
+
+.building-toolbar button.selected {
+  border-color: rgba(220, 220, 255, 0.7);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 25px rgba(200, 200, 255, 0.45);
 }
 
 .research-bar {
