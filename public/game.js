@@ -4,6 +4,17 @@
 import { genMap } from "./map.js";
 import { BLD_BY_ID } from "./buildings.js";
 
+export function initGame() {
+    const state = {
+        tick: 0,
+        grid: genMap(),
+        ui: {
+            selectedBuilding: null
+        }
+    };
+    return state;
+}
+
 export function placeBuilding(state, gx, gy, buildingId) {
 
     if (gy < 0 || gy >= state.grid.length ||
