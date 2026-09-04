@@ -23,23 +23,26 @@ export const DISASTERS = {
     },
 
     wildfire: {
-        id: "wildfire",
-        name: "Wildfire",
-        desc: "Forest burns, wooden buildings damaged.",
-        baseChance: 0.008,
-        apply(state) {
-            const grid = state.grid;
-            for (let y = 0; y < grid.length; y++) {
-                for (let x = 0; x < grid[0].length; x++) {
-                    const tile = grid[y][x];
-                    if (tile.terrain === "forest" && Math.random() < 0.15) {
-                        tile.terrain = "grass";
-                    }
+    id: "wildfire",
+    name: "Wildfire",
+    desc: "Forest burns, wooden buildings damaged.",
+    baseChance: 0.008,
+    apply(state) {
+        const grid = state.grid;
+        if (!grid || !grid.length || !grid[0]) return;
+
+        for (let y = 0; y < grid.length; y++) {
+            for (let x = 0; x < grid[0].length; x++) {
+                const tile = grid[y][x];
+                if (tile.terrain === "forest" && Math.random() < 0.15) {
+                    tile.terrain = "grass";
                 }
             }
-            reduceFavour(state, 3);
         }
-    },
+        reduceFavour(state, 3);
+    }
+},
+
 
     blight: {
         id: "blight",
@@ -52,24 +55,27 @@ export const DISASTERS = {
         }
     },
 
-    flood: {
-        id: "flood",
-        name: "Flood",
-        desc: "Coastal and river buildings damaged.",
-        baseChance: 0.006,
-        apply(state) {
-            const grid = state.grid;
-            for (let y = 0; y < grid.length; y++) {
-                for (let x = 0; x < grid[0].length; x++) {
-                    const tile = grid[y][x];
-                    if ((tile.terrain === "river" || tile.terrain === "sea") && tile.building) {
-                        tile.building = null;
-                    }
+   flood: {
+    id: "flood",
+    name: "Flood",
+    desc: "Coastal and river buildings damaged.",
+    baseChance: 0.006,
+    apply(state) {
+        const grid = state.grid;
+        if (!grid || !grid.length || !grid[0]) return;
+
+        for (let y = 0; y < grid.length; y++) {
+            for (let x = 0; x < grid[0].length; x++) {
+                const tile = grid[y][x];
+                if ((tile.terrain === "river" || tile.terrain === "sea") && tile.building) {
+                    tile.building = null;
                 }
             }
-            reduceFavour(state, 3);
         }
-    },
+        reduceFavour(state, 3);
+    }
+},
+
 
     plague: {
         id: "plague",
