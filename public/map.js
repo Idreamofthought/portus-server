@@ -147,16 +147,16 @@ export function genMap() {
     }
 
     // Salt flats
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            let t = grid[y][x].terrain;
-            if (t === "sand" &&
-                !grid[y][x].deposit &&
-                nearTerrain(x, y, ["sea"], 1) &&
-                Math.random() < 0.18) {
-                grid[y][x].deposit = "salt";
-            }
+for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+        let t = grid[y][x].terrain;
+        if (t === "sand" &&
+            !grid[y][x].deposit &&
+            nearTerrain(x, y, ["sea"], 1) &&
+            Math.random() < 0.18) {
+            grid[y][x].deposit = "salt";
         }
-    } 
-   return grid;
+    }
 }
+
+return grid;   // ⭐ REQUIRED
