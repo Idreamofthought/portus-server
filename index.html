@@ -4,21 +4,35 @@
   <meta charset="UTF-8">
   <title>Portus</title>
   <link rel="stylesheet" href="/css/game.css">
-  <link rel="stylesheet" href="/css/ambience-payments.css">
 </head>
 
 <body>
-  <!-- Time Remaining -->
   <div id="time-remaining" class="time-box"></div>
-
-  <!-- Audio Controls -->
   <div id="audio-controls"></div>
-
-  <!-- Notifications -->
   <div id="notifications"></div>
-
-  <!-- Building Buttons -->
   <div id="buildings"></div>
+
+  <div id="panel-buttons">
+    <button id="panel-resources">Resources</button>
+    <button id="panel-research">Research</button>
+    <button id="panel-codex">Codex</button>
+    <button id="panel-warnings">Warnings</button>
+    <button id="panel-disasters">Disasters</button>
+    <button id="panel-favour">Favour</button>
+  </div>
+
+  <div id="panel-resources-box"></div>
+  <div id="panel-research-box"></div>
+  <div id="panel-codex-box"></div>
+  <div id="panel-warnings-box"></div>
+  <div id="panel-disasters-box"></div>
+  <div id="panel-favour-box"></div>
+
+  <canvas id="canvas" width="900" height="600"></canvas>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
 
   <!-- Panel Toggles -->
   <div id="panel-buttons">
