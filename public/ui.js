@@ -21,7 +21,9 @@ export function setupUI(state) {
             disasters: false,
             favour: false
         },
-        notifications: []
+        notifications: [],
+        pendingNotifications: [],
+        lastNotificationFlush: Date.now()
     };
 
     setupBuildingButtons(state);
@@ -119,6 +121,39 @@ function setupAudioControls() {
    ============================================================ */
 
 export function pushNotification(state, msg, type = "info") {
+    addNotification(state, msg, type);
+}
+
+export function queueNotification(state, msg, type = "info") {
+    if (!state.ui) return;
+
+    state.ui.pendingNotifications.push({ msg, type });
+    flushQueuedNotifications(state);
+}
+
+function flushQueuedNotifications(state) {
+    const ui = state.ui;
+    if (!ui || !ui.pendingNotifications.length) return;
+
+    const now = Date.now();
+    if (now - ui.lastNotificationFlush < 5 * 60 * 1000) return;
+
+    const messages = ui.pendingNotifications.map(notification => notification.msg);
+    const types = ui.pendingNotifications.map(notification => notification.type);
+    const type = types.includes("danger") ? "danger" : types[0];
+
+    addNotification(
+        state,
+        messages.length === 1
+            ? messages[0]
+            : `${messages.length} developments: ${messages.join(" | ")}`,
+        type
+    );
+    ui.pendingNotifications = [];
+    ui.lastNotificationFlush = now;
+}
+
+function addNotification(state, msg, type) {
     state.ui.notifications.push({
         msg,
         type,
@@ -131,6 +166,8 @@ export function pushNotification(state, msg, type = "info") {
 }
 
 export function renderNotifications(state) {
+    flushQueuedNotifications(state);
+
     const box = document.getElementById("notifications");
     if (!box) return;
 

@@ -4,6 +4,8 @@
    and integration with disasters and research.
    ============================================================ */
 
+import { queueNotification } from "./ui.js";
+
 /* ============================================================
    INITIAL FAVOUR STATE
    ============================================================ */
@@ -192,13 +194,5 @@ export function updateFavour(state) {
 function pushNotification(state, msg, type = "info") {
     if (!state.ui || !state.ui.notifications) return;
 
-    state.ui.notifications.push({
-        msg,
-        type,
-        time: Date.now()
-    });
-
-    if (state.ui.notifications.length > 40) {
-        state.ui.notifications.shift();
-    }
+    queueNotification(state, msg, type);
 }

@@ -50,9 +50,19 @@ export function placeBuilding(state, gx, gy, buildingId) {
    ============================================================ */
 
 export function startGameLoop(state, renderCallback) {
+    let lastTickAt = performance.now();
+
     function loop() {
-        state.tick++;
-        renderCallback(state.tick);
+        const now = performance.now();
+
+        if (now - lastTickAt >= 1000) {
+            state.tick++;
+            lastTickAt = now;
+            renderCallback(state.tick);
+        } else {
+            renderCallback(null);
+        }
+
         requestAnimationFrame(loop);
     }
     loop();
