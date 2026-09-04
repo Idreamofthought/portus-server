@@ -159,4 +159,6 @@ for (let y = 0; y < ROWS; y++) {
     }
 }
 
-return grid;   // ⭐ REQUIRED
+return grid;   // ⭐ MUST be here, outside all loops
+}              // ⭐ This closes the genMap() function
+
