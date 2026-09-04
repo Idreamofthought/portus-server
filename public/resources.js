@@ -67,6 +67,9 @@ export function spendResources(state, cost) {
 
 export function updateResources(state) {
     const grid = state.grid;
+    if (!grid || !grid.length || !grid[0]) return;
+
+    const grid = state.grid;
 
     // Loop through all tiles
     for (let y = 0; y < grid.length; y++) {
