@@ -138,7 +138,7 @@ export function genMap() {
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             let t = grid[y][x].terrain;
-            if ((t === "grass" || t === "sand") &&
+            if ((t === "grass" || t === "sand") &&return grid;
                 nearTerrain(x, y, ["river", "sea"], 1) &&
                 Math.random() < 0.22) {
                 grid[y][x].deposit = "clay";
@@ -157,5 +157,6 @@ export function genMap() {
                 grid[y][x].deposit = "salt";
             }
         }
-    }
+    } 
+   return grid;
 }
