@@ -26,10 +26,18 @@ export function initGame() {
 /* ============================================================
    PLACE BUILDING
    ============================================================ */
-
 export function placeBuilding(state, gx, gy, buildingId) {
-    const tile = state.grid[gy]?.[gx];
+
+    // Prevent out-of-bounds placement
+    if (gy < 0 || gy >= state.grid.length ||
+        gx < 0 || gx >= state.grid[0].length) {
+        return { ok: false, reason: "Invalid tile" };
+    }
+
+    const tile = state.grid[gy][gx];
     if (!tile) return { ok: false, reason: "Invalid tile" };
+
+
 
     const def = BUILDINGS[buildingId];
     if (!def) return { ok: false, reason: "Unknown building" };
