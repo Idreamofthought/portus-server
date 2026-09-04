@@ -64,7 +64,6 @@ export function spendResources(state, cost) {
 /* ============================================================
    PRODUCTION TICK
    ============================================================ */
-
 export function updateResources(state) {
     const grid = state.grid;
     if (!grid || !grid.length || !grid[0]) return;
