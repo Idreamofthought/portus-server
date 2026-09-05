@@ -892,17 +892,17 @@ const RES_DISPLAY = [
 ];
 function renderRes(){
   const bar = document.getElementById('resbar');
-  bar.innerHTML='';
+  bar.replaceChildren();
   const coinPill=document.createElement('div');
   coinPill.className='res coin';
-  coinPill.innerHTML = `🪙 <b>${Math.floor(coin)}</b>`;
+  coinPill.textContent = `🪙 ${Math.floor(coin)}`;
   bar.appendChild(coinPill);
   RES_DISPLAY.forEach(([k,ic])=>{
     const v = res[k];
     if(v<0.05 && !['wood','stone'].includes(k)) return;
     const d=document.createElement('div');
     d.className='res';
-    d.innerHTML = `${ic} <b>${Math.floor(v)}</b>`;
+    d.textContent = `${ic} ${Math.floor(v)}`;
     bar.appendChild(d);
   });
   document.getElementById('popline').textContent =
@@ -1223,7 +1223,12 @@ function logEvent(msg){
 function renderChronicle(){
   const el = document.getElementById('chronicle');
   if(!el) return;
-  el.innerHTML = eventLog.length ? eventLog.map(e=>`<div>${e}</div>`).join('') : '<div>Quiet so far…</div>';
+  el.replaceChildren();
+  for(const event of (eventLog.length ? eventLog : ['Quiet so far…'])){
+    const row = document.createElement('div');
+    row.textContent = event;
+    el.appendChild(row);
+  }
 }
 
 function nearTerrainOfBuilding(b, terrain){

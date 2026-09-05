@@ -15,11 +15,14 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "resend": "^2.0.0",
     "stripe": "^16.9.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

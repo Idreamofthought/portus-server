@@ -41,4 +41,5 @@ export const jsonRateLimitHandler = (_req, res) => res.status(429).json({ error:
 export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 5, handler: jsonRateLimitHandler });
 export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, handler: jsonRateLimitHandler });
 export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, handler: jsonRateLimitHandler });
+export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, handler: jsonRateLimitHandler });
 export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: 200, handler: jsonRateLimitHandler });

@@ -30,6 +30,7 @@ import {
   authLimiter,
   passwordResetLimiter,
   checkoutLimiter,
+  webhookLimiter,
   generalApiLimiter
 } from "./middleware.js";
 
@@ -599,7 +600,7 @@ app.post(
 );
 
 // PayPal webhook
-app.post("/api/webhooks/paypal", async (req, res) => {
+app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
   try {
     const valid = await verifyPayPalWebhookSignature(req.headers, req.body);
     if (!valid) {

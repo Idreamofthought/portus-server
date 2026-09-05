@@ -224,12 +224,12 @@ function renderResourcePanel(state) {
 
     const r = state.resources;
 
-    box.innerHTML = `
-        <div>Wood: ${r.wood}</div>
-        <div>Stone: ${r.stone}</div>
-        <div>Food: ${r.food}</div>
-        <div>Gold: ${r.gold}</div>
-    `;
+    box.replaceChildren();
+    for (const [label, value] of [['Wood', r.wood], ['Stone', r.stone], ['Food', r.food], ['Gold', r.gold]]) {
+        const row = document.createElement('div');
+        row.textContent = `${label}: ${value}`;
+        box.appendChild(row);
+    }
 }
 
 /* ============================================================
@@ -270,7 +270,9 @@ function renderCodexPanel(state) {
         if (!entry.unlocked) continue;
 
         const div = document.createElement("div");
-        div.innerHTML = `<strong>${entry.title}</strong><br>${entry.text}`;
+        const title = document.createElement("strong");
+        title.textContent = entry.title;
+        div.append(title, document.createElement("br"), document.createTextNode(entry.text));
         box.appendChild(div);
     }
 }
@@ -325,10 +327,17 @@ function renderFavourPanel(state) {
 
     const f = state.favour;
 
-    box.innerHTML = `
-        <h3>Favour</h3>
-        <div>Favour: ${f.value}</div>
-        <div>Twilight: ${f.twilightMode ? "Active" : "Inactive"}</div>
-        <div>Progress: ${f.twilightProgress || 0}</div>
-    `;
+    box.replaceChildren();
+    const heading = document.createElement('h3');
+    heading.textContent = 'Favour';
+    box.appendChild(heading);
+    for (const text of [
+        `Favour: ${f.value}`,
+        `Twilight: ${f.twilightMode ? 'Active' : 'Inactive'}`,
+        `Progress: ${f.twilightProgress || 0}`
+    ]) {
+        const row = document.createElement('div');
+        row.textContent = text;
+        box.appendChild(row);
+    }
 }
