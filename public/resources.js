@@ -3,7 +3,7 @@
    Handles storage, production, consumption, and tick updates.
    ============================================================ */
 
-import { BUILDINGS } from "./buildings.js";
+import { BLD_BY_ID } from "./buildings.js";
 
 /* ============================================================
    INITIAL RESOURCE STATE
@@ -75,13 +75,13 @@ export function updateResources(state) {
             const tile = grid[y][x];
             if (!tile.building) continue;
 
-            const def = BUILDINGS[tile.building.id];
+            const def = BLD_BY_ID[tile.building.id];
             if (!def) continue;
 
             // Building production
-            if (def.produces) {
-                for (const res in def.produces) {
-                    addResource(state, res, def.produces[res]);
+            if (def.produce) {
+                for (const res in def.produce) {
+                    addResource(state, res, def.produce[res]);
                 }
             }
         }
