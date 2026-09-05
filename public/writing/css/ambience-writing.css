@@ -3,19 +3,78 @@
   --muted: #a9a99c;
   --soil: #111812;
   --gold: #d8a85d;
+  --panel: rgba(16, 26, 18, 0.8);
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: radial-gradient(circle at 50% 0%, #273a29, var(--soil) 55%); color: var(--ink); font-family: Georgia, serif; line-height: 1.6; }
-.container { width: min(1120px, calc(100% - 40px)); margin: auto; padding: 28px 0 60px; }
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% 0%, #273a29, var(--soil) 55%);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.7;
+}
+
+a { color: inherit; }
+
+.container {
+  width: min(1120px, calc(100% - 40px));
+  margin: auto;
+  padding: 28px 0 60px;
+}
+
 .home-link, .back, .lulu { color: var(--gold); text-decoration: none; }
-.home-link { font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; }
-.hero { max-width: 720px; margin: 76px auto 58px; text-align: center; }
+.home-link {
+  display: inline-block;
+  font-size: .9rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.hero {
+  max-width: 760px;
+  margin: 72px auto 56px;
+  text-align: center;
+}
+
 .eyebrow, .leaf-kicker { color: var(--gold); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; }
 .hero h1 { margin: 0 0 16px; font-size: clamp(2.7rem, 7vw, 5.7rem); font-weight: normal; line-height: 1; }
-.page-title { color: var(--gold); }
-.lead { color: var(--muted); font-size: 1.2rem; margin: 0 auto; max-width: 600px; }
+.page-title, .container h1 { color: var(--gold); }
+.lead {
+  color: var(--muted);
+  font-size: 1.2rem;
+  margin: 0 auto;
+  max-width: 640px;
+}
+
+.intro {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 1.06rem;
+}
+
+.poem-music { margin: 16px auto 20px; max-width: 420px; }
+.poem-music audio { width: 100%; filter: saturate(0.95) brightness(1.08); }
+.poem-controls { display: flex; justify-content: center; margin-top: 8px; }
+.poem-mute-toggle { appearance: none; border: 1px solid rgba(216,168,93,.55); background: rgba(216,168,93,.08); color: var(--ink); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.poem-mute-toggle:hover, .poem-mute-toggle:focus-visible { background: rgba(216,168,93,.18); outline: none; }
+.piece-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+  max-width: 900px;
+}
+.piece-list li {
+  margin-bottom: 12px;
+  padding: 4px 0;
+}
+.piece-list a {
+  color: var(--ink);
+  text-decoration: none;
+  line-height: 1.6;
+}
+.piece-list a:hover, .piece-list a:focus-visible { color: var(--gold); text-decoration: underline; }
 
 @media (max-width: 760px) {
   .container { width: min(100% - 28px, 560px); }
