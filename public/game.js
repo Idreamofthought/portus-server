@@ -3,6 +3,7 @@
    ============================================================ */
 import { genMap } from "./map.js";
 import { BLD_BY_ID } from "./buildings.js";
+import { hasResources, spendResources } from "./resources.js";
 
 export function initGame() {
     const state = {
@@ -35,6 +36,12 @@ export function placeBuilding(state, gx, gy, buildingId) {
     if (tile.building) {
         return { ok: false, reason: "Tile occupied" };
     }
+
+    if (!hasResources(state, def.cost)) {
+        return { ok: false, reason: "Not enough resources" };
+    }
+
+    spendResources(state, def.cost);
 
     tile.building = {
         id: buildingId,
