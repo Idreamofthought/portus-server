@@ -56,6 +56,8 @@ initSystems(state);
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const minimap = document.getElementById("minimap");
+const minimapCtx = minimap.getContext("2d");
 
 canvas.width = COLS * TS;
 canvas.height = ROWS * TS;
@@ -115,6 +117,50 @@ function renderMap() {
 
     ctx.restore();
 }
+
+function renderMinimap() {
+    const mapWidth = COLS * TS;
+    const mapHeight = ROWS * TS;
+    const scaleX = minimap.width / mapWidth;
+    const scaleY = minimap.height / mapHeight;
+
+    minimapCtx.clearRect(0, 0, minimap.width, minimap.height);
+
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            const tile = state.grid[y][x];
+            minimapCtx.fillStyle = tile.terrain === "grass" ? "#2b5d2b"
+                : tile.terrain === "forest" ? "#1f3d1f"
+                    : tile.terrain === "sea" ? "#1a3d5c"
+                        : tile.terrain === "river" ? "#2a5f8a" : "#806f5b";
+            minimapCtx.fillRect(x * TS * scaleX, y * TS * scaleY, TS * scaleX + 0.5, TS * scaleY + 0.5);
+
+            if (tile.building) {
+                minimapCtx.fillStyle = "#f1d47b";
+                minimapCtx.fillRect(x * TS * scaleX, y * TS * scaleY, Math.max(2, TS * scaleX), Math.max(2, TS * scaleY));
+            }
+        }
+    }
+
+    const viewWidth = Math.min(mapWidth, canvas.width / zoom);
+    const viewHeight = Math.min(mapHeight, canvas.height / zoom);
+    minimapCtx.strokeStyle = "#fff3c4";
+    minimapCtx.lineWidth = 1.5;
+    minimapCtx.strokeRect(
+        Math.max(0, -camX) * scaleX,
+        Math.max(0, -camY) * scaleY,
+        viewWidth * scaleX,
+        viewHeight * scaleY
+    );
+}
+
+minimap.addEventListener("click", (event) => {
+    const rect = minimap.getBoundingClientRect();
+    const worldX = ((event.clientX - rect.left) / rect.width) * COLS * TS;
+    const worldY = ((event.clientY - rect.top) / rect.height) * ROWS * TS;
+    camX = canvas.width / (2 * zoom) - worldX;
+    camY = canvas.height / (2 * zoom) - worldY;
+});
 
 /* ============================================================
    INPUT: CLICK (place building)
@@ -200,4 +246,5 @@ startGameLoop(state, (frame) => {
     renderUI(state);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     renderMap();
+    renderMinimap();
 });

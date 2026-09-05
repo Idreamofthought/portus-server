@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Professional Services - I Dream of Thought</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #0d0d0d, #1a1a1a);
+            color: #f2e9d8;
+            font-family: "Segoe UI", sans-serif;
+            padding: 40px 20px;
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd37a;
+            font-size: 2.6rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .intro {
+            font-size: 1.2rem;
+            margin: 0 auto 2.5rem;
+            max-width: 720px;
+            opacity: 0.9;
+            text-align: center;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .service {
+            background: #222;
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        h2 {
+            color: #ffd37a;
+            font-size: 1.6rem;
+            margin: 0 0 0.75rem;
+        }
+
+        .service p { margin: 0; opacity: 0.88; }
+
+        .contact-box {
+            border-top: 1px solid #4a4133;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            text-align: center;
+        }
+
+        a {
+            color: #ffd37a;
+            text-decoration: none;
+        }
+
+        a:hover, a:focus-visible { text-decoration: underline; }
+
+        .actions a {
+            display: inline-block;
+            margin: 0.5rem 0.75rem;
+        }
+
+        nav {
+            margin-top: 3rem;
+            text-align: center;
+        }
+
+        nav a { margin: 0 1rem; }
+
+        @media (max-width: 600px) {
+            body { padding: 28px 16px; }
+            h1 { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+
+<body>
+<main class="container">
+    <h1>Professional Services</h1>
+    <p class="intro">
+        Alongside the creative work of I Dream of Thought, this page gathers professional
+        language, communication, and project work.
+    </p>
+
+    <section class="services" aria-label="Professional services">
+        <article class="service">
+            <h2>CAST</h2>
+            <p>
+                CAST is a professional strand of the work focused on thoughtful communication,
+                clear ideas, and projects shaped with care. Further service details and examples
+                can be added here as the offering develops.
+            </p>
+        </article>
+
+        <article class="service">
+            <h2>RMJ English</h2>
+            <p>
+                RMJ English offers careful English-language support for writing, editing,
+                proofreading, and communication. The work is precise, collaborative, and
+                adapted to the needs of each project.
+            </p>
+        </article>
+    </section>
+
+    <section class="contact-box">
+        <h2>Enquiries</h2>
+        <p>
+            To discuss a project, request a CV, or ask for a professional profile link,
+            please get in touch.
+        </p>
+        <div class="actions">
+            <a href="mailto:richardjenkins@idreamofthought.org">Email for enquiries</a>
+            <a href="/cv.html">View CV / profile</a>
+            <a href="/contact">Contact page</a>
+        </div>
+    </section>
+
+    <nav aria-label="Page navigation">
+        <a href="/home">Home</a>
+        <a href="/">Creative tree</a>
+        <a href="/about">About</a>
+    </nav>
+</main>
+</body>
+</html>
