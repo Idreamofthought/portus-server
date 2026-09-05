@@ -125,6 +125,9 @@ app.get(["/portus", "/portus/"], (_req, res) => {
 // ============================================================
 
 app.get("/", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/tree/index.html"))
+);
+app.get("/home", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/index.html"))
 );
 app.get("/about", (_req, res) =>

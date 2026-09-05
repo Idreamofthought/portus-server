@@ -1,0 +1,46 @@
+:root {
+  --ink: #e9e2d2;
+  --muted: #a9a99c;
+  --soil: #111812;
+  --gold: #d8a85d;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: radial-gradient(circle at 50% 0%, #273a29, var(--soil) 58%); color: var(--ink); font-family: Georgia, serif; line-height: 1.6; }
+.tree-page { width: min(1180px, calc(100% - 40px)); margin: auto; padding: 28px 0 58px; }
+a { color: var(--gold); text-decoration: none; }
+a:hover, a:focus-visible { text-decoration: underline; }
+.site-link { font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; }
+.tree-header { max-width: 720px; margin: 76px auto 58px; text-align: center; }
+.eyebrow, .branch span { color: var(--gold); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; }
+h1 { margin: 0 0 16px; font-size: clamp(2.8rem, 7vw, 5.8rem); font-weight: normal; line-height: 1; }
+.intro { max-width: 600px; margin: 0 auto; color: var(--muted); font-size: 1.2rem; }
+.branches { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 30px 0 64px; }
+.trunk { position: absolute; top: 0; bottom: 0; left: 50%; width: 5px; transform: translateX(-50%); border-radius: 5px; background: linear-gradient(var(--gold), #607e55); }
+.branch { position: relative; min-height: 142px; padding: 19px; border: 1px solid rgba(216, 168, 93, .5); background: rgba(20, 32, 24, .8); color: var(--ink); transition: transform .25s ease, background .25s ease; }
+.branch::after { content: ""; position: absolute; top: 50%; width: 18px; border-top: 2px solid var(--gold); }
+.branch:nth-of-type(odd)::after { right: -19px; }
+.branch:nth-of-type(even)::after { left: -19px; }
+.branch:hover, .branch:focus-visible { background: rgba(216, 168, 93, .16); outline: none; transform: translateY(-4px); text-decoration: none; }
+.branch strong { display: block; margin: 14px 0 4px; font-size: 1.18rem; font-weight: normal; }
+.branch small { display: block; color: var(--muted); line-height: 1.4; }
+.branch-welcome { max-width: 760px; margin: 0 auto 42px; padding: 28px; border: 1px solid rgba(216, 168, 93, .42); background: rgba(20, 32, 24, .68); }
+.branch-welcome h2 { margin: 0 0 10px; font-size: clamp(1.7rem, 4vw, 2.5rem); font-weight: normal; line-height: 1.15; }
+.branch-welcome p:not(.eyebrow) { max-width: 620px; color: var(--muted); }
+.idea-leaves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 0 auto 40px; }
+.idea-leaves article { min-height: 190px; padding: 22px; border: 1px solid rgba(216, 168, 93, .4); background: rgba(20, 32, 24, .68); }
+.leaf-number { margin: 0 0 20px; color: var(--gold); font-size: .78rem; letter-spacing: .16em; }
+.idea-leaves h2 { margin: 0 0 8px; font-size: 1.22rem; font-weight: normal; }
+.idea-leaves article p:last-child { margin-bottom: 0; color: var(--muted); }
+footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 20px; font-size: .92rem; }
+@media (max-width: 760px) {
+  .tree-page { width: min(100% - 28px, 560px); }
+  .tree-header { margin: 58px auto 38px; }
+  .branches { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .trunk, .branch::after { display: none; }
+  .branch { min-height: 132px; padding: 15px; }
+  .branch-welcome { padding: 22px; }
+  .idea-leaves { grid-template-columns: 1fr; }
+  footer { flex-direction: column; }
+}
