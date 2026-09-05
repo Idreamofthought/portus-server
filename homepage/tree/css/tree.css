@@ -1,13 +1,13 @@
 :root {
-  --ink: #e9e2d2;
-  --muted: #a9a99c;
-  --soil: #111812;
-  --gold: #d8a85d;
+  --ink: #e8e8f5;
+  --muted: #b8b8c9;
+  --soil: #0b0b12;
+  --gold: #c8c8f0;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: radial-gradient(circle at 50% 0%, #273a29, var(--soil) 58%); color: var(--ink); font-family: Georgia, serif; line-height: 1.6; }
+body { margin: 0; background: radial-gradient(circle at 50% 20%, #1a1a2a, var(--soil) 60%); color: var(--ink); font-family: Georgia, serif; line-height: 1.6; }
 .tree-page { width: min(1180px, calc(100% - 40px)); margin: auto; padding: 28px 0 58px; }
 a { color: var(--gold); text-decoration: none; }
 a:hover, a:focus-visible { text-decoration: underline; }
@@ -18,11 +18,11 @@ h1 { margin: 0 0 16px; font-size: clamp(2.8rem, 7vw, 5.8rem); font-weight: norma
 .intro { max-width: 600px; margin: 0 auto; color: var(--muted); font-size: 1.2rem; }
 .branches { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 30px 0 64px; }
 .trunk { position: absolute; top: 0; bottom: 0; left: 50%; width: 5px; transform: translateX(-50%); border-radius: 5px; background: linear-gradient(var(--gold), #607e55); }
-.branch { position: relative; min-height: 142px; padding: 19px; border: 1px solid rgba(216, 168, 93, .5); background: rgba(20, 32, 24, .8); color: var(--ink); transition: transform .25s ease, background .25s ease; }
+.branch { position: relative; min-height: 142px; padding: 19px; border: 1px solid rgba(200, 200, 255, .25); border-radius: 14px; background: rgba(255, 255, 255, .06); backdrop-filter: blur(14px); color: #f0f0ff; box-shadow: 0 0 35px rgba(150, 150, 255, .3); transition: transform .25s ease, background .25s ease, box-shadow .25s ease; }
 .branch::after { content: ""; position: absolute; top: 50%; width: 18px; border-top: 2px solid var(--gold); }
 .branch:nth-of-type(odd)::after { right: -19px; }
 .branch:nth-of-type(even)::after { left: -19px; }
-.branch:hover, .branch:focus-visible { background: rgba(216, 168, 93, .16); outline: none; transform: translateY(-4px); text-decoration: none; }
+.branch:hover, .branch:focus-visible { background: rgba(255, 255, 255, .12); outline: none; transform: translateY(-4px); box-shadow: 0 0 45px rgba(180, 180, 255, .4); text-decoration: none; }
 .branch strong { display: block; margin: 14px 0 4px; font-size: 1.18rem; font-weight: normal; }
 .branch small { display: block; color: var(--muted); line-height: 1.4; }
 .branch-welcome { max-width: 760px; margin: 0 auto 42px; padding: 28px; border: 1px solid rgba(216, 168, 93, .42); background: rgba(20, 32, 24, .68); }
