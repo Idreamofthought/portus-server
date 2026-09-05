@@ -32,10 +32,11 @@
   <!-- Time Remaining Script -->
   <script>
     async function loadTime() {
-      const res = await fetch("/api/user/time");
-      const data = await res.json();
+        const res = await fetch("/api/access");
+        if (!res.ok) throw new Error("Could not load remaining time");
+        const data = await res.json();
 
-      let seconds = data.remaining_seconds;
+        let seconds = Number(data.remainingSeconds || 0);
 
       function update() {
         if (seconds <= 0) {
@@ -57,7 +58,10 @@
       setInterval(update, 1000);
     }
 
-    loadTime();
+    loadTime().catch(() => {
+      document.getElementById("time-remaining").innerText =
+        "Your remaining time is currently unavailable.";
+    });
   </script>
 
 </body>
