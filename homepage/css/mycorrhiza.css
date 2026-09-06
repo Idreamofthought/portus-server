@@ -1,0 +1,113 @@
+.root-field {
+  --root-color: #788d6c;
+  --root-faint: rgba(70, 84, 71, 0.2);
+  position: relative;
+  grid-column: 1 / -1;
+  min-height: 520px;
+  margin-top: 28px;
+  padding: 34px clamp(18px, 5vw, 72px) 42px;
+  overflow: hidden;
+  border: 1px solid var(--root-faint);
+  background: rgba(238, 233, 220, 0.58);
+  isolation: isolate;
+}
+
+.root-field::before,
+.root-field::after {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid var(--root-faint);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.root-field::before { inset: 12% 20%; animation: nest-breathe 9s ease-in-out infinite; }
+.root-field::after { inset: 25% 34%; opacity: 0.5; animation: nest-breathe 12s ease-in-out -3s infinite; }
+
+.root-field[data-season="spring"] { --root-color: #7d9a62; --root-faint: rgba(74, 119, 70, 0.25); }
+.root-field[data-season="summer"] { --root-color: #b28b43; --root-faint: rgba(162, 119, 38, 0.27); }
+.root-field[data-season="autumn"] { --root-color: #a86645; --root-faint: rgba(166, 91, 49, 0.25); }
+.root-field[data-season="winter"] { --root-color: #718b96; --root-faint: rgba(74, 103, 113, 0.25); }
+
+.root-field-heading { position: relative; z-index: 2; max-width: 300px; }
+.root-field-heading .eyebrow { margin-bottom: 8px; color: var(--root-color); }
+.root-field-heading p:last-child { margin: 0; color: var(--moss); font-style: italic; }
+
+.root-nodes { position: absolute; inset: 0; }
+.root-node {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  width: 128px;
+  min-height: 74px;
+  place-content: center;
+  padding: 10px;
+  color: var(--moss-deep);
+  border: 1px solid color-mix(in srgb, var(--node-color) 65%, transparent);
+  border-radius: 50%;
+  background: rgba(247, 243, 233, 0.88);
+  text-align: center;
+  text-decoration: none;
+  transform: translate(-50%, -50%);
+  transition: color 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+
+.root-node::before {
+  position: absolute;
+  inset: -8px;
+  border: 1px solid color-mix(in srgb, var(--node-color) 38%, transparent);
+  border-radius: inherit;
+  content: "";
+  opacity: 0.65;
+  animation: nest-breathe 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.root-node[data-season="spring"] { --node-color: #6f925e; }
+.root-node[data-season="summer"] { --node-color: #b28b43; }
+.root-node[data-season="autumn"] { --node-color: #aa6949; }
+.root-node[data-season="winter"] { --node-color: #718b96; }
+.root-node:hover, .root-node:focus-visible, .root-node.is-active { color: #5d431f; border-color: #c39550; background: #fff8e7; box-shadow: 0 0 0 5px rgba(195, 149, 80, 0.14), 0 0 24px rgba(195, 149, 80, 0.48); outline: none; }
+.root-node-name { font-size: 1.04rem; font-style: italic; }
+.root-node small { margin-top: 2px; color: var(--moss); font-family: "Trebuchet MS", sans-serif; font-size: 0.55rem; letter-spacing: 0.08em; line-height: 1.2; text-transform: uppercase; }
+
+.root-node-origin { left: 50%; top: 59%; }
+.root-node-writing { left: 22%; top: 35%; }
+.root-node-memory { left: 25%; top: 76%; }
+.root-node-poetry { left: 47%; top: 22%; }
+.root-node-prose { left: 73%; top: 31%; }
+.root-node-nature { left: 77%; top: 72%; }
+.root-node-history { left: 43%; top: 86%; }
+.root-node-philosophy { left: 61%; top: 87%; }
+
+.root-lines { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.root-line { fill: none; stroke: var(--root-color); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 6 9; filter: drop-shadow(0 0 2px color-mix(in srgb, var(--root-color) 42%, transparent)); animation: root-grow 3.2s cubic-bezier(0.22, 0.61, 0.36, 1) both, root-breathe 8s ease-in-out 3.2s infinite; }
+.root-line.is-active { stroke: #c39550; stroke-width: 2.2; filter: drop-shadow(0 0 5px rgba(195, 149, 80, 0.85)); }
+
+.root-field.is-entering .root-node { animation: atmospheric-rise 900ms ease both; }
+.root-field.is-entering .root-node:nth-child(2n) { animation-delay: 120ms; }
+.root-field.is-entering .root-node:nth-child(3n) { animation-delay: 240ms; }
+
+@keyframes root-grow { from { stroke-dashoffset: 560; opacity: 0; } to { stroke-dashoffset: 0; opacity: 0.72; } }
+@keyframes root-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
+@keyframes nest-breathe { 0%, 100% { transform: scale(0.97); opacity: 0.42; } 50% { transform: scale(1.03); opacity: 0.8; } }
+@keyframes atmospheric-rise { from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .root-field::before, .root-field::after, .root-node::before, .root-line, .root-field.is-entering .root-node { animation: none; }
+  .root-line { opacity: 0.72; }
+}
+
+@media (max-width: 700px) {
+  .root-field { min-height: 640px; margin-right: -24px; margin-left: -24px; padding-right: 18px; padding-left: 18px; }
+  .root-field-heading { max-width: 240px; }
+  .root-node { width: 108px; min-height: 66px; }
+  .root-node-writing { left: 19%; top: 38%; }
+  .root-node-memory { left: 21%; top: 76%; }
+  .root-node-poetry { left: 48%; top: 26%; }
+  .root-node-prose { left: 78%; top: 38%; }
+  .root-node-nature { left: 77%; top: 72%; }
+  .root-node-history { left: 39%; top: 88%; }
+  .root-node-philosophy { left: 65%; top: 89%; }
+}
