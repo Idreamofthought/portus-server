@@ -1,3 +1,14 @@
 import { Resend } from "resend";
 
-export const resend = new Resend(process.env.RESEND_API_KEY);
+const apiKey = process.env.RESEND_API_KEY;
+
+const unavailableResend = {
+	emails: {
+		async send() {
+			console.warn("Email delivery is disabled: RESEND_API_KEY is not configured.");
+			return { data: null, error: null };
+		}
+	}
+};
+
+export const resend = apiKey ? new Resend(apiKey) : unavailableResend;

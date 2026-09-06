@@ -5,6 +5,7 @@
 
 import { initGame, startGameLoop, placeBuilding } from "./game.js";
 import { COLS, ROWS, TS } from "./map.js";
+import { BLD_BY_ID } from "./buildings.js";
 
 import { initResources, updateResources } from "./resources.js";
 import { initResearch, updateResearch } from "./research.js";
@@ -90,9 +91,33 @@ function drawTile(x, y, terrain) {
     ctx.fillRect(x, y, TS, TS);
 }
 
+const BUILDING_COLOURS = {
+    Housing: "#d4875d",
+    Production: "#d6a64e",
+    Mining: "#a982c1",
+    Infrastructure: "#6ea7b8",
+    Services: "#c76d83",
+    Knowledge: "#7f9f64",
+    Trade: "#c28d52",
+    Military: "#b85d53",
+    Storage: "#8c9b67"
+};
+
 function drawBuilding(x, y, building) {
-    ctx.fillStyle = "#d9c27a";
-    ctx.fillRect(x + 4, y + 4, TS - 8, TS - 8);
+    const def = BLD_BY_ID[building.id];
+    const colour = BUILDING_COLOURS[def?.cat] || "#d9c27a";
+    const size = TS - 6;
+
+    ctx.fillStyle = "rgba(10, 18, 22, 0.8)";
+    ctx.fillRect(x + 2, y + 2, size, size);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x + 4, y + 4, size - 4, size - 4);
+    ctx.font = `${Math.max(12, TS - 7)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(def?.ic || "?", x + TS / 2, y + TS / 2 + 1);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
 }
 
 function renderMap() {
@@ -136,7 +161,8 @@ function renderMinimap() {
             minimapCtx.fillRect(x * TS * scaleX, y * TS * scaleY, TS * scaleX + 0.5, TS * scaleY + 0.5);
 
             if (tile.building) {
-                minimapCtx.fillStyle = "#f1d47b";
+                const def = BLD_BY_ID[tile.building.id];
+                minimapCtx.fillStyle = BUILDING_COLOURS[def?.cat] || "#f1d47b";
                 minimapCtx.fillRect(x * TS * scaleX, y * TS * scaleY, Math.max(2, TS * scaleX), Math.max(2, TS * scaleY));
             }
         }
