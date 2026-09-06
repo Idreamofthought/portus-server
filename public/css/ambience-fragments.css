@@ -1,0 +1,174 @@
+/* ============================================================
+   FRAGMENTS — micro-prose section
+   Rebuilt to share the writing section's palette, type, and
+   texture (see ambience-writing.css) instead of its own theme.
+   ============================================================ */
+
+:root {
+  --ink: #e9e2d2;
+  --muted: #a9a99c;
+  --soil: #111812;
+  --gold: #d8a85d;
+  --panel: rgba(16, 26, 18, 0.8);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 40px 20px;
+  background: radial-gradient(circle at 50% 0%, #273a29, var(--soil) 55%);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.7;
+}
+
+.container {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+}
+
+/* ---------- Header ---------- */
+
+.title {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font-size: clamp(2.2rem, 6vw, 3.2rem);
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.subtitle {
+  max-width: 680px;
+  margin: 0 auto 42px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ---------- Fragment grid / cards ---------- */
+
+.fragment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.fragment-card {
+  display: block;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px solid rgba(216, 168, 93, 0.35);
+  border-radius: 3px;
+  background: rgba(16, 26, 18, 0.72);
+  backdrop-filter: blur(4px);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.fragment-card:hover,
+.fragment-card:focus-visible {
+  background: rgba(216, 168, 93, 0.1);
+  box-shadow: 0 0 30px rgba(216, 168, 93, 0.18);
+  outline: none;
+  transform: translateY(-4px);
+}
+
+.fragment-card:focus-visible {
+  border-color: rgba(216, 168, 93, 0.7);
+}
+
+.fragment-card h2 {
+  margin: 0;
+  color: var(--gold);
+  font-size: 1.35rem;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+
+.fragment-card p {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ---------- Single fragment reading view ---------- */
+
+.content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 48px);
+  border-top: 2px solid var(--gold);
+  background: rgba(16, 26, 18, 0.78);
+}
+
+.content p {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 1.12rem;
+  line-height: 1.9;
+}
+
+.content p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Links / buttons ---------- */
+
+.back-link {
+  display: block;
+  width: fit-content;
+  margin: 28px auto 0;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.exit-button {
+  display: block;
+  width: fit-content;
+  margin: 28px auto 0;
+  padding: 8px 16px;
+  border: 1px solid rgba(216, 168, 93, 0.45);
+  border-radius: 999px;
+  background: rgba(216, 168, 93, 0.08);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+}
+
+.exit-button:hover,
+.exit-button:focus-visible {
+  background: rgba(216, 168, 93, 0.18);
+  color: var(--gold);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 600px) {
+  body {
+    padding: 28px 16px;
+  }
+
+  .subtitle {
+    margin-bottom: 28px;
+    font-size: 1rem;
+  }
+
+  .fragment-grid {
+    grid-template-columns: 1fr;
+  }
+}
