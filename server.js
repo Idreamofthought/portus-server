@@ -134,6 +134,9 @@ app.get("/home", (_req, res) =>
 app.get("/about", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/about.html"))
 );
+app.get("/what-is", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/identity.html"))
+);
 app.get("/contact", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/contact.html"))
 );
