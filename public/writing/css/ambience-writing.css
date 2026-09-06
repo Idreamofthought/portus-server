@@ -1,16 +1,16 @@
 :root {
-  --ink: #e9e2d2;
-  --muted: #a9a99c;
-  --soil: #111812;
-  --gold: #d8a85d;
-  --panel: rgba(16, 26, 18, 0.8);
+  --ink: #20231f;
+  --muted: #4e574e;
+  --soil: #eee9dc;
+  --gold: #a65337;
+  --panel: rgba(247, 243, 233, 0.78);
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
-  background: radial-gradient(circle at 50% 0%, #273a29, var(--soil) 55%);
+  background: linear-gradient(138deg, #f7f3e9 0%, #e9e2d2 58%, #d8d2c0 100%);
   color: var(--ink);
   font-family: Georgia, "Times New Roman", serif;
   line-height: 1.7;
@@ -24,7 +24,7 @@ a { color: inherit; }
   padding: 28px 0 60px;
 }
 
-.home-link, .back, .lulu { color: var(--gold); text-decoration: none; }
+.home-link, .back, .lulu { color: var(--moss, #465447); text-decoration: none; }
 .home-link {
   display: inline-block;
   font-size: .9rem;
@@ -40,7 +40,7 @@ a { color: inherit; }
 
 .eyebrow, .leaf-kicker { color: var(--gold); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; }
 .hero h1 { margin: 0 0 16px; font-size: clamp(2.7rem, 7vw, 5.7rem); font-weight: normal; line-height: 1; }
-.page-title, .container h1 { color: var(--gold); }
+.page-title, .container h1 { color: #25362d; }
 .lead {
   color: var(--muted);
   font-size: 1.2rem;
@@ -57,8 +57,8 @@ a { color: inherit; }
 .poem-music { margin: 16px auto 20px; max-width: 420px; }
 .poem-music audio { width: 100%; filter: saturate(0.95) brightness(1.08); }
 .poem-controls { display: flex; justify-content: center; margin-top: 8px; }
-.poem-mute-toggle { appearance: none; border: 1px solid rgba(216,168,93,.55); background: rgba(216,168,93,.08); color: var(--ink); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.poem-mute-toggle:hover, .poem-mute-toggle:focus-visible { background: rgba(216,168,93,.18); outline: none; }
+.poem-mute-toggle { appearance: none; border: 1px solid rgba(166,83,55,.55); background: rgba(166,83,55,.08); color: var(--ink); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.poem-mute-toggle:hover, .poem-mute-toggle:focus-visible { background: rgba(166,83,55,.18); outline: none; }
 .piece-list {
   list-style: none;
   padding: 0;
@@ -89,16 +89,16 @@ a { color: inherit; }
 
 .tree { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 30px 0 70px; }
 .trunk { position: absolute; width: 5px; background: linear-gradient(var(--gold), #607e55); top: 0; bottom: 0; left: 50%; transform: translateX(-50%); border-radius: 5px; }
-.branch { position: relative; min-height: 148px; padding: 20px; border: 1px solid color-mix(in srgb, var(--branch) 60%, transparent); background: color-mix(in srgb, var(--branch) 10%, #142018); color: var(--ink); text-decoration: none; transition: transform .25s ease, background .25s ease; }
+.branch { position: relative; min-height: 148px; padding: 20px; border: 1px solid color-mix(in srgb, var(--branch) 60%, transparent); background: color-mix(in srgb, var(--branch) 10%, #f7f3e9); color: var(--ink); text-decoration: none; transition: transform .25s ease, background .25s ease; }
 .branch::after { content: ""; position: absolute; top: 50%; width: 18px; border-top: 2px solid var(--branch); }
 .branch:nth-of-type(odd)::after { right: -19px; }
 .branch:nth-of-type(even)::after { left: -19px; }
-.branch:hover, .branch:focus-visible { background: color-mix(in srgb, var(--branch) 22%, #142018); transform: translateY(-4px); outline: none; }
+.branch:hover, .branch:focus-visible { background: color-mix(in srgb, var(--branch) 22%, #f7f3e9); transform: translateY(-4px); outline: none; }
 .branch-mark { display: block; color: var(--branch); font-size: .75rem; letter-spacing: .12em; }
 .branch strong { display: block; margin: 16px 0 4px; font-size: 1.2rem; font-weight: normal; }
 .branch small { display: block; color: var(--muted); line-height: 1.4; }
 .leaves { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-.leaf-set { scroll-margin-top: 24px; padding: 28px; border-top: 2px solid var(--gold); background: rgba(16, 26, 18, .78); }
+.leaf-set { scroll-margin-top: 24px; padding: 28px; border-top: 2px solid var(--gold); background: var(--panel); }
 .leaf-set h2 { margin: 0 0 18px; font-size: 1.7rem; font-weight: normal; }
 .leaf-grid { display: flex; flex-wrap: wrap; gap: 9px; }
 .leaf-grid a, .leaf-button { display: inline-block; padding: 8px 12px; border: 1px solid rgba(216,168,93,.45); color: var(--ink); text-decoration: none; font-size: .94rem; }

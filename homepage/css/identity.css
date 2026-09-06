@@ -110,6 +110,11 @@ h1 em { color: var(--rust); font-size: 0.82em; }
 .door-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px 34px; }
 .door-links a { color: var(--paper-light); font-family: "Trebuchet MS", sans-serif; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .door-links a:hover { color: #f0ce8d; }
+.home-hero { min-height: min(650px, 76vh); }
+.home-doors { justify-content: flex-start; gap: 18px 30px; }
+.home-doors a { color: var(--moss-deep); border-bottom: 1px solid var(--rust); padding-bottom: 8px; }
+.home-doors a span { margin-left: 8px; color: var(--rust); }
+.home-doors a:hover { color: var(--rust); }
 
 footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px clamp(24px, 6vw, 92px); color: var(--moss); font-size: 0.85rem; }
 footer a { color: var(--moss-deep); text-decoration: none; }
