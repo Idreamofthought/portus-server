@@ -1108,7 +1108,6 @@ async function api(path, opts={}){
 function showAuthBox(msg){
   document.getElementById('authBox').style.display = 'block';
   document.getElementById('payBox').style.display = 'none';
-  document.getElementById('forgotBox').style.display = 'none';
   document.getElementById('authMsg').textContent = msg || '';
 }
 function showPayBox(){
@@ -1124,6 +1123,7 @@ function showPayBox(){
 }
 
 async function refreshFromServer(){
+  selectBuild(null);
   try{
     const me = await api('/api/me');
     currentUser = me;
@@ -1216,7 +1216,18 @@ document.getElementById('resendBtn').onclick = async ()=>{
 document.getElementById('forgotBtn').onclick = ()=>{ location.href='/reset-request.html'; };
 
 refreshFromServer();
-const paidParam = new URLSearchParams(window.location.search).get('paid');
+const paymentParams = new URLSearchParams(window.location.search);
+const paidParam = paymentParams.get('paid');
+if(paymentParams.get('provider') === 'paypal' && paymentParams.get('status') === 'return' && paymentParams.get('token')){
+  api('/api/checkout/paypal/capture', {
+    method:'POST',
+    body: JSON.stringify({orderId: paymentParams.get('token')})
+  }).then(()=>{
+    history.replaceState({}, '', '/game');
+    refreshFromServer();
+    showToast('PayPal payment confirmed — your time has been added.');
+  }).catch(e=> showToast(e.message));
+}
 if(paidParam === 'stripe' || paidParam === 'paypal') showToast('Payment received — welcome back!');
 else if(paidParam === 'error') showToast('Payment could not be confirmed — please try again');
 
