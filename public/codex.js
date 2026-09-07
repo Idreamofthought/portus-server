@@ -113,10 +113,45 @@ export const CODEX_ENTRIES = {
         category: "Favour"
     },
 
+    time_keeper: {
+        id: "time_keeper",
+        title: "Time — The Keeper of Continuity",
+        text: "Time is the quiet force. It does not punish; it withdraws. When Time’s favour is high, the world feels stable, seasons behave, and disasters remain rare. When Time thins, reality frays — days shorten, nights deepen, and the Twilight approaches. Time speaks through thinning forests, weakening crops, fading stone veins, and the hush before storms. Time does not shout. It warns.",
+        category: "Forces"
+    },
+
+    chaos_pulse: {
+        id: "chaos_pulse",
+        title: "Chaos — The Wild Pulse Beneath the World",
+        text: "Chaos is not evil. Chaos is pressure, instability, the unclaimed wildness of creation. When Chaos is calm, the land is generous. When Chaos rises, disasters intensify: wildfires leap, floods surge, plagues spread, and storms break their boundaries. Chaos is the force that tests Portus. It asks: Can you endure?",
+        category: "Forces"
+    },
+
+    destiny_path: {
+        id: "destiny_path",
+        title: "Destiny — The Judgement of the City’s Path",
+        text: "Destiny is the force that watches human choices. It observes how you build, how you harvest, how you treat the land, and how you respond to crisis. When Destiny approves, the city thrives. When Destiny falters, judgement falls — not as punishment, but as correction. Destiny is the mirror.",
+        category: "Forces"
+    },
+
+    portus_origin: {
+        id: "portus_origin",
+        title: "Portus — The City Between Forces",
+        text: "Portus is ancient. Older than its walls, older than its people. It was founded on a convergence point where Time, Chaos, and Destiny intersect more strongly than anywhere else. This gives Portus fertile land, rich stone veins, abundant forests, deep waters, unpredictable seasons, and volatile storms. Portus is a city of opportunity and risk. It is a city that remembers.",
+        category: "Lore"
+    },
+
+    world_relationships: {
+        id: "world_relationships",
+        title: "The World — Land, Sea, Sky",
+        text: "The world around Portus is alive with subtle metaphysics: forests breathe Time, seas pulse with Chaos, mountains echo Destiny, fields reflect balance, livestock sense instability, and weather is the voice of the Three. Every resource is a relationship, not a number.",
+        category: "Lore"
+    },
+
     twilight_mode: {
         id: "twilight_mode",
-        title: "Twilight Mode",
-        text: "A darkened state where Time thins, Chaos rises, and Destiny falters.",
+        title: "Twilight — When the Three Fall Out of Balance",
+        text: "Twilight is not a disaster. It is a state. Twilight begins when Time thins, Chaos rises, and Destiny falters. In Twilight, colours fade, roots glow faintly, storms whisper, the land feels older, and disasters become symbols, not events. Twilight is the world saying: You are close to the edge. If Twilight deepens, the city enters Nightfall, a permanent collapse state.",
         category: "Favour"
     }
 };
@@ -191,6 +226,11 @@ export function codexTick(state) {
     unlockCodex(state, "time_favour");
     unlockCodex(state, "chaos_tolerance");
     unlockCodex(state, "destiny_judgement");
+    unlockCodex(state, "time_keeper");
+    unlockCodex(state, "chaos_pulse");
+    unlockCodex(state, "destiny_path");
+    unlockCodex(state, "portus_origin");
+    unlockCodex(state, "world_relationships");
 
     if (state.favour.twilightMode) {
         unlockCodex(state, "twilight_mode");
