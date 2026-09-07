@@ -14,7 +14,19 @@ export function initResources() {
         wood: 20,
         stone: 10,
         food: 15,
-        gold: 0
+        gold: 0,
+        clay: 0,
+        pottery: 0,
+        tools: 0,
+        copper: 0,
+        fish: 0,
+        deer: 0,
+        wheat: 0,
+        flour: 0,
+        bread: 0,
+        olives: 0,
+        oliveOil: 0,
+        scrolls: 0
     };
 }
 
@@ -31,7 +43,7 @@ export function getResource(state, name) {
    ============================================================ */
 
 export function addResource(state, name, amount) {
-    if (!state.resources[name] && state.resources[name] !== 0) return;
+    if (!(name in state.resources)) state.resources[name] = 0;
     state.resources[name] += amount;
 }
 
@@ -77,6 +89,15 @@ export function updateResources(state) {
 
             const def = BLD_BY_ID[tile.building.id];
             if (!def) continue;
+
+            if (def.consume) {
+                const canProduce = Object.entries(def.consume)
+                    .every(([name, amount]) => getResource(state, name) >= amount);
+                if (!canProduce) continue;
+                for (const [name, amount] of Object.entries(def.consume)) {
+                    state.resources[name] -= amount;
+                }
+            }
 
             // Building production
             if (def.produce) {

@@ -20,8 +20,8 @@ export async function createPayPalOrder({ userId, productId, siteUrl }) {
     intent: "CAPTURE",
     purchase_units: [{ amount: { currency_code: product.currency, value: product.amount } }],
     application_context: {
-      return_url: `${siteUrl}/purchase.html?provider=paypal&status=return`,
-      cancel_url: `${siteUrl}/purchase.html?provider=paypal&status=cancelled`
+      return_url: `${siteUrl}/game?provider=paypal&status=return`,
+      cancel_url: `${siteUrl}/game?provider=paypal&status=cancelled`
     }
   });
   const result = await paypalClient.execute(request);

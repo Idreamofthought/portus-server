@@ -217,10 +217,10 @@ export function renderUI(state) {
    ============================================================ */
 
 function renderResourcePanel(state) {
-    if (!state.ui.panels.resources) return;
-
     const box = document.getElementById("panel-resources-box");
     if (!box) return;
+    box.hidden = !state.ui.panels.resources;
+    if (!state.ui.panels.resources) return;
 
     const r = state.resources;
 
@@ -237,10 +237,10 @@ function renderResourcePanel(state) {
    ============================================================ */
 
 function renderResearchPanel(state) {
-    if (!state.ui.panels.research) return;
-
     const box = document.getElementById("panel-research-box");
     if (!box) return;
+    box.hidden = !state.ui.panels.research;
+    if (!state.ui.panels.research) return;
 
     const unlocked = state.research.unlocked;
 
@@ -258,10 +258,10 @@ function renderResearchPanel(state) {
    ============================================================ */
 
 function renderCodexPanel(state) {
-    if (!state.ui.panels.codex) return;
-
     const box = document.getElementById("panel-codex-box");
     if (!box) return;
+    box.hidden = !state.ui.panels.codex;
+    if (!state.ui.panels.codex) return;
 
     box.innerHTML = "<h3>Codex</h3>";
 
@@ -282,10 +282,10 @@ function renderCodexPanel(state) {
    ============================================================ */
 
 function renderWarningsPanel(state) {
-    if (!state.ui.panels.warnings) return;
-
     const box = document.getElementById("panel-warnings-box");
     if (!box) return;
+    box.hidden = !state.ui.panels.warnings;
+    if (!state.ui.panels.warnings) return;
 
     box.innerHTML = "<h3>Warnings</h3>";
 
@@ -301,10 +301,10 @@ function renderWarningsPanel(state) {
    ============================================================ */
 
 function renderDisastersPanel(state) {
-    if (!state.ui.panels.disasters) return;
-
     const box = document.getElementById("panel-disasters-box");
     if (!box) return;
+    box.hidden = !state.ui.panels.disasters;
+    if (!state.ui.panels.disasters) return;
 
     box.innerHTML = "<h3>Disasters</h3>";
 
@@ -320,10 +320,10 @@ function renderDisastersPanel(state) {
    ============================================================ */
 
 function renderFavourPanel(state) {
-    if (!state.ui.panels.favour) return;
-
     const box = document.getElementById("panel-favour-box");
     if (!box) return;
+    box.hidden = !state.ui.panels.favour;
+    if (!state.ui.panels.favour) return;
 
     const f = state.favour;
 

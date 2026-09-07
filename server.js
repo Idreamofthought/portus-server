@@ -107,6 +107,10 @@ app.post(
 // STATIC FILES
 // ============================================================
 
+app.get(["/portus", "/portus/"], (_req, res) =>
+  res.sendFile(path.join(__dirname, "protected/game.html"))
+);
+
 app.use(express.static(path.join(__dirname, "homepage")));
 app.use("/homepage", express.static(path.join(__dirname, "homepage")));
 app.use(express.static(path.join(__dirname, "public")));
@@ -151,13 +155,8 @@ app.get("/portus-info", (_req, res) =>
 // PROTECTED GAME ROUTE
 // ============================================================
 
-app.get(
-  "/game",
-  authenticateRequest,
-  requireVerified,
-  requirePaid,
-  (_req, res) =>
-    res.sendFile(path.join(__dirname, "protected/game.html"))
+app.get("/game", (_req, res) =>
+  res.sendFile(path.join(__dirname, "protected/game.html"))
 );
 
 // ============================================================
