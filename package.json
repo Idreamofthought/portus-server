@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js"
+    "check": "node --check server.js",
+    "validate:structure": "node validate-structure.js"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
