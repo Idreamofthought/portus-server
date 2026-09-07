@@ -231,7 +231,7 @@
 
       <div id="authBox">
         <input id="authEmail" type="email" placeholder="Email" autocomplete="username">
-        <input id="authPassword" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+        <input id="authPassword" type="password" placeholder="Password (8+ characters)" autocomplete="current-password">
         <button id="loginBtn" class="actionbtn">Log in</button>
         <button id="signupBtn" class="actionbtn secondary">Create account</button>
         <button id="forgotBtn" class="actionbtn secondary" style="background:none;border:none;text-decoration:underline;">Forgot password?</button>
@@ -865,6 +865,7 @@ function renderRes(){
 /* ---------------- UI: BUILD PANEL ---------------- */
 function renderPanel(){
   const panel = document.getElementById('panel');
+  const preview = document.getElementById('buildPreview');
   panel.innerHTML='';
   CATS.forEach(cat=>{
     const label=document.createElement('div');
@@ -887,8 +888,7 @@ function renderPanel(){
     });
   });
 
-  // re-attach preview box at bottom
-  const preview = document.getElementById('buildPreview');
+  // re-attach preview box at bottom (captured before the panel was cleared)
   panel.appendChild(preview);
 }
 
@@ -1151,7 +1151,6 @@ document.getElementById('resendBtn').onclick = async ()=>{
 };
 document.getElementById('forgotBtn').onclick = ()=>{ location.href='/reset-request.html'; };
 
-refreshFromServer();
 const paymentParams = new URLSearchParams(window.location.search);
 const paidParam = paymentParams.get('paid');
 if(paymentParams.get('provider') === 'paypal' && paymentParams.get('status') === 'return' && paymentParams.get('token')){
@@ -1490,6 +1489,8 @@ renderPanel();
 render();
 renderRes();
 fitCanvas();
+
+refreshFromServer();
 
 /* tutorial overlay: show once on first load */
 (function(){
