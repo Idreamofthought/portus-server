@@ -107,17 +107,6 @@ app.post(
 // STATIC FILES
 // ============================================================
 
-app.get(
-  "/writing/poetry/i-dont-know-what-it-was-that-i-could-feel-the-damp-creeping-in-waves-p.html",
-  (_req, res) =>
-    res.sendFile(
-      path.join(
-        __dirname,
-        "public/writing/poetry/i-dont-know-what-it-was-that-i-could-feel-the-damp-creeping-in-waves-p.html"
-      )
-    )
-);
-
 app.get(["/portus", "/portus/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
@@ -131,10 +120,6 @@ app.use(express.static(path.join(__dirname, "public")));
 // ============================================================
 
 app.use("/portus", express.static(path.join(__dirname, "public")));
-
-app.get(["/portus", "/portus/"], (_req, res) => {
-  res.sendFile(path.join(__dirname, "public/index.html"));
-});
 
 // ============================================================
 // HOMEPAGE ROUTES
