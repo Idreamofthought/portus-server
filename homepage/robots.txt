@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login.html
+Disallow: /signup.html
+Disallow: /reset-password.html
+Disallow: /reset-request.html
+Disallow: /verify-email
+
+Sitemap: https://www.idreamofthought.org/sitemap.xml
