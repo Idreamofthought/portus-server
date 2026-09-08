@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="/nav.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A text adventure from I Dream of Thought.">
+  <title>Text Adventure — I Dream of Thought</title>
+  <link rel="stylesheet" href="/text-game/style.css">
+</head>
+<body>
+<nav class="idot-topnav" aria-label="Site navigation">
+  <a class="idot-brand" href="/">I Dream of Thought</a>
+  <a href="/#branches">Tree</a>
+  <a href="/writing/index.html">Writing</a>
+  <a href="/what-is">About</a>
+  <a href="/contact">Contact</a>
+  <a class="idot-play" href="/game">Play Portus</a>
+</nav>
+
+<main class="tg-wrap">
+  <header class="tg-header">
+    <h1 id="tg-title">Loading…</h1>
+    <button id="tg-restart" class="tg-restart" type="button">Start over</button>
+  </header>
+  <section class="tg-scene">
+    <p id="tg-text"></p>
+  </section>
+  <section id="tg-choices" class="tg-choices" aria-label="Choices"></section>
+</main>
+
+<script type="module" src="/text-game/engine.js"></script>
+</body>
+</html>
