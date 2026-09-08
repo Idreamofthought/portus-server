@@ -111,6 +111,12 @@ app.get(["/portus", "/portus/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
 
+// /tree used to be a separate homepage; its content is now merged into
+// the real homepage (homepage/index.html). Redirect old links/bookmarks.
+app.get(["/tree", "/tree/", "/tree/index.html"], (_req, res) =>
+  res.redirect(301, "/#branches")
+);
+
 app.use(express.static(path.join(__dirname, "homepage")));
 app.use("/homepage", express.static(path.join(__dirname, "homepage")));
 app.use(express.static(path.join(__dirname, "public")));
@@ -125,9 +131,6 @@ app.use("/portus", express.static(path.join(__dirname, "public")));
 // HOMEPAGE ROUTES
 // ============================================================
 
-app.get("/", (_req, res) =>
-  res.sendFile(path.join(__dirname, "homepage/tree/index.html"))
-);
 app.get("/home", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/index.html"))
 );
