@@ -157,6 +157,9 @@ app.get("/portus-info", (_req, res) =>
 app.get("/game", (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
+// /text-game needs no explicit route -- public/ is already mounted as
+// static at root, and Express serves public/text-game/index.html for
+// both /text-game and /text-game/ automatically.
 
 // ============================================================
 // API ROUTES
