@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest a low-risk enhancement or maintenance improvement for the repository.
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the result you want and why it matters.
+      placeholder: Explain the improvement you want to see.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Share examples, tradeoffs, or prior discussion that could help scope the work.
+      placeholder: Links, screenshots, and related issues are welcome.

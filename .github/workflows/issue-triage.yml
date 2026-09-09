@@ -1,0 +1,79 @@
+name: Issue triage
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - edited
+      - labeled
+      - unlabeled
+
+jobs:
+  sync-triage-label:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Maintain triage state
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('.github/housekeeping.json', 'utf8'));
+            const labels = context.payload.issue.labels.map((label) => label.name);
+            const pendingLabel = config.triage.pendingLabel;
+            const resolvedLabels = new Set(config.triage.resolvedLabels);
+            const pendingDefinition = config.labels.find((label) => label.name === pendingLabel);
+
+            if (pendingDefinition) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: pendingDefinition.name,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: pendingDefinition.name,
+                  color: pendingDefinition.color,
+                  description: pendingDefinition.description,
+                });
+                core.info(`Created missing label: ${pendingDefinition.name}`);
+              }
+            }
+
+            const hasResolvedLabel = labels.some((label) => resolvedLabels.has(label));
+            const hasPendingLabel = labels.includes(pendingLabel);
+
+            if (!hasResolvedLabel && !hasPendingLabel) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                labels: [pendingLabel],
+              });
+              core.info(`Added ${pendingLabel} to issue #${context.payload.issue.number}`);
+              return;
+            }
+
+            if (hasResolvedLabel && hasPendingLabel) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                name: pendingLabel,
+              });
+              core.info(`Removed ${pendingLabel} from issue #${context.payload.issue.number}`);
+              return;
+            }
+
+            core.info(`No triage label change needed for issue #${context.payload.issue.number}`);
