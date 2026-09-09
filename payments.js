@@ -42,7 +42,8 @@ export async function capturePayPalOrder({ userId, orderId }) {
   const capture = result.result;
   if (capture.status !== "COMPLETED") throw new Error("payment not completed");
   const capturedAmount = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
-  return creditPayment({ pending, eventId: capture.id, capturedAmount });
+  const capturedCurrency = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.currency_code;
+  return creditPayment({ pending, eventId: capture.id, capturedAmount, capturedCurrency });
 }
 
 export async function createStripeCheckout({ userId, productId, siteUrl }) {
@@ -84,13 +85,17 @@ export async function handleStripeWebhook(rawBody, signature) {
       consumed: 0
     },
     eventId: event.id,
-    capturedAmount: Number(session.amount_total / 100).toFixed(2)
+    capturedAmount: Number(session.amount_total / 100).toFixed(2),
+    capturedCurrency: session.currency
   });
 }
 
-export function creditPayment({ pending, eventId, capturedAmount }) {
+export function creditPayment({ pending, eventId, capturedAmount, capturedCurrency }) {
   const expected = Number(pending.amount).toFixed(2);
   if (Number(capturedAmount).toFixed(2) !== expected) throw new Error("payment amount mismatch");
+  const expectedCurrency = String(pending.currency || "").trim().toUpperCase();
+  const actualCurrency = String(capturedCurrency || "").trim().toUpperCase();
+  if (!expectedCurrency || actualCurrency !== expectedCurrency) throw new Error("payment currency mismatch");
   const existing = db.prepare(`SELECT id FROM processed_payment_events WHERE id=?`).get(eventId);
   if (existing) return { credited: false, duplicate: true };
   let credited = false;
