@@ -41,14 +41,15 @@ export function revokeAllSessions(userId) {
 }
 
 export function authenticateRequest(req, res, next) {
+  const wantsHTML = String(req.headers.accept || "").includes("text/html");
   const token = req.cookies.auth;
-  if (!token) return res.status(401).json({ error: "not logged in" });
+  if (!token) return wantsHTML ? res.redirect("/login.html") : res.status(401).json({ error: "not logged in" });
   let payload;
-  try { payload = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).json({ error: "invalid token" }); }
+  try { payload = jwt.verify(token, process.env.JWT_SECRET); } catch { return wantsHTML ? res.redirect("/login.html") : res.status(401).json({ error: "invalid token" }); }
   const session = db.prepare(`SELECT id,expires_at FROM sessions WHERE id=? AND user_id=?`).get(payload.sid, payload.uid);
   if (!session || session.expires_at < Date.now()) {
     res.clearCookie("auth");
-    return res.status(401).json({ error: "session expired" });
+    return wantsHTML ? res.redirect("/login.html") : res.status(401).json({ error: "session expired" });
   }
   req.user = { uid: payload.uid };
   req.sessionId = payload.sid;
