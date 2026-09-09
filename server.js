@@ -6,7 +6,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
-import freeAccess from './data/free_access.json' assert { type: 'json' };
+import freeAccess from "./data/free_access.json" with { type: "json" };
 
 
 import { db, cleanupExpired } from "./database2.js";
@@ -46,7 +46,6 @@ import {
   verifyPayPalWebhookSignature,
   creditPayment
 } from "./payments.js";
-const freeAccess = require('./data/free_access.json');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
