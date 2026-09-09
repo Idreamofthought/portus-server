@@ -100,7 +100,6 @@ app.use((req, res, next) => {
 
 app.use(cookieParser());
 app.use(cors({ origin: SITE_URL, credentials: true }));
-app.use(express.json({ limit: "600kb" }));
 
 // ============================================================
 // STRIPE WEBHOOK
@@ -108,6 +107,7 @@ app.use(express.json({ limit: "600kb" }));
 
 app.post(
   "/api/webhooks/stripe",
+  webhookLimiter,
   express.raw({ type: "application/json" }),
   async (req, res) => {
     try {
@@ -122,6 +122,8 @@ app.post(
     }
   }
 );
+
+app.use(express.json({ limit: "600kb" }));
 
 // ============================================================
 // STATIC FILES
@@ -474,7 +476,7 @@ app.post(
 );
 
 // Delete account
-app.post("/api/delete-account", authenticateRequest, requireCsrf, async (req, res) => {
+app.post("/api/delete-account", authenticateRequest, requireCsrf, generalApiLimiter, async (req, res) => {
   const userId = req.user.uid;
 
   db.prepare(`DELETE FROM users WHERE id=?`).run(userId);
@@ -508,7 +510,7 @@ app.get("/api/access", authenticateRequest, (req, res) => {
 });
 
 // Heartbeat
-app.post("/api/access/heartbeat", authenticateRequest, requireCsrf, (req, res) => {
+app.post("/api/access/heartbeat", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
   if (hasFreeAccess(req.user.uid)) {
     return res.json({
       remainingSeconds: null,
@@ -559,7 +561,7 @@ app.post("/api/access/heartbeat", authenticateRequest, requireCsrf, (req, res) =
 });
 
 // Stop access
-app.post("/api/access/stop", authenticateRequest, requireCsrf, (req, res) => {
+app.post("/api/access/stop", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
   db.prepare(
     `UPDATE time_tracking SET last_active_at=NULL,updated_at=? WHERE user_id=?`
   ).run(Date.now(), req.user.uid);
@@ -568,7 +570,7 @@ app.post("/api/access/stop", authenticateRequest, requireCsrf, (req, res) => {
 });
 
 // Artifact and archaeological discovery
-app.get("/api/discoveries", authenticateRequest, (req, res) => {
+app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (req, res) => {
   const discoveries = db.prepare(
     `SELECT discovery_id, discovery_type, category, rarity, activity,
             fragment_index, fragment_count, discovered_at
@@ -582,7 +584,7 @@ app.get("/api/discoveries", authenticateRequest, (req, res) => {
   res.json({ discoveries, codexUnlocks });
 });
 
-app.post("/api/discoveries/roll", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
+app.post("/api/discoveries/roll", authenticateRequest, requireVerified, requirePaid, requireCsrf, generalApiLimiter, (req, res) => {
   const activity = req.body?.activity;
   const turnNumber = req.body?.turnNumber;
   const chance = ACTIVITY_DISCOVERY_CHANCES[activity];
@@ -757,8 +759,9 @@ app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
       capture?.supplementary_data?.related_ids?.order_id;
     const eventId = req.body?.id || capture?.id;
     const capturedAmount = capture?.amount?.value;
+    const capturedCurrency = capture?.amount?.currency_code;
 
-    if (!orderId || !eventId || !capturedAmount) {
+    if (!orderId || !eventId || !capturedAmount || !capturedCurrency) {
       return res.status(400).json({ error: "malformed event" });
     }
 
@@ -772,7 +775,7 @@ app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
       return res.json({ ok: true, unknownOrder: true });
     }
 
-    const result = creditPayment({ pending, eventId, capturedAmount });
+    const result = creditPayment({ pending, eventId, capturedAmount, capturedCurrency });
     return res.json({ ok: true, ...result });
   } catch (err) {
     console.error("paypal webhook error", err);
@@ -781,7 +784,7 @@ app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
 });
 
 // Save game state
-app.post("/api/save", authenticateRequest, requireCsrf, (req, res) => {
+app.post("/api/save", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
   const json = JSON.stringify(req.body ?? {});
   if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
