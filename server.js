@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import path from "path";
+import fs from "fs";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
@@ -72,6 +73,24 @@ function rollRarity() {
     if (roll < 0) return rarity.id;
   }
   return RARITY_WEIGHTS[0].id;
+}
+
+const CODEX_ENTRY_IDS = new Set([
+  ...ARTIFACTS.map((item) => item.codexEntry),
+  ...ARCHAEOLOGICAL_FINDS.map((item) => item.codexEntry)
+]);
+
+function readCodexEntry(entryId) {
+  if (!CODEX_ENTRY_IDS.has(entryId) || !/^[a-z0-9_/-]+$/.test(entryId)) return null;
+  const filePath = path.join(__dirname, "portus", "codex", `${entryId}.md`);
+  try {
+    const content = fs.readFileSync(filePath, "utf8");
+    const heading = content.match(/^#\s+(.+)$/m);
+    return { entryId, title: heading?.[1]?.trim() || entryId, content };
+  } catch (error) {
+    if (error.code !== "ENOENT") console.error("codex entry read failed", error);
+    return { entryId, title: entryId, content: null };
+  }
 }
 
 // ============================================================
@@ -581,7 +600,14 @@ app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (
      WHERE user_id=? ORDER BY unlocked_at DESC`
   ).all(req.user.uid);
 
-  res.json({ discoveries, codexUnlocks });
+  const codexEntries = codexUnlocks
+    .map((unlock) => {
+      const entry = readCodexEntry(unlock.entry_id);
+      return entry ? { ...entry, unlockedAt: unlock.unlocked_at, source: unlock.source } : null;
+    })
+    .filter(Boolean);
+
+  res.json({ discoveries, codexUnlocks, codexEntries });
 });
 
 app.post("/api/discoveries/roll", authenticateRequest, requireVerified, requirePaid, requireCsrf, generalApiLimiter, (req, res) => {

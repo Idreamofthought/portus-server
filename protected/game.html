@@ -143,6 +143,12 @@
   .panelHead .closeP{background:none; border:none; color:#fff; font-size:13px; cursor:pointer;}
   .panelBody{padding:8px 10px;}
   #researchList{padding:4px;}
+  #codexList{padding:4px;}
+  .codexEntry{padding:8px 6px 12px; border-bottom:1px solid #ece2cc;}
+  .codexEntry:last-child{border-bottom:none;}
+  .codexTitle{font-family:Georgia,serif; font-size:14px; color:var(--ink); margin-bottom:4px;}
+  .codexMeta{font-size:10px; color:#8a7a5c; margin-bottom:6px;}
+  .codexText{margin:0; white-space:pre-wrap; font:11px/1.45 Georgia,serif; color:#4d4438;}
   .tech{
     padding:7px 8px; border-bottom:1px solid #ece2cc; font-size:11px; color:var(--ink);
   }
@@ -286,6 +292,7 @@
 
       <div id="menuStack">
         <button class="menuBtn" data-panel="researchPanel">📜 Research</button>
+        <button class="menuBtn" data-panel="codexPanel">📖 Codex</button>
         <button class="menuBtn" data-panel="armyPanel">⚔️ Army</button>
         <button class="menuBtn" data-panel="goalsPanel">🎯 Goals</button>
         <button class="menuBtn" data-panel="taxPanel">💰 Taxes</button>
@@ -298,6 +305,14 @@
           <button class="closeP">✕</button>
         </div>
         <div id="researchList"></div>
+      </div>
+
+      <div id="codexPanel" class="sidepanel">
+        <div class="panelHead">
+          <span>Codex</span>
+          <button class="closeP">✕</button>
+        </div>
+        <div id="codexList" class="panelBody"></div>
       </div>
 
       <div id="armyPanel" class="sidepanel">
@@ -519,6 +534,7 @@ let boats = 0;
 let tickCount = 0;
 let coin = 20;       // trade currency, not subject to storage cap
 let research = 0;    // banked research points, spent on techs
+let codexEntries = [];
 let military = { soldiers:0, cap:0 };
 let droughtTicksLeft = 0;
 let captainName = '';
@@ -859,6 +875,7 @@ function renderRes(){
   document.getElementById('tickline').textContent =
     `Storage cap: general ${cap.general} · food ${cap.food}`;
   renderResearchPanel();
+  renderCodexPanel();
   updateArmyPanel();
   renderGoalsPanel();
   updateTaxPanel();
@@ -1022,6 +1039,39 @@ function renderResearchPanel(){
   });
 }
 
+function renderCodexPanel(){
+  const list = document.getElementById('codexList');
+  if(!list) return;
+  list.replaceChildren();
+  if(!codexEntries.length){
+    const empty = document.createElement('p');
+    empty.className = 'pnote';
+    empty.textContent = 'No Codex entries unlocked yet.';
+    list.appendChild(empty);
+    return;
+  }
+  codexEntries.forEach(entry=>{
+    const article = document.createElement('article');
+    article.className = 'codexEntry';
+    const title = document.createElement('h3');
+    title.className = 'codexTitle';
+    title.textContent = entry.title;
+    article.appendChild(title);
+    if(entry.content){
+      const text = document.createElement('pre');
+      text.className = 'codexText';
+      text.textContent = entry.content;
+      article.appendChild(text);
+    } else {
+      const unavailable = document.createElement('p');
+      unavailable.className = 'pnote';
+      unavailable.textContent = 'This entry has been discovered but its field notes are not available yet.';
+      article.appendChild(unavailable);
+    }
+    list.appendChild(article);
+  });
+}
+
 /* ---------------- PAYWALL / SESSION ---------------- */
 let accessExpiresAt = 0;
 let tickInterval = null;
@@ -1071,6 +1121,11 @@ async function refreshFromServer(){
     }
     showPayBox();
     const s = await api('/api/access');
+    if(s.canPlay){
+      const discoveries = await api('/api/discoveries');
+      codexEntries = discoveries.codexEntries || [];
+      renderCodexPanel();
+    }
     accessExpiresAt = s.accessExpiresAt || 0;
     if(s.canPlay){ await api('/api/access/heartbeat',{method:'POST'}); accessExpiresAt=Date.now()+(s.remainingSeconds*1000); startPlaying(); }
     else pausePlaying();
