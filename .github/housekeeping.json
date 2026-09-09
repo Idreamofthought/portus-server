@@ -1,0 +1,29 @@
+{
+  "labels": [
+    {
+      "name": "needs-triage",
+      "color": "FBCA04",
+      "description": "New issue awaiting initial maintainer triage"
+    },
+    {
+      "name": "stale",
+      "color": "EDEDED",
+      "description": "No recent activity; will close automatically if no reply arrives"
+    }
+  ],
+  "triage": {
+    "pendingLabel": "needs-triage",
+    "resolvedLabels": [
+      "accessibility",
+      "bug",
+      "documentation",
+      "duplicate",
+      "enhancement",
+      "good first issue",
+      "help wanted",
+      "invalid",
+      "question",
+      "wontfix"
+    ]
+  }
+}
