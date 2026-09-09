@@ -7,3 +7,4 @@ Canonical source material for the Lore books and Codex entries.
 - `quests/` contains progression chains.
 - `items/` contains artifact sets and item definitions.
 - `npc_dialogue/` contains reusable dialogue source.
+- `events/` contains discoverable encounters and event rules.

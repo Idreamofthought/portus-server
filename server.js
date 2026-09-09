@@ -6,8 +6,6 @@ import cors from "cors";
 import helmet from "helmet";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
-import freeAccess from "./data/free_access.json" with { type: "json" };
-
 
 import { db, cleanupExpired } from "./database2.js";
 import { resend } from "./resend.js";
@@ -29,6 +27,7 @@ import {
   requireCsrf,
   requireVerified,
   requirePaid,
+  hasFreeAccess,
   authLimiter,
   passwordResetLimiter,
   checkoutLimiter,
@@ -109,7 +108,7 @@ app.post(
 // STATIC FILES
 // ============================================================
 
-app.get(["/portus", "/portus/"], (_req, res) =>
+app.get(["/portus", "/portus/"], authenticateRequest, requireVerified, requirePaid, (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
 
@@ -156,7 +155,7 @@ app.get("/portus-info", (_req, res) =>
 // PROTECTED GAME ROUTE
 // ============================================================
 
-app.get("/game", (_req, res) =>
+app.get("/game", authenticateRequest, requireVerified, requirePaid, (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
 // /text-game needs no explicit route -- public/ is already mounted as
@@ -467,6 +466,15 @@ app.post("/api/delete-account", authenticateRequest, requireCsrf, async (req, re
 
 // Access time
 app.get("/api/access", authenticateRequest, (req, res) => {
+  if (hasFreeAccess(req.user.uid)) {
+    return res.json({
+      remainingSeconds: null,
+      canPlay: true,
+      freeAccess: true,
+      accessExpiresAt: null
+    });
+  }
+
   const row = db
     .prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`)
     .get(req.user.uid);
@@ -482,6 +490,15 @@ app.get("/api/access", authenticateRequest, (req, res) => {
 
 // Heartbeat
 app.post("/api/access/heartbeat", authenticateRequest, requireCsrf, (req, res) => {
+  if (hasFreeAccess(req.user.uid)) {
+    return res.json({
+      remainingSeconds: null,
+      canPlay: true,
+      freeAccess: true,
+      accessExpiresAt: null
+    });
+  }
+
   const now = Date.now();
   let remaining;
 
