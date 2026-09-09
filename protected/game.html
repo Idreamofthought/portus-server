@@ -228,6 +228,52 @@
     display:inline-block; margin-top:6px; padding:6px 12px; border-radius:16px;
     border:1px solid var(--gold); background:#2b6777; color:#fff; font-size:12px; cursor:pointer;
   }
+
+  /* info bubbles: sequence of dismissible notices shown at game start */
+  #bubbleOverlay{
+    position:fixed; inset:0; z-index:999; background:rgba(10,8,6,0.85);
+    display:none; align-items:center; justify-content:center; padding:16px;
+    font-family:-apple-system,sans-serif;
+  }
+  #bubbleCard{
+    max-width:360px; width:100%; background:#fffaf0; border-radius:10px;
+    border:2px solid var(--gold); padding:18px 16px; box-shadow:0 6px 24px rgba(0,0,0,0.6);
+    font-size:13px; color:#3a3128;
+  }
+  #bubbleCard h2{margin:0 0 8px; font-size:17px; font-family:Georgia,serif;}
+  #bubbleCard p{margin:0 0 12px; line-height:1.4;}
+  #bubbleProgress{font-size:11px; color:#a89a80; margin:0 0 6px;}
+  .bubbleCheck{
+    display:flex; align-items:center; gap:6px; font-size:12px; color:#6b5f4a; margin-bottom:12px;
+  }
+  #bubbleNextBtn{
+    display:inline-block; padding:6px 14px; border-radius:16px;
+    border:1px solid var(--gold); background:#2b6777; color:#fff; font-size:12px; cursor:pointer;
+  }
+  #bubbleNextBtn:disabled{
+    opacity:0.5; cursor:not-allowed;
+  }
+
+  /* starting difficulty: choose how many buildings you begin with */
+  #levelOverlay{
+    position:fixed; inset:0; z-index:999; background:rgba(10,8,6,0.85);
+    display:none; align-items:center; justify-content:center; padding:16px;
+    font-family:-apple-system,sans-serif;
+  }
+  #levelCard{
+    max-width:380px; width:100%; background:#fffaf0; border-radius:10px;
+    border:2px solid var(--gold); padding:18px 16px; box-shadow:0 6px 24px rgba(0,0,0,0.6);
+    font-size:13px; color:#3a3128;
+  }
+  #levelCard h2{margin:0 0 8px; font-size:17px; font-family:Georgia,serif;}
+  #levelCard p{margin:0 0 12px; line-height:1.4;}
+  .levelOption{
+    display:block; width:100%; text-align:left; margin-bottom:8px; padding:8px 10px;
+    border-radius:8px; border:1px solid #d8cbb0; background:#f8f1df; color:#3a3128;
+    font-size:12px; cursor:pointer;
+  }
+  .levelOption b{display:block; font-size:13px; margin-bottom:2px; color:#2b6777;}
+  .levelOption:hover{border-color:var(--gold); background:#f2e8cc;}
 </style>
 </head>
 <body>
@@ -423,6 +469,30 @@
       <li>Survive disasters, grow your town, and complete a scenario.</li>
     </ol>
     <button id="tutorialCloseBtn">Got it — start building</button>
+  </div>
+</div>
+
+<!-- info bubbles: important notices shown one at a time before the tutorial -->
+<div id="bubbleOverlay">
+  <div id="bubbleCard">
+    <p id="bubbleProgress"></p>
+    <h2 id="bubbleTitle"></h2>
+    <p id="bubbleText"></p>
+    <label class="bubbleCheck">
+      <input type="checkbox" id="bubbleDontShow"> <span id="bubbleCheckLabel"></span>
+    </label>
+    <button id="bubbleNextBtn">Got it</button>
+  </div>
+</div>
+
+<!-- starting difficulty: choose how many buildings you begin with -->
+<div id="levelOverlay">
+  <div id="levelCard">
+    <h2>Choose your start</h2>
+    <p>Pick how much of a head start you want. This only affects what's already standing when you begin.</p>
+    <button class="levelOption" data-level="1"><b>Level 1 — Settled</b>House, Field and Woodcutter already built.</button>
+    <button class="levelOption" data-level="2"><b>Level 2 — Foothold</b>Just a House to shelter your first citizens.</button>
+    <button class="levelOption" data-level="3"><b>Level 3 — Castaway</b>Nothing but bare land. Build everything yourself.</button>
   </div>
 </div>
 
@@ -1553,11 +1623,120 @@ refreshFromServer();
 (function(){
   const overlay = document.getElementById('tutorialOverlay');
   const btn = document.getElementById('tutorialCloseBtn');
-  overlay.style.display = 'flex';
-  btn.onclick = ()=>{
-    overlay.style.display = 'none';
-    showToast('Tap a building, then tap the map to begin.');
+  const showTutorial = ()=>{
+    overlay.style.display = 'flex';
+    btn.onclick = ()=>{
+      overlay.style.display = 'none';
+      showToast('Tap a building, then tap the map to begin.');
+    };
   };
+
+  /* starting difficulty: seed a few buildings depending on the chosen level */
+  const STARTER_SETS = { 1:['house','fields','sawmill'], 2:['house'], 3:[] };
+  function seedStarterBuildings(level){
+    const starters = STARTER_SETS[level] || [];
+    if(!starters.length) return;
+    const cx = Math.floor(COLS/2), cy = Math.floor(ROWS/2);
+    const spots = [];
+    for(let r=0; r<8 && spots.length<starters.length*3; r++){
+      for(let dy=-r; dy<=r; dy++){
+        for(let dx=-r; dx<=r; dx++){
+          const x=cx+dx, y=cy+dy;
+          if(inBounds(x,y) && !grid[y][x].building && !spots.some(s=>s.x===x&&s.y===y)) spots.push({x,y});
+        }
+      }
+    }
+    starters.forEach(id=>{
+      const def = BLD_BY_ID[id];
+      const spotIdx = spots.findIndex(s=> !grid[s.y][s.x].building && def.valid(s.x,s.y));
+      if(spotIdx===-1) return;
+      const {x,y} = spots[spotIdx];
+      const b = {id, x, y};
+      if(def.isField) b.crop = 'wheat';
+      grid[y][x].building = b;
+      placedBuildings.push(b);
+    });
+    render(); renderRes();
+  }
+
+  const lOverlay = document.getElementById('levelOverlay');
+  const showLevelSelect = ()=>{
+    lOverlay.style.display = 'flex';
+    document.querySelectorAll('.levelOption').forEach(opt=>{
+      opt.onclick = ()=>{
+        seedStarterBuildings(Number(opt.dataset.level));
+        lOverlay.style.display = 'none';
+        showTutorial();
+      };
+    });
+  };
+
+  /* info bubbles: important notices, each dismissible independently */
+  const bubbles = [
+    {
+      id:'terms',
+      title:'Before you begin',
+      html:'By playing Portus you agree to the <a href="/terms.html" target="_blank" style="color:#2b6777;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:#2b6777;">Privacy Policy</a>.',
+      checkLabel:'I agree to the terms',
+      require:true
+    },
+    {
+      id:'sawmill-first',
+      title:'Getting started',
+      html:'Building a <b>Sawmill</b> is the essential first step, followed by a <b>Stone Quarry</b> — without them your production chain stalls and the game will block further progress.',
+      checkLabel:"I've read this — don't show again",
+      require:false
+    },
+    {
+      id:'gods-resources',
+      title:'A word of caution',
+      html:'The gods may grant you resources from time to time as favour — but don\'t count on it.',
+      checkLabel:"I've read this — don't show again",
+      require:false
+    }
+  ];
+
+  const bOverlay = document.getElementById('bubbleOverlay');
+  const bTitle = document.getElementById('bubbleTitle');
+  const bText = document.getElementById('bubbleText');
+  const bProgress = document.getElementById('bubbleProgress');
+  const bCheck = document.getElementById('bubbleDontShow');
+  const bCheckLabel = document.getElementById('bubbleCheckLabel');
+  const bNextBtn = document.getElementById('bubbleNextBtn');
+
+  const dismissedKey = id => `portus_bubble_${id}_dismissed`;
+  const pending = bubbles.filter(b => localStorage.getItem(dismissedKey(b.id)) !== 'true');
+
+  const runQueue = (index)=>{
+    if(index >= pending.length){
+      bOverlay.style.display = 'none';
+      showLevelSelect();
+      return;
+    }
+    const b = pending[index];
+    bTitle.textContent = b.title;
+    bText.innerHTML = b.html;
+    bCheckLabel.textContent = b.checkLabel;
+    bProgress.textContent = `${index + 1} of ${pending.length}`;
+    bCheck.checked = false;
+    bNextBtn.disabled = b.require;
+    bNextBtn.textContent = index === pending.length - 1 ? 'Got it — continue' : 'Next';
+
+    bCheck.onchange = ()=>{
+      if(b.require) bNextBtn.disabled = !bCheck.checked;
+    };
+    bNextBtn.onclick = ()=>{
+      if(bCheck.checked) localStorage.setItem(dismissedKey(b.id), 'true');
+      runQueue(index + 1);
+    };
+    bOverlay.style.display = 'flex';
+  };
+
+  if(pending.length){
+    runQueue(0);
+  } else {
+    showLevelSelect();
+  }
 })();
 </script>
 </body>

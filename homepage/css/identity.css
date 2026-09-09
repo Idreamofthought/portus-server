@@ -76,6 +76,22 @@ h1 em { color: var(--rust); font-size: 0.82em; }
 .scroll-cue { color: var(--rust); text-decoration: none; font-size: 1.2rem; }
 .scroll-cue span { margin-left: 10px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
 
+.live-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 32px clamp(24px, 12vw, 190px);
+  color: var(--paper-light);
+  background: var(--moss-deep);
+}
+.live-banner .eyebrow { margin-bottom: 8px; color: var(--gold); }
+.live-banner h2 { margin: 0 0 8px; color: var(--paper-light); font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: normal; line-height: 1; }
+.live-banner p:not(.eyebrow) { margin: 0; color: #d5dbd0; }
+.live-banner-link { flex: 0 0 auto; padding: 12px 16px; border: 1px solid var(--gold); color: var(--paper-light); font-family: "Trebuchet MS", sans-serif; font-size: 0.76rem; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
+.live-banner-link span { margin-left: 8px; color: var(--gold); }
+.live-banner-link:hover, .live-banner-link:focus-visible { color: var(--gold); outline: none; }
+
 .section { display: grid; grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr); gap: clamp(30px, 9vw, 150px); padding: clamp(80px, 12vw, 170px) clamp(24px, 12vw, 190px); }
 .section-marker { padding-top: 9px; color: var(--moss); }
 .section-copy h2, .tree-copy h2, .closing h2 { margin: 0 0 30px; color: var(--moss-deep); font-size: clamp(2.1rem, 4vw, 4.3rem); font-weight: normal; line-height: 1.05; }
@@ -123,6 +139,7 @@ footer a { color: var(--moss-deep); text-decoration: none; }
   .site-header { align-items: flex-start; flex-direction: column; gap: 18px; }
   nav { gap: 12px 18px; }
   .hero { min-height: 620px; padding-top: 70px; }
+  .live-banner { align-items: flex-start; flex-direction: column; }
   .section { display: block; padding-top: 90px; padding-bottom: 90px; }
   .section-marker { margin-bottom: 28px; }
   .seasons { grid-template-columns: repeat(2, 1fr); }
