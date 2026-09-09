@@ -9,6 +9,12 @@ import crypto from "crypto";
 
 import { db, cleanupExpired } from "./database2.js";
 import { resend } from "./resend.js";
+import {
+  ACTIVITY_DISCOVERY_CHANCES,
+  ARCHAEOLOGICAL_FINDS,
+  ARTIFACTS,
+  RARITY_WEIGHTS
+} from "./data/discovery_catalog.js";
 
 import {
   normalizeEmail,
@@ -54,6 +60,19 @@ const PORT = Number(process.env.PORT || 8080);
 const SITE_URL = process.env.SITE_URL || "https://www.idreamofthought.org";
 const MAX_SAVE_BYTES = 512 * 1024;
 const HEARTBEAT_MAX_GAP_MS = 30_000;
+
+function randomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function rollRarity() {
+  let roll = Math.random() * 100;
+  for (const rarity of RARITY_WEIGHTS) {
+    roll -= rarity.weight;
+    if (roll < 0) return rarity.id;
+  }
+  return RARITY_WEIGHTS[0].id;
+}
 
 // ============================================================
 // SECURITY
@@ -546,6 +565,105 @@ app.post("/api/access/stop", authenticateRequest, requireCsrf, (req, res) => {
   ).run(Date.now(), req.user.uid);
 
   res.json({ ok: true });
+});
+
+// Artifact and archaeological discovery
+app.get("/api/discoveries", authenticateRequest, (req, res) => {
+  const discoveries = db.prepare(
+    `SELECT discovery_id, discovery_type, category, rarity, activity,
+            fragment_index, fragment_count, discovered_at
+     FROM player_discoveries WHERE user_id=? ORDER BY discovered_at DESC`
+  ).all(req.user.uid);
+  const codexUnlocks = db.prepare(
+    `SELECT entry_id, unlocked_at, source FROM player_codex_unlocks
+     WHERE user_id=? ORDER BY unlocked_at DESC`
+  ).all(req.user.uid);
+
+  res.json({ discoveries, codexUnlocks });
+});
+
+app.post("/api/discoveries/roll", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
+  const activity = req.body?.activity;
+  const turnNumber = req.body?.turnNumber;
+  const chance = ACTIVITY_DISCOVERY_CHANCES[activity];
+
+  if (chance === undefined || !Number.isSafeInteger(turnNumber) || turnNumber < 0) {
+    return res.status(400).json({ error: "invalid discovery activity or turn number" });
+  }
+
+  const result = db.transaction(() => {
+    const priorRoll = db.prepare(
+      `SELECT result_json FROM player_discovery_rolls
+       WHERE user_id=? AND activity=? AND turn_number=?`
+    ).get(req.user.uid, activity, turnNumber);
+
+    if (priorRoll) return { alreadyRolled: true, ...JSON.parse(priorRoll.result_json) };
+
+    let discovery = null;
+    if (Math.random() < chance) {
+      if (Math.random() < 0.7) {
+        const ownedIds = new Set(db.prepare(
+          `SELECT discovery_id FROM player_discoveries
+           WHERE user_id=? AND discovery_type='artifact'`
+        ).all(req.user.uid).map((row) => row.discovery_id));
+        const candidates = ARTIFACTS.filter((artifact) => !ownedIds.has(artifact.id));
+
+        if (candidates.length > 0) {
+          const artifact = randomItem(candidates);
+          const rarity = rollRarity();
+          db.prepare(
+            `INSERT INTO player_discoveries
+             (user_id,discovery_id,discovery_type,category,rarity,activity,fragment_index,fragment_count,discovered_at)
+             VALUES (?,?,?,?,?,?,?,?,?)`
+          ).run(req.user.uid, artifact.id, "artifact", artifact.category, rarity, activity, 0, 1, Date.now());
+          db.prepare(
+            `INSERT OR IGNORE INTO player_codex_unlocks (user_id,entry_id,unlocked_at,source)
+             VALUES (?,?,?,?)`
+          ).run(req.user.uid, artifact.codexEntry, Date.now(), artifact.id);
+          discovery = { type: "artifact", id: artifact.id, title: artifact.title, category: artifact.category, rarity };
+        }
+      } else {
+        const candidates = ARCHAEOLOGICAL_FINDS.filter((find) => {
+          const row = db.prepare(
+            `SELECT COUNT(*) AS count FROM player_discoveries
+             WHERE user_id=? AND discovery_id=? AND discovery_type='archaeological_find'`
+          ).get(req.user.uid, find.id);
+          return row.count < find.fragments;
+        });
+
+        if (candidates.length > 0) {
+          const find = randomItem(candidates);
+          const row = db.prepare(
+            `SELECT COUNT(*) AS count FROM player_discoveries
+             WHERE user_id=? AND discovery_id=? AND discovery_type='archaeological_find'`
+          ).get(req.user.uid, find.id);
+          const fragmentIndex = row.count + 1;
+          db.prepare(
+            `INSERT INTO player_discoveries
+             (user_id,discovery_id,discovery_type,category,rarity,activity,fragment_index,fragment_count,discovered_at)
+             VALUES (?,?,?,?,?,?,?,?,?)`
+          ).run(req.user.uid, find.id, "archaeological_find", "archaeological_finds", null, activity, fragmentIndex, find.fragments, Date.now());
+          const assembled = fragmentIndex === find.fragments;
+          if (assembled) {
+            db.prepare(
+              `INSERT OR IGNORE INTO player_codex_unlocks (user_id,entry_id,unlocked_at,source)
+               VALUES (?,?,?,?)`
+            ).run(req.user.uid, find.codexEntry, Date.now(), find.id);
+          }
+          discovery = { type: "archaeological_find", id: find.id, title: find.title, fragmentIndex, fragmentCount: find.fragments, assembled };
+        }
+      }
+    }
+
+    const response = { discovery };
+    db.prepare(
+      `INSERT INTO player_discovery_rolls (user_id,activity,turn_number,result_json,rolled_at)
+       VALUES (?,?,?,?,?)`
+    ).run(req.user.uid, activity, turnNumber, JSON.stringify(response), Date.now());
+    return response;
+  })();
+
+  res.json({ ok: true, activity, turnNumber, ...result });
 });
 
 // Products
