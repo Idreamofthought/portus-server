@@ -1,0 +1,30 @@
+name: Bug report
+description: Report something in Portus that is not working as expected.
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected to happen instead.
+      placeholder: A clear and concise summary of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Share the shortest set of steps that reproduces the problem.
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, device, local setup, or deployment details that matter.
+      placeholder: Browser, OS, route, feature flag, or environment values involved.

@@ -1,0 +1,13 @@
+name: Question
+description: Ask for clarification about gameplay, APIs, setup, or repository structure.
+labels:
+  - question
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: What do you need help with?
+      description: Share the question and any relevant context.
+      placeholder: Describe the question and what you have already checked.
+    validations:
+      required: true
