@@ -23,7 +23,7 @@ This repository contains the full Portus server, including the public game clien
 
 ### Game Systems
 
-Each system is modular and initialized through `public/main.js`:
+The game client and server currently expose these systems:
 
 - **Resources** - wood, stone, food, and gold
 - **Research** - research progress and unlocks
@@ -43,10 +43,8 @@ Each system is modular and initialized through `public/main.js`:
 
 ## Project Structure
 
-The repository currently has two client-module locations. `public/` is the live
-location mounted by Express; root `js/` is a legacy/experimental copy and is
-reported by `npm run validate:structure`. Do not delete or move either copy
-until the migration below has been completed and tested.
+`public/` is the live static client location mounted by Express. There is no root
+`js/` client tree in the current repository.
 
 ```text
 .
@@ -54,8 +52,9 @@ until the migration below has been completed and tested.
 ├── payments.js, products.js, database2.js
 ├── public/                         served frontend and game client
 │   ├── *.html                      auth, payment, legal, and entry pages
-│   ├── *.js                        live client modules (migration target: public/js/)
-│   ├── css/                        shared and game styles
+│   ├── *.js                        page-specific client modules
+│   ├── shared.css                  shared auth and account styles
+│   ├── images/                     optimized site images
 │   └── sounds/                     canonical sound assets
 ├── protected/                      server-routed game pages
 │   ├── game.html
@@ -63,8 +62,8 @@ until the migration below has been completed and tested.
 │   ├── lore.html
 │   └── prologue.html
 ├── homepage/                       public site and writing tree
-├── js/                             legacy/experimental client copy
-├── css/                            protected-page styles
+├── css/                            shared homepage and protected-page styles
+├── lore/                           index for Portus worldbuilding sources
 ├── routes/                         authenticated player-state APIs
 ├── models/                         persistence helpers
 ├── migrations/                     explicit SQLite migrations
@@ -73,40 +72,8 @@ until the migration below has been completed and tested.
 └── validate-structure.js           non-destructive layout checks
 ```
 
-### Target production layout
-
-The intended end state is to move the live game modules into `public/js/` and
-keep page-specific authentication/payment scripts at `public/`. The homepage
-remains separate, and `public/sounds/` remains the only sound-asset location.
-
-```text
-public/
-├── js/
-│   ├── main.js, game.js, map.js, helpers.js, ui.js
-│   ├── buildings.js, resources.js, research.js
-│   ├── favour.js, disasters.js, warnings.js, time.js, codex.js
-│   └── prologue.js
-├── css/
-├── sounds/
-└── *.html and page-specific *.js
-```
-
-### Cleanup and migration plan
-
-1. Run `npm run validate:structure` and save the duplicate report.
-2. Compare each root `js/*.js` file with its live `public/*.js` counterpart.
-3. Move only the verified live game modules to `public/js/`.
-4. Update HTML script paths and relative imports together; keep page-specific
-   auth and payment scripts in `public/`.
-5. Rename `mychorrhza.js` only after confirming its consumers; the spelling
-   currently exists only in the legacy root tree.
-6. Re-run the validator and `npm run check`, then manually test `/portus`,
-   `/game`, authentication, save/load, and payment entry points.
-7. Remove the legacy root `js/` directory only after the checks pass. There is
-   no root `sounds/` directory in the current repository, so no sound cleanup
-   is required.
-
-The validator is intentionally report-only. It does not move or delete files.
+See [lore/README.md](lore/README.md) for the Portus content map and
+[ROADMAP.md](ROADMAP.md) for planned work.
 
 
 ## Running Locally
@@ -195,6 +162,4 @@ Run the non-destructive consistency check with:
 npm run validate:structure
 ```
 
-It checks required directories, identifies duplicate client modules, flags the
-legacy database filename and typo, and reports whether the planned `public/js/`
-directory has been created.
+It checks required directories and reports any legacy paths that need review.

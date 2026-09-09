@@ -27,7 +27,7 @@ function check(label, relativePath) {
 
 console.log("Portus structure validation\n");
 
-for (const directory of ["public", "public/css", "public/sounds", "protected", "routes", "models", "migrations"]) {
+for (const directory of ["public", "public/sounds", "protected", "routes", "models", "migrations"]) {
   check("required path", directory);
 }
 
@@ -47,9 +47,6 @@ console.log(`${exists("js") ? "WARN" : "OK"} root js/ directory ${exists("js") ?
 console.log(`${exists("sounds") ? "WARN" : "OK"} root sounds/ directory ${exists("sounds") ? "still exists" : "not present"}`);
 console.log(`${exists("database2.js") ? "WARN" : "OK"} database2.js ${exists("database2.js") ? "still exists" : "removed"}`);
 console.log(`${exists("js/mychorrhza.js") ? "WARN" : "OK"} js/mychorrhza.js ${exists("js/mychorrhza.js") ? "needs review" : "not present"}`);
-
-console.log("\nMigration target:");
-console.log(`${exists("public/js") ? "OK" : "INFO"} public/js/ ${exists("public/js") ? "exists" : "not created yet"}`);
 
 if (failures > 0) {
   console.log(`\n${failures} required path check(s) failed.`);
