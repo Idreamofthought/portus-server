@@ -6,6 +6,8 @@ import cors from "cors";
 import helmet from "helmet";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
+import freeAccess from './data/free_access.json' assert { type: 'json' };
+
 
 import { db, cleanupExpired } from "./database2.js";
 import { resend } from "./resend.js";
