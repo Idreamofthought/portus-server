@@ -171,6 +171,25 @@ The UI is soft, surreal, floating, translucent, quiet, and contemplative. It dra
 5. Test signup, verification, login, purchase, game access, save/load, and expiry.
 6. Migrate the legacy PayPal SDK to `@paypal/paypal-server-sdk`.
 
+## Repository Housekeeping
+
+This repository now includes a small GitHub-native housekeeping robot built from
+configuration and workflows in `.github/`:
+
+- `housekeeping.yml` syncs housekeeping labels, runs stale issue and pull-request
+  handling each day, and runs a weekly repository structure audit with the
+  existing `npm run validate:structure` script.
+- `issue-triage.yml` keeps a `needs-triage` label on issues that do not yet have
+  one of the main classification labels.
+- `ISSUE_TEMPLATE/*.yml` auto-apply the default GitHub labels for bug reports,
+  feature requests, and questions.
+- `stale.yml` and `housekeeping.json` hold the main knobs for adjusting timing,
+  synced labels, and triage behavior.
+
+The defaults are intentionally conservative: blank issues remain allowed, stale
+conversations get a warning before closing, draft pull requests are exempt, and
+milestoned work is never auto-closed.
+
 ## Structure Validation
 
 Run the non-destructive consistency check with:
