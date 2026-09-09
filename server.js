@@ -316,7 +316,12 @@ app.get("/api/me", authenticateRequest, (req, res) => {
     captainName: user.captain_name || ""
   });
 });
-
+try {
+  await sendEmail(...);
+} catch (err) {
+  console.error("Email error:", err);
+  return res.status(500).json({ error: "Email failed" });
+}
 // Email verification
 app.get("/verify-email", passwordResetLimiter, (req, res) => {
   const token = req.query.token;
