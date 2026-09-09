@@ -493,6 +493,9 @@
     <button class="levelOption" data-level="1"><b>Level 1 — Settled</b>House, Field and Woodcutter already built.</button>
     <button class="levelOption" data-level="2"><b>Level 2 — Foothold</b>Just a House to shelter your first citizens.</button>
     <button class="levelOption" data-level="3"><b>Level 3 — Castaway</b>Nothing but bare land. Build everything yourself.</button>
+    <label class="bubbleCheck">
+      <input type="checkbox" id="levelRemember"> Remember my choice — don't ask again
+    </label>
   </div>
 </div>
 
@@ -1660,10 +1663,19 @@ refreshFromServer();
   }
 
   const lOverlay = document.getElementById('levelOverlay');
+  const levelRememberKey = 'portus_level_choice';
+  const levelRememberBox = document.getElementById('levelRemember');
   const showLevelSelect = ()=>{
+    const remembered = localStorage.getItem(levelRememberKey);
+    if(remembered){
+      seedStarterBuildings(Number(remembered));
+      showTutorial();
+      return;
+    }
     lOverlay.style.display = 'flex';
     document.querySelectorAll('.levelOption').forEach(opt=>{
       opt.onclick = ()=>{
+        if(levelRememberBox.checked) localStorage.setItem(levelRememberKey, opt.dataset.level);
         seedStarterBuildings(Number(opt.dataset.level));
         lOverlay.style.display = 'none';
         showTutorial();
