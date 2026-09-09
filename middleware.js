@@ -1,6 +1,16 @@
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { db } from "./database2.js";
+import freeAccess from "./data/free_access.json" with { type: "json" };
+
+const freeAccessEmails = new Set(
+  (freeAccess.emails || []).map((email) => String(email).trim().toLowerCase())
+);
+
+export function hasFreeAccess(userId) {
+  const row = db.prepare(`SELECT email FROM users WHERE id=?`).get(userId);
+  return Boolean(row && freeAccessEmails.has(String(row.email).trim().toLowerCase()));
+}
 
 export function issueCsrfCookie(res) {
   const token = crypto.randomBytes(32).toString("hex");
@@ -29,6 +39,8 @@ export function requireVerified(req, res, next) {
 }
 
 export function requirePaid(req, res, next) {
+  if (hasFreeAccess(req.user.uid)) return next();
+
   const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(req.user.uid);
   if (!row || row.remaining_seconds <= 0) {
     if (wantsHTML(req)) return res.redirect(`/portus?paid=required`);
