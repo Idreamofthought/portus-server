@@ -132,8 +132,20 @@ h1 em { color: var(--rust); font-size: 0.82em; }
 .home-doors a span { margin-left: 8px; color: var(--rust); }
 .home-doors a:hover { color: var(--rust); }
 
-footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px clamp(24px, 6vw, 92px); color: var(--moss); font-size: 0.85rem; }
+footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 30px clamp(24px, 6vw, 92px); color: var(--moss); font-size: 0.85rem; }
 footer a { color: var(--moss-deep); text-decoration: none; }
+.donate-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--rust);
+  border-radius: 20px;
+  color: var(--rust) !important;
+  font-family: "Trebuchet MS", sans-serif;
+  font-size: 0.72rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.donate-btn:hover { background: var(--rust); color: var(--paper-light) !important; }
 
 @media (max-width: 700px) {
   .site-header { align-items: flex-start; flex-direction: column; gap: 18px; }
