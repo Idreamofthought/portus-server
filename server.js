@@ -9,7 +9,6 @@ import { fileURLToPath } from "url";
 import crypto from "crypto";
 
 import { db, cleanupExpired } from "./database2.js";
-import { resend } from "./resend.js";
 import {
   ACTIVITY_DISCOVERY_CHANCES,
   ARCHAEOLOGICAL_FINDS,
@@ -43,6 +42,10 @@ import {
 } from "./middleware.js";
 
 import { PRODUCTS } from "./products.js";
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail
+} from "./email.js";
 
 import {
   createPayPalOrder,
@@ -240,16 +243,13 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
       `INSERT INTO email_verification_tokens (token_hash,user_id,expires_at) VALUES (?,?,?)`
     ).run(hashToken(raw), userId, Date.now() + 86400000);
 
-    const url = `${SITE_URL}/verify-email?token=${encodeURIComponent(raw)}`;
-
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: email,
-      subject: "Verify your Portus account",
-      html: `<p>Click to verify your email:</p><p><a href="${url}">${url}</a></p>`
-    });
+    await sendVerificationEmail({ email, token: raw });
   } catch (err) {
     console.error("verification email failed", err);
+    issueAuthCookie(res, userId);
+    return res.status(502).json({
+      error: "account created, but the verification email could not be sent"
+    });
   }
 
   issueAuthCookie(res, userId);
@@ -366,14 +366,7 @@ app.post(
     ).run(hashToken(raw), req.user.uid, Date.now() + 86400000);
 
     try {
-      const url = `${SITE_URL}/verify-email?token=${encodeURIComponent(raw)}`;
-
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM,
-        to: user.email,
-        subject: "Verify your Portus account",
-        html: `<p><a href="${url}">${url}</a></p>`
-      });
+      await sendVerificationEmail({ email: user.email, token: raw });
     } catch (err) {
       console.error("resend verification failed", err);
       return res
@@ -404,16 +397,7 @@ app.post("/api/request-password-reset", passwordResetLimiter, async (req, res) =
   ).run(hashToken(raw), user.id, Date.now() + 3600000);
 
   try {
-    const url = `${SITE_URL}/reset-password.html?token=${encodeURIComponent(
-      raw
-    )}`;
-
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: email,
-      subject: "Reset your Portus password",
-      html: `<p><a href="${url}">${url}</a></p>`
-    });
+    await sendPasswordResetEmail({ email, token: raw });
   } catch (err) {
     console.error("reset email failed", err);
   }
