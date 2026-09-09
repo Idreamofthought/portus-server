@@ -75,6 +75,23 @@ The game client and server currently expose these systems:
 See [lore/README.md](lore/README.md) for the Portus content map and
 [ROADMAP.md](ROADMAP.md) for planned work.
 
+### Lore Structure
+
+The lore index provides a stable home for the main worldbuilding strands:
+
+```text
+lore/
+├── codex/
+├── prologue/
+├── world/
+├── myths/
+├── disasters/
+└── fragments/
+```
+
+The current Portus source remains in `portus/` while these categories are
+expanded and connected to the public site and in-game Codex.
+
 
 ## Running Locally
 
