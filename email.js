@@ -1,8 +1,17 @@
 import { resend } from "./resend.js";
 
+async function sendEmail(options) {
+  const result = await resend.emails.send(options);
+  if (result?.error) {
+    const message = result.error.message || JSON.stringify(result.error);
+    throw new Error(message);
+  }
+  return result;
+}
+
 export async function sendVerificationEmail({ email, token }) {
   const url = `${process.env.SITE_URL}/verify-email?token=${encodeURIComponent(token)}`;
-  return resend.emails.send({
+  return sendEmail({
     from: process.env.EMAIL_FROM,
     to: email,
     subject: "Verify your Portus account",
@@ -12,7 +21,7 @@ export async function sendVerificationEmail({ email, token }) {
 
 export async function sendPasswordResetEmail({ email, token }) {
   const url = `${process.env.SITE_URL}/reset-password.html?token=${encodeURIComponent(token)}`;
-  return resend.emails.send({
+  return sendEmail({
     from: process.env.EMAIL_FROM,
     to: email,
     subject: "Reset your Portus password",
