@@ -67,6 +67,9 @@ The game client and server currently expose these systems:
 ├── routes/                         authenticated player-state APIs
 ├── models/                         persistence helpers
 ├── migrations/                     explicit SQLite migrations
+├── jest.config.js                  Jest integration-test configuration
+├── test/                            unit, sandbox, and integration tests
+│   └── integration/                 authenticated API and webhook coverage
 ├── API.md, MODULES.md, UI-GUIDE.md
 ├── MIGRATION-PLAN.md, WORLD-DESIGN.md
 └── validate-structure.js           non-destructive layout checks
@@ -113,6 +116,33 @@ The server runs at `http://localhost:8080`. The game is available at `http://loc
 
 For local development, set `NODE_ENV=development` and use an HTTP `SITE_URL`, such as `http://localhost:8080`.
 
+## Testing
+
+Run the default Node test suite:
+
+```bash
+npm test
+```
+
+Run the authenticated API and webhook integration suite with Jest:
+
+```bash
+npm run test:integration
+```
+
+The launch sandbox test is opt-in because it exercises the deployed-style
+launch flow:
+
+```bash
+npm run test:launch-sandbox
+```
+
+Run the non-destructive repository structure check:
+
+```bash
+npm run validate:structure
+```
+
 ## Deployment
 
 Portus is deployed on Railway. The server exposes:
@@ -123,6 +153,9 @@ Portus is deployed on Railway. The server exposes:
 /portus              game client, served from /public
 /protected/game      paid game mode
 ```
+
+Railway checks the `/health` endpoint and runs one replica in the configured
+`us-east4-eqdc4a` region. Deployment settings are stored in `railway.json`.
 
 The Portus client is mounted with:
 

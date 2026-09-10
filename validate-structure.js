@@ -45,7 +45,7 @@ if (duplicates.length === 0) {
 console.log("\nLegacy paths:");
 console.log(`${exists("js") ? "WARN" : "OK"} root js/ directory ${exists("js") ? "still exists" : "removed"}`);
 console.log(`${exists("sounds") ? "WARN" : "OK"} root sounds/ directory ${exists("sounds") ? "still exists" : "not present"}`);
-console.log(`${exists("database2.js") ? "WARN" : "OK"} database2.js ${exists("database2.js") ? "still exists" : "removed"}`);
+console.log(`${exists("database2.js") ? "OK" : "MISSING"} active database module: database2.js`);
 console.log(`${exists("js/mychorrhza.js") ? "WARN" : "OK"} js/mychorrhza.js ${exists("js/mychorrhza.js") ? "needs review" : "not present"}`);
 
 if (failures > 0) {
