@@ -1,4 +1,4 @@
-# Portus - A Dreamlike City-Building Experience
+- A Dreamlike City-Building Experience
 
 Portus is a surreal, atmospheric city-building game where the player shapes a drifting settlement suspended between dream and memory. The game blends pixel-art terrain with soft, mystical UI elements to create a quiet and contemplative experience.
 
