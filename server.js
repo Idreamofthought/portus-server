@@ -56,6 +56,7 @@ import {
   verifyPayPalWebhookSignature,
   creditPayment
 } from "./payments.js";
+import { validateSave } from "./save-validation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -823,6 +824,7 @@ app.post("/api/save", authenticateRequest, requireCsrf, generalApiLimiter, (req,
   if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
   }
+  if (!validateSave(req.body)) return res.status(400).json({ error: "invalid_save" });
 
   db.prepare(
     `INSERT INTO saves (user_id,state,updated_at)

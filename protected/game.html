@@ -439,7 +439,7 @@
     </div>
 
     <div id="panel">
-      <!-- build buttons injected here -->
+      <div id="buildingList"></div>
       <div id="buildPreview">
         <div id="buildPreviewTitle">No building selected</div>
         <div id="buildPreviewBody">
@@ -956,13 +956,16 @@ function renderRes(){
 
 /* ---------------- UI: BUILD PANEL ---------------- */
 function renderPanel(){
-  const panel = document.getElementById('panel');
-  const preview = document.getElementById('buildPreview');
-  panel.innerHTML='';
+  const list = document.getElementById('buildingList');
+  if(!list){
+    console.error('Portus: buildingList missing');
+    return;
+  }
+  list.innerHTML='';
   CATS.forEach(cat=>{
     const label=document.createElement('div');
     label.className='catlabel'; label.textContent=cat;
-    panel.appendChild(label);
+    list.appendChild(label);
     BUILDINGS.filter(b=>b.cat===cat).forEach(b=>{
       const btn=document.createElement('button');
       btn.className='bldbtn'; btn.dataset.id=b.id;
@@ -976,12 +979,10 @@ function renderPanel(){
          </span>`;
       if(desc) btn.title = desc;
       btn.onclick = ()=> selectBuild(b.id);
-      panel.appendChild(btn);
+      list.appendChild(btn);
     });
   });
 
-  // re-attach preview box at bottom (captured before the panel was cleared)
-  panel.appendChild(preview);
 }
 
 function updateBuildPreview(id){
