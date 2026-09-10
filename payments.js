@@ -52,6 +52,7 @@ export async function createStripeCheckout({ userId, productId, siteUrl }) {
   if (!product) throw new Error("invalid product");
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    managed_payments: { enabled: false },
     line_items: [{ price_data: {
       currency: product.currency.toLowerCase(),
       product_data: { name: `Portus — ${product.label}` },

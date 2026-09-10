@@ -10,12 +10,22 @@
 - [ ] `EMAIL_FROM` uses a sender address on a Resend-verified domain.
 - [ ] Resend domain DNS records are verified.
 - [ ] A Railway volume is mounted at `/data` when using `DATABASE_PATH=/data/portus2.db`.
+- Production startup now rejects a missing or relative `DATABASE_PATH`; verify the Railway variable and volume together, then restart and confirm the app is healthy.
+- Keep the service at exactly one replica in every configured Railway region. SQLite uses one local file and cannot safely coordinate writes across replicas.
 - [ ] Homepage, signup, login, verification, password reset, and logout have been tested.
 - [ ] A fresh account receives a verification email and the link completes verification.
 - [ ] Payment providers and webhook URLs are configured before charging real users.
+- [ ] Stripe Checkout succeeds with Managed Payments disabled for the current custom price flow.
+- [ ] `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_WEBHOOK_ID` are from the same PayPal Live app; production uses the PayPal live endpoint.
 - [ ] Railway logs show no startup, database, CSRF, or email errors.
 - [ ] The production domain serves HTTPS and redirects are correct.
 - [ ] A backup or recovery path exists for the production SQLite database.
+
+## Deliberate launch trade-offs
+
+- `/api/save` is intentionally client-authoritative: the server authenticates the player, requires CSRF protection, and limits saves to 512 KB, but does not validate game resources, buildings, research, favour, warnings, or disasters. This is acceptable for the current slow, single-player game. Do not add leaderboards or scarcity-sensitive purchases without moving those rules server-side.
+- The CSP still permits `script-src 'unsafe-inline'` because `protected/game.html` contains inline scripts. Tighten it after those scripts are extracted, as tracked in `ROADMAP.md`.
+- Consumed or abandoned payment-order records and processed webhook IDs are pruned after one year by the daily cleanup job. Keep the retention window longer than the provider's expected webhook replay window if payment operations change.
 
 ## Soft-launch strategy
 

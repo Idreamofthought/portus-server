@@ -1,7 +1,16 @@
 import Database from "better-sqlite3";
-export const db = new Database(process.env.DATABASE_PATH || "portus2.db");
+import path from "node:path";
+
+const configuredDatabasePath = process.env.DATABASE_PATH;
+if (process.env.NODE_ENV === "production" && (!configuredDatabasePath || !path.isAbsolute(configuredDatabasePath))) {
+  throw new Error("DATABASE_PATH must be an absolute path in production; mount a Railway volume first");
+}
+
+export const db = new Database(configuredDatabasePath || "portus2.db");
 db.pragma("foreign_keys = ON");
 db.pragma("journal_mode = WAL");
+
+const PAYMENT_RECORD_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -122,4 +131,7 @@ export function cleanupExpired() {
   db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(now);
   db.prepare(`DELETE FROM email_verification_tokens WHERE expires_at < ?`).run(now);
   db.prepare(`DELETE FROM password_reset_tokens WHERE expires_at < ?`).run(now);
+  const paymentRecordCutoff = now - PAYMENT_RECORD_RETENTION_MS;
+  db.prepare(`DELETE FROM processed_payment_events WHERE created_at < ?`).run(paymentRecordCutoff);
+  db.prepare(`DELETE FROM pending_orders WHERE created_at < ?`).run(paymentRecordCutoff);
 }
