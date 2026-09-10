@@ -204,10 +204,10 @@ The UI is soft, surreal, floating, translucent, quiet, and contemplative. It dra
 5. Test signup, verification, login, purchase, game access, save/load, and expiry.
 6. Migrate the legacy PayPal SDK to `@paypal/paypal-server-sdk`.
 
-## Repository Housekeeping
+## Daydream Housekeeping Robot
 
-This repository now includes a small GitHub-native housekeeping robot built from
-configuration and workflows in `.github/`:
+This repository includes **Daydream**, a small GitHub-native housekeeping robot
+built from configuration and workflows in `.github/`:
 
 - `housekeeping.yml` syncs housekeeping labels, runs stale issue and pull-request
   handling each day, and runs a weekly repository structure audit with the
