@@ -20,8 +20,8 @@ export async function createPayPalOrder({ userId, productId, siteUrl }) {
     intent: "CAPTURE",
     purchase_units: [{ amount: { currency_code: product.currency, value: product.amount } }],
     application_context: {
-      return_url: `${siteUrl}/game?provider=paypal&status=return`,
-      cancel_url: `${siteUrl}/game?provider=paypal&status=cancelled`
+      return_url: `${siteUrl}/purchase.html?provider=paypal&status=return`,
+      cancel_url: `${siteUrl}/purchase.html?provider=paypal&status=cancelled`
     }
   });
   const result = await paypalClient.execute(request);
@@ -65,6 +65,31 @@ export async function createStripeCheckout({ userId, productId, siteUrl }) {
   return { url: session.url };
 }
 
+export async function confirmStripeCheckout({ userId, sessionId }) {
+  if (!stripe) throw new Error("Stripe is not configured");
+  if (!sessionId || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) throw new Error("invalid Stripe session");
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.payment_status !== "paid") throw new Error("payment is not complete");
+  const sessionUserId = Number(session.metadata?.userId);
+  const product = getProduct(session.metadata?.productId);
+  if (sessionUserId !== userId || !product) throw new Error("invalid Stripe metadata");
+  return creditPayment({
+    pending: {
+      order_id: session.id,
+      provider: "stripe",
+      user_id: userId,
+      product_id: product.id,
+      minutes: product.minutes,
+      amount: product.amount,
+      currency: product.currency,
+      consumed: 0
+    },
+    eventId: session.id,
+    capturedAmount: Number(session.amount_total / 100).toFixed(2),
+    capturedCurrency: session.currency
+  });
+}
+
 export async function handleStripeWebhook(rawBody, signature) {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) throw new Error("Stripe webhook is not configured");
   const event = stripe.webhooks.constructEvent(rawBody, signature, process.env.STRIPE_WEBHOOK_SECRET);
@@ -85,7 +110,7 @@ export async function handleStripeWebhook(rawBody, signature) {
       currency: product.currency,
       consumed: 0
     },
-    eventId: event.id,
+    eventId: session.id,
     capturedAmount: Number(session.amount_total / 100).toFixed(2),
     capturedCurrency: session.currency
   });

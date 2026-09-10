@@ -51,6 +51,7 @@ import {
   createPayPalOrder,
   capturePayPalOrder,
   createStripeCheckout,
+  confirmStripeCheckout,
   handleStripeWebhook,
   verifyPayPalWebhookSignature,
   creditPayment
@@ -747,6 +748,27 @@ app.post(
       );
     } catch (err) {
       console.error("stripe checkout failed", err);
+      res.status(400).json({ error: err.message });
+    }
+  }
+);
+
+app.post(
+  "/api/checkout/stripe/confirm",
+  authenticateRequest,
+  requireVerified,
+  requireCsrf,
+  checkoutLimiter,
+  async (req, res) => {
+    try {
+      res.json(
+        await confirmStripeCheckout({
+          userId: req.user.uid,
+          sessionId: req.body.sessionId
+        })
+      );
+    } catch (err) {
+      console.error("stripe checkout confirmation failed", err);
       res.status(400).json({ error: err.message });
     }
   }

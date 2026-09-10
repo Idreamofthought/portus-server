@@ -4,7 +4,12 @@ import { db } from "./database2.js";
 import freeAccess from "./data/free_access.json" with { type: "json" };
 
 const freeAccessEmails = new Set(
-  (freeAccess.emails || []).map((email) => String(email).trim().toLowerCase())
+  [
+    ...(freeAccess.emails || []),
+    ...(process.env.FREE_ACCESS_EMAILS || "").split(",")
+  ]
+    .map((email) => String(email).trim().toLowerCase())
+    .filter(Boolean)
 );
 
 export function hasFreeAccess(userId) {
