@@ -17,6 +17,7 @@
 - [ ] Payment providers and webhook URLs are configured before charging real users.
 - [ ] Stripe Checkout succeeds with Managed Payments disabled for the current custom price flow.
 - [ ] `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_WEBHOOK_ID` are from the same PayPal Live app; production uses the PayPal live endpoint.
+- [ ] `FREE_ACCESS_EMAILS` contains comma-separated email addresses for free access; entries are trimmed and case-insensitive.
 - [ ] Railway logs show no startup, database, CSRF, or email errors.
 - [ ] The production domain serves HTTPS and redirects are correct.
 - [ ] A backup or recovery path exists for the production SQLite database.
