@@ -4,12 +4,17 @@ import Stripe from "stripe";
 import { db } from "./database2.js";
 import { PRODUCTS, getProduct } from "./products.js";
 
-const paypalEnv = process.env.NODE_ENV === "production"
-  ? new paypal.core.LiveEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET)
-  : new paypal.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET);
-const paypalClient = new paypal.core.PayPalHttpClient(paypalEnv);
 const PAYPAL_API_BASE = process.env.NODE_ENV === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+function getPayPalClient() {
+  const { PAYPAL_CLIENT_ID: clientId, PAYPAL_CLIENT_SECRET: clientSecret } = process.env;
+  if (!clientId || !clientSecret) throw new Error("PayPal is not configured");
+  const environment = process.env.NODE_ENV === "production"
+    ? new paypal.core.LiveEnvironment(clientId, clientSecret)
+    : new paypal.core.SandboxEnvironment(clientId, clientSecret);
+  return new paypal.core.PayPalHttpClient(environment);
+}
 
 export async function createPayPalOrder({ userId, productId, siteUrl }) {
   const product = getProduct(productId);
@@ -24,7 +29,7 @@ export async function createPayPalOrder({ userId, productId, siteUrl }) {
       cancel_url: `${siteUrl}/purchase.html?provider=paypal&status=cancelled`
     }
   });
-  const result = await paypalClient.execute(request);
+  const result = await getPayPalClient().execute(request);
   const orderId = result.result.id;
   db.prepare(`INSERT INTO pending_orders (order_id,provider,user_id,product_id,minutes,amount,currency,created_at) VALUES (?,?,?,?,?,?,?,?)`)
     .run(orderId, "paypal", userId, product.id, product.minutes, product.amount, product.currency, Date.now());
@@ -38,7 +43,7 @@ export async function capturePayPalOrder({ userId, orderId }) {
   if (pending.consumed) return { ok: true, duplicate: true };
   const request = new paypal.orders.OrdersCaptureRequest(orderId);
   request.requestBody({});
-  const result = await paypalClient.execute(request);
+  const result = await getPayPalClient().execute(request);
   const capture = result.result;
   if (capture.status !== "COMPLETED") throw new Error("payment not completed");
   const capturedAmount = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
