@@ -1,4 +1,4 @@
-name: Issue triage
+name: Daydream Issue Triage
 
 on:
   issues:
