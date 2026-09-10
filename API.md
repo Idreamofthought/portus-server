@@ -130,6 +130,8 @@ Stores the authenticated player's game state. The server rejects payloads larger
 
 Body: JSON game state.
 
+The save is deliberately client-authoritative. Authentication, CSRF protection, and the 512 KB size limit protect the endpoint, but game mechanics are not validated server-side, so a player can modify resources or other state locally. This is currently an intentional trade-off for a non-competitive single-player game.
+
 ### `GET /api/save`
 
 Returns the latest saved game state for the authenticated player.
