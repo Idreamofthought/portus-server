@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:launch-sandbox": "RUN_LAUNCH_SANDBOX=1 node --test test/launch-sandbox.test.js",
     "validate:structure": "node validate-structure.js"
   },
   "dependencies": {
@@ -26,5 +28,8 @@
   },
   "overrides": {
     "qs": "^6.16.0"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1"
   }
 }

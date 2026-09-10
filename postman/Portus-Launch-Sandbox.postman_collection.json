@@ -1,0 +1,62 @@
+{
+  "info": {
+    "name": "Portus Launch Sandbox",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "email", "value": "verified-test-account@example.com" },
+    { "key": "password", "value": "replace-me" },
+    { "key": "productId", "value": "hour" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('returns OK', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.eql({ ok: true }); });"] } }]
+    },
+    {
+      "name": "Get CSRF token",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/csrf-token" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.environment.set('csrfToken', pm.response.json().csrfToken);"] } }]
+    },
+    {
+      "name": "Login verified test account",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" },
+        "url": "{{baseUrl}}/api/login"
+      }
+    },
+    { "name": "Current session", "request": { "method": "GET", "url": "{{baseUrl}}/api/me" } },
+    {
+      "name": "Reject malformed save",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"resources\": {}\n}" },
+        "url": "{{baseUrl}}/api/save"
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('rejects invalid save', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('invalid_save'); });"] } }]
+    },
+    {
+      "name": "Create Stripe Checkout",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\"\n}" },
+        "url": "{{baseUrl}}/api/checkout/stripe"
+      }
+    },
+    {
+      "name": "Create PayPal Checkout",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+        "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\"\n}" },
+        "url": "{{baseUrl}}/api/checkout/paypal"
+      }
+    }
+  ]
+}
