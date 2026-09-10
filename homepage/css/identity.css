@@ -72,7 +72,43 @@ h1, h2, p { max-width: 760px; }
 h1 { margin: 0; color: var(--moss-deep); font-size: clamp(3.7rem, 9vw, 8.5rem); font-weight: normal; line-height: 0.96; letter-spacing: -0.03em; }
 h1 em { color: var(--rust); font-size: 0.82em; }
 
-.lead { margin: 44px 0 42px; max-width: 510px; color: #4e574e; font-size: clamp(1.15rem, 2vw, 1.5rem); line-height: 1.55; }
+.lead { margin: 44px 0 30px; max-width: 510px; color: #4e574e; font-size: clamp(1.15rem, 2vw, 1.5rem); line-height: 1.55; }
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+  margin-top: 12px;
+}
+.primary-cta, .secondary-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-family: "Trebuchet MS", sans-serif;
+  font-size: 0.76rem;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.primary-cta {
+  background: var(--moss-deep);
+  color: var(--paper-light);
+  box-shadow: 0 14px 28px rgba(37, 54, 45, 0.18);
+}
+.primary-cta span { margin-left: 8px; color: var(--gold); }
+.secondary-cta {
+  border: 1px solid var(--moss-deep);
+  color: var(--moss-deep);
+  background: rgba(255,255,255,0.24);
+}
+.primary-cta:hover, .primary-cta:focus-visible, .secondary-cta:hover, .secondary-cta:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
+}
 .scroll-cue { color: var(--rust); text-decoration: none; font-size: 1.2rem; }
 .scroll-cue span { margin-left: 10px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
 
