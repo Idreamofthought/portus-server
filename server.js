@@ -206,6 +206,12 @@ app.get("/mentions-legales", generalApiLimiter, (_req, res) =>
 app.get("/cgu", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cgu.html"))
 );
+app.get("/terms", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgu.html"))
+);
+app.get("/terms-and-conditions", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgu.html"))
+);
 app.get("/cgv", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cgv.html"))
 );
