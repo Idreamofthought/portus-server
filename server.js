@@ -197,22 +197,22 @@ app.get("/fragments", (_req, res) =>
 app.get("/portus-info", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
 );
-app.get("/legal", (_req, res) =>
+app.get("/legal", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/legal.html"))
 );
-app.get("/mentions-legales", (_req, res) =>
+app.get("/mentions-legales", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/mentions-legales.html"))
 );
-app.get("/cgu", (_req, res) =>
+app.get("/cgu", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cgu.html"))
 );
-app.get("/cgv", (_req, res) =>
+app.get("/cgv", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cgv.html"))
 );
-app.get("/privacy", (_req, res) =>
+app.get("/privacy", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/privacy.html"))
 );
-app.get("/cookies", (_req, res) =>
+app.get("/cookies", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cookies.html"))
 );
 
