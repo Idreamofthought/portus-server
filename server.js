@@ -261,8 +261,12 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
         `INSERT INTO users (email,password_hash,email_verified,created_at) VALUES (?,?,0,?)`
       )
       .run(email, passwordHash, Date.now()).lastInsertRowid;
-  } catch {
-    return res.status(400).json({ error: "unable to create account" });
+  } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return res.status(409).json({ error: "an account already exists for this email" });
+    }
+    console.error("account creation failed", error);
+    return res.status(500).json({ error: "unable to create account" });
   }
 
   try {
