@@ -202,7 +202,7 @@ The UI is soft, surreal, floating, translucent, quiet, and contemplative. It dra
 3. Confirm final pricing, currency, and legal wording.
 4. Replace draft legal and contact text.
 5. Test signup, verification, login, purchase, game access, save/load, and expiry.
-6. Migrate the legacy PayPal SDK to `@paypal/paypal-server-sdk`.
+6. Confirm the PayPal webhook remains subscribed to `PAYMENT.CAPTURE.COMPLETED` and that `PAYPAL_WEBHOOK_ID` matches the current dashboard webhook.
 
 ## Daydream Housekeeping Robot
 
