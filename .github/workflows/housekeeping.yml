@@ -1,4 +1,4 @@
-name: Housekeeping
+name: Daydream Housekeeping
 
 on:
   workflow_dispatch:

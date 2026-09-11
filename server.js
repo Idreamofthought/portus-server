@@ -197,6 +197,30 @@ app.get("/fragments", (_req, res) =>
 app.get("/portus-info", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
 );
+app.get("/legal", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/legal.html"))
+);
+app.get("/mentions-legales", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/mentions-legales.html"))
+);
+app.get("/cgu", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgu.html"))
+);
+app.get("/terms", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgu.html"))
+);
+app.get("/terms-and-conditions", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgu.html"))
+);
+app.get("/cgv", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgv.html"))
+);
+app.get("/privacy", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/privacy.html"))
+);
+app.get("/cookies", generalApiLimiter, (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cookies.html"))
+);
 
 // ============================================================
 // PROTECTED GAME ROUTE
@@ -237,8 +261,12 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
         `INSERT INTO users (email,password_hash,email_verified,created_at) VALUES (?,?,0,?)`
       )
       .run(email, passwordHash, Date.now()).lastInsertRowid;
-  } catch {
-    return res.status(400).json({ error: "unable to create account" });
+  } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return res.status(409).json({ error: "an account already exists for this email" });
+    }
+    console.error("account creation failed", error);
+    return res.status(500).json({ error: "unable to create account" });
   }
 
   try {

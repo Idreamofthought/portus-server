@@ -55,7 +55,7 @@ export function requirePaid(req, res, next) {
 }
 
 export const jsonRateLimitHandler = (_req, res) => res.status(429).json({ error: "Too many requests — please wait a bit and try again." });
-export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 5, handler: jsonRateLimitHandler });
+export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, handler: jsonRateLimitHandler });
 export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, handler: jsonRateLimitHandler });
 export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, handler: jsonRateLimitHandler });
 export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, handler: jsonRateLimitHandler });
