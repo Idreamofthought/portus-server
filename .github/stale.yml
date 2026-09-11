@@ -14,16 +14,16 @@ exempt-pr-labels:
   - pinned
   - security
 mark-issue-message: >-
-  This issue has been marked as stale because it has been inactive for 45 days.
-  Reply with an update or remove the stale conditions and it will stay open.
+  Daydream marked this issue as stale because it has been inactive for 45 days.
+  Reply with an update and Daydream will keep it open.
 close-issue-message: >-
-  Closing this issue because it has been stale for 14 more days without a follow-up.
-  Comment again if there is still work to do and it can be reopened.
+  Daydream is closing this issue because it stayed stale for 14 more days without a follow-up.
+  Comment again if there is still work to do and Daydream can help reopen the thread.
 mark-pr-message: >-
-  This pull request has been marked as stale because it has been inactive for 30 days.
-  Reply or push updates to keep it active.
+  Daydream marked this pull request as stale because it has been inactive for 30 days.
+  Reply or push updates and Daydream will keep it active.
 close-pr-message: >-
-  Closing this pull request because it has been stale for 14 more days without a follow-up.
+  Daydream is closing this pull request because it stayed stale for 14 more days without a follow-up.
   Push new commits or comment if the work should continue.
 operations-per-run: 200
 ascending: true
