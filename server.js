@@ -197,6 +197,24 @@ app.get("/fragments", (_req, res) =>
 app.get("/portus-info", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
 );
+app.get("/legal", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/legal.html"))
+);
+app.get("/mentions-legales", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/mentions-legales.html"))
+);
+app.get("/cgu", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgu.html"))
+);
+app.get("/cgv", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cgv.html"))
+);
+app.get("/privacy", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/privacy.html"))
+);
+app.get("/cookies", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/cookies.html"))
+);
 
 // ============================================================
 // PROTECTED GAME ROUTE
