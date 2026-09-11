@@ -1,0 +1,34 @@
+Mentions légales
+Le site idreamofthought.org est édité par Richard Jenkins, installé à Saint‑Herblon, en Loire‑Atlantique.
+Vous pouvez me contacter à : Richardjenkins@idreamofthought.org.
+Le site est hébergé par Railway (548 Market St, San Francisco, CA 94104, USA).
+Tout le contenu du site et du jeu Portus est protégé par le droit d’auteur.
+Pour signaler un contenu illicite : Richardjenkins@idreamofthought.org.
+
+Conditions Générales d’Utilisation (CGU)
+Les CGU expliquent comment utiliser le site et le jeu Portus.
+Vous devez être majeur pour créer un compte.
+Les comportements interdits incluent : fraude, contournement des accès, bots, scripts, manipulation de données.
+L’éditeur ne peut être tenu responsable des interruptions ou des dommages indirects.
+Les CGU peuvent évoluer ; continuer à utiliser le site signifie que vous acceptez les mises à jour.
+
+Conditions Générales de Vente (CGV)
+Portus est un contenu numérique fourni immédiatement après paiement.
+En accord avec la loi européenne (Directive 2011/83/UE), vous renoncez au droit de rétractation une fois l’accès délivré.
+Les paiements passent par Stripe ou PayPal.
+Aucun remboursement n’est possible, sauf si la loi l’exige en cas de non‑conformité.
+L’éditeur garantit que Portus reçoit les mises à jour nécessaires (Directive 2019/770).
+
+Politique de confidentialité (RGPD)
+Le responsable du traitement des données est Richard Jenkins.
+Les données collectées : email, sauvegardes de jeu, logs techniques, statut d’accès.
+Elles servent à faire fonctionner le jeu, gérer votre compte et assurer la sécurité.
+Base légale : exécution du contrat et intérêt légitime.
+Les paiements sont gérés par Stripe et PayPal, qui traitent vos données bancaires.
+Vous disposez des droits RGPD : accès, rectification, effacement, limitation, portabilité.
+Contact : Richardjenkins@idreamofthought.org.
+
+Politique de cookies
+Le site utilise uniquement des cookies essentiels (session, connexion).
+Aucun cookie publicitaire ou de suivi.
+Les cookies nécessaires ne demandent pas de consentement selon la CNIL.
