@@ -8,6 +8,7 @@ const consentCheckbox = document.getElementById("withdrawal-consent");
 const retryButton = document.getElementById("retry-confirm");
 
 const MAX_CONFIRM_RETRIES = 2;
+let confirmationInFlight = false;
 
 function setCheckoutEnabled(enabled) {
   cardButton.disabled = !enabled;
@@ -24,20 +25,14 @@ function hasTransientError(error) {
 }
 
 async function retryConfirmation(path, payload, retries = MAX_CONFIRM_RETRIES) {
-  let lastError = null;
-
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       const result = await apiPost(path, payload);
-      if (result.ok) return result;
-      lastError = new Error(result.error || "Payment could not be confirmed.");
-      if (attempt < retries && hasTransientError(lastError)) {
-        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-        continue;
+      if (!result.ok) {
+        throw new Error(result.error || "Payment could not be confirmed.");
       }
-      throw lastError;
+      return result;
     } catch (error) {
-      lastError = error;
       if (attempt < retries && hasTransientError(error)) {
         await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
         continue;
@@ -45,8 +40,7 @@ async function retryConfirmation(path, payload, retries = MAX_CONFIRM_RETRIES) {
       throw error;
     }
   }
-
-  throw lastError || new Error("Payment could not be confirmed.");
+  throw new Error("Payment could not be confirmed.");
 }
 
 async function init() {
@@ -83,7 +77,7 @@ async function checkout(path) {
     }
     if (r.id) {
       msg.textContent = "Payment created. Redirecting…";
-      location.href = r.url || `/purchase.html?provider=paypal&orderId=${encodeURIComponent(r.id)}`;
+      location.href = r.url || `/purchase.html?provider=paypal&status=return&token=${encodeURIComponent(r.id)}`;
       return;
     }
     msg.textContent = "Payment could not be started.";
@@ -100,14 +94,22 @@ setCheckoutEnabled(false);
 const q = new URLSearchParams(location.search);
 
 async function confirmAndReport(path, payload) {
+  if (confirmationInFlight) return;
+  confirmationInFlight = true;
   retryButton.hidden = true;
+  retryButton.disabled = true;
   msg.textContent = "Confirming payment…";
   try {
     await retryConfirmation(path, payload);
     msg.textContent = "Payment confirmed. Your time has been added.";
+    retryButton.hidden = true;
+    retryButton.disabled = true;
   } catch (error) {
     msg.textContent = `${error?.message || "Payment could not be confirmed."} You can retry manually.`;
     retryButton.hidden = false;
+    retryButton.disabled = false;
+  } finally {
+    confirmationInFlight = false;
   }
 }
 
