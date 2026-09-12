@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS pending_orders (
   minutes INTEGER NOT NULL,
   amount TEXT NOT NULL,
   currency TEXT NOT NULL,
+  withdrawal_consent INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   consumed INTEGER DEFAULT 0,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -130,6 +131,11 @@ CREATE TABLE IF NOT EXISTS player_discovery_rolls (
 const purchaseColumns = db.prepare(`PRAGMA table_info(purchases)`).all();
 if (!purchaseColumns.some((column) => column.name === "withdrawal_consent")) {
   db.prepare(`ALTER TABLE purchases ADD COLUMN withdrawal_consent INTEGER NOT NULL DEFAULT 0`).run();
+}
+
+const pendingOrderColumns = db.prepare(`PRAGMA table_info(pending_orders)`).all();
+if (!pendingOrderColumns.some((column) => column.name === "withdrawal_consent")) {
+  db.prepare(`ALTER TABLE pending_orders ADD COLUMN withdrawal_consent INTEGER NOT NULL DEFAULT 0`).run();
 }
 
 export function cleanupExpired() {
