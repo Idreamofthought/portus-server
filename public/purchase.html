@@ -9,4 +9,18 @@
   <a href="/contact">Contact</a>
   <a class="idot-play" href="/game">Play Portus</a>
 </nav>
-<main><h1>Buy Portus time</h1><p>Select a pass. Prices and durations come from the server.</p><select id="product"></select><button id="card">Pay with Card</button><button id="paypal">Pay with PayPal</button><p id="msg"></p><p><a href="/settings.html">Back to settings</a></p></main><footer class="legal-footer"><a href="/cgu">Terms of Use</a><a href="/cgv">Terms of Sale</a><a href="/privacy">Privacy</a></footer><script type="module" src="/purchase.js"></script></body></html>
+<main>
+  <h1>Buy Portus time</h1>
+  <p>Select a pass. Prices and durations come from the server.</p>
+  <select id="product"></select>
+  <label for="withdrawal-consent" style="display:block;margin:0.9rem 0;line-height:1.4;max-width:48rem;">
+    <input id="withdrawal-consent" type="checkbox">
+    I request immediate access to this digital content and acknowledge that I lose my right of withdrawal once access is granted.
+  </label>
+  <button id="card" disabled>Pay with Card</button>
+  <button id="paypal" disabled>Pay with PayPal</button>
+  <button id="retry-confirm" type="button" hidden>Retry payment confirmation</button>
+  <p id="msg"></p>
+  <p><a href="/settings.html">Back to settings</a></p>
+</main>
+<footer class="legal-footer"><a href="/cgu">Terms of Use</a><a href="/cgv">Terms of Sale</a><a href="/mentions-legales">Legal notice</a><a href="/privacy">Privacy</a></footer><script type="module" src="/purchase.js"></script></body></html>

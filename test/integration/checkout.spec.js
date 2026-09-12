@@ -26,18 +26,30 @@ describe("checkout session creation", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.products)).toBe(true);
     expect(res.body.products.some((p) => p.id === "hour")).toBe(true);
+    expect(res.body.products.every((p) => p.currency === "EUR")).toBe(true);
   });
 
   test("Stripe checkout creation rejects an unknown productId", async () => {
     const session = await loggedInSession("checkout-stripe", cleanupEmails);
-    const res = await session.postCsrf("/api/checkout/stripe", { productId: "not-a-real-product" });
+    const res = await session.postCsrf("/api/checkout/stripe", { productId: "not-a-real-product", withdrawalConsent: true });
     expect(res.status).toBe(400);
   });
 
   test("PayPal order creation rejects an unknown productId", async () => {
     const session = await loggedInSession("checkout-paypal", cleanupEmails);
-    const res = await session.postCsrf("/api/checkout/paypal", { productId: "not-a-real-product" });
+    const res = await session.postCsrf("/api/checkout/paypal", { productId: "not-a-real-product", withdrawalConsent: true });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("invalid product");
+  });
+
+  test("checkout creation requires withdrawal consent", async () => {
+    const session = await loggedInSession("checkout-consent", cleanupEmails);
+    const stripeRes = await session.postCsrf("/api/checkout/stripe", { productId: "hour" });
+    expect(stripeRes.status).toBe(400);
+    expect(stripeRes.body.error).toBe("withdrawal consent is required before checkout");
+
+    const paypalRes = await session.postCsrf("/api/checkout/paypal", { productId: "hour" });
+    expect(paypalRes.status).toBe(400);
+    expect(paypalRes.body.error).toBe("withdrawal consent is required before checkout");
   });
 });
