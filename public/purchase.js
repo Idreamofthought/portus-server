@@ -15,6 +15,18 @@ function setCheckoutEnabled(enabled) {
   paypalButton.disabled = !enabled;
 }
 
+function hideRetryButton() {
+  retryButton.hidden = true;
+  retryButton.disabled = true;
+  retryButton.setAttribute("aria-hidden", "true");
+}
+
+function showRetryButton() {
+  retryButton.hidden = false;
+  retryButton.disabled = false;
+  retryButton.setAttribute("aria-hidden", "false");
+}
+
 function hasTransientError(error) {
   const text = String(error?.message || error || "").toLowerCase();
   return text.includes("failed to fetch")
@@ -92,22 +104,20 @@ consentCheckbox.addEventListener("change", () => setCheckoutEnabled(consentCheck
 setCheckoutEnabled(false);
 
 const q = new URLSearchParams(location.search);
+hideRetryButton();
 
 async function confirmAndReport(path, payload) {
   if (confirmationInFlight) return;
   confirmationInFlight = true;
-  retryButton.hidden = true;
-  retryButton.disabled = true;
+  hideRetryButton();
   msg.textContent = "Confirming payment…";
   try {
     await retryConfirmation(path, payload);
     msg.textContent = "Payment confirmed. Your time has been added.";
-    retryButton.hidden = true;
-    retryButton.disabled = true;
+    hideRetryButton();
   } catch (error) {
     msg.textContent = `${error?.message || "Payment could not be confirmed."} You can retry manually.`;
-    retryButton.hidden = false;
-    retryButton.disabled = false;
+    showRetryButton();
   } finally {
     confirmationInFlight = false;
   }
