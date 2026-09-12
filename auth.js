@@ -28,7 +28,7 @@ export function createSession(userId) {
 
 export function issueAuthCookie(res, userId) {
   const sid = createSession(userId);
-  const token = jwt.sign({ uid: userId, sid }, process.env.JWT_SECRET, { expiresIn: "30d" });
+  const token = jwt.sign({ uid: userId, sid }, process.env.JWT_SECRET, { expiresIn: "30d", algorithm: "HS256" });
   res.cookie("auth", token, { httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, maxAge: SESSION_LIFETIME_MS, path: "/" });
 }
 
@@ -48,7 +48,7 @@ export function authenticateRequest(req, res, next) {
   const token = req.cookies.auth;
   if (!token) return wantsHTML ? res.redirect(loginPath) : res.status(401).json({ error: "not logged in" });
   let payload;
-  try { payload = jwt.verify(token, process.env.JWT_SECRET); } catch { return wantsHTML ? res.redirect(loginPath) : res.status(401).json({ error: "invalid token" }); }
+  try { payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] }); } catch { return wantsHTML ? res.redirect(loginPath) : res.status(401).json({ error: "invalid token" }); }
   const session = db.prepare(`SELECT id,expires_at FROM sessions WHERE id=? AND user_id=?`).get(payload.sid, payload.uid);
   if (!session || session.expires_at < Date.now()) {
     res.clearCookie("auth");

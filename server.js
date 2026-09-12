@@ -67,6 +67,15 @@ const SITE_URL = process.env.SITE_URL || "https://www.idreamofthought.org";
 const MAX_SAVE_BYTES = 512 * 1024;
 const HEARTBEAT_MAX_GAP_MS = 30_000;
 
+function isDuplicateEmailError(error) {
+  return error?.code === "SQLITE_CONSTRAINT_UNIQUE"
+    || (error?.code === "SQLITE_CONSTRAINT" && /users\.email|UNIQUE constraint failed: users\.email/i.test(String(error?.message || "")));
+}
+
+function hasWithdrawalConsent(value) {
+  return value === true;
+}
+
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -262,7 +271,7 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
       )
       .run(email, passwordHash, Date.now()).lastInsertRowid;
   } catch (error) {
-    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+    if (isDuplicateEmailError(error)) {
       return res.status(409).json({ error: "an account already exists for this email" });
     }
     console.error("account creation failed", error);
@@ -326,7 +335,9 @@ app.post("/api/logout", requireCsrf, (req, res) => {
       );
       revokeSession(payload.sid);
     }
-  } catch {}
+  } catch (error) {
+    console.error("logout session revoke failed", error);
+  }
 
   res.clearCookie("auth", { path: "/" });
   res.json({ ok: true });
@@ -723,11 +734,16 @@ app.post(
   requireCsrf,
   checkoutLimiter,
   async (req, res) => {
+    if (!hasWithdrawalConsent(req.body?.withdrawalConsent)) {
+      return res.status(400).json({ error: "withdrawal consent is required before checkout" });
+    }
+
     try {
       res.json(
         await createPayPalOrder({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: req.body.withdrawalConsent,
           siteUrl: SITE_URL
         })
       );
@@ -769,11 +785,16 @@ app.post(
   requireCsrf,
   checkoutLimiter,
   async (req, res) => {
+    if (!hasWithdrawalConsent(req.body?.withdrawalConsent)) {
+      return res.status(400).json({ error: "withdrawal consent is required before checkout" });
+    }
+
     try {
       res.json(
         await createStripeCheckout({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: req.body.withdrawalConsent,
           siteUrl: SITE_URL
         })
       );

@@ -55,4 +55,18 @@ describe("auth flow", () => {
     const res = await session.postCsrf("/api/login", { email, password: "WrongPassword1" });
     expect(res.status).toBe(400);
   });
+
+  test("signup returns 409 when email already exists", async () => {
+    const email = uniqueEmail("auth-duplicate");
+    cleanupEmails.push(email);
+    const session = new Session(BASE_URL);
+
+    db.prepare(
+      `INSERT INTO users (email,password_hash,email_verified,created_at) VALUES (?,?,1,?)`
+    ).run(email, "seeded-password-hash", Date.now());
+
+    const second = await session.postCsrf("/api/signup", { email, password: TEST_PASSWORD });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toBe("an account already exists for this email");
+  });
 });
