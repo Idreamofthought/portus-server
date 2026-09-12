@@ -2,6 +2,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { db } from "./database2.js";
+import { ROUTES } from "./routes-config.js";
 
 export const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 const COOKIE_SECURE = process.env.NODE_ENV === "production";
@@ -42,17 +43,14 @@ export function revokeAllSessions(userId) {
 
 export function authenticateRequest(req, res, next) {
   const wantsHTML = String(req.headers.accept || "").includes("text/html");
-  const requestPath = String(req.originalUrl || "").split("?", 1)[0];
-  const previewPath = requestPath === "/game" || requestPath === "/portus" || requestPath === "/portus/";
-  const loginPath = previewPath ? "/portus-info" : "/login.html";
   const token = req.cookies.auth;
-  if (!token) return wantsHTML ? res.redirect(loginPath) : res.status(401).json({ error: "not logged in" });
+  if (!token) return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "not logged in" });
   let payload;
-  try { payload = jwt.verify(token, process.env.JWT_SECRET); } catch { return wantsHTML ? res.redirect(loginPath) : res.status(401).json({ error: "invalid token" }); }
+  try { payload = jwt.verify(token, process.env.JWT_SECRET); } catch { return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "invalid token" }); }
   const session = db.prepare(`SELECT id,expires_at FROM sessions WHERE id=? AND user_id=?`).get(payload.sid, payload.uid);
   if (!session || session.expires_at < Date.now()) {
     res.clearCookie("auth");
-    return wantsHTML ? res.redirect(loginPath) : res.status(401).json({ error: "session expired" });
+    return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "session expired" });
   }
   req.user = { uid: payload.uid };
   req.sessionId = payload.sid;
