@@ -52,4 +52,15 @@ describe("checkout session creation", () => {
     expect(paypalRes.status).toBe(400);
     expect(paypalRes.body.error).toBe("withdrawal consent is required before checkout");
   });
+
+  test("checkout rejects non-boolean withdrawal consent", async () => {
+    const session = await loggedInSession("checkout-consent-type", cleanupEmails);
+    const stripeRes = await session.postCsrf("/api/checkout/stripe", { productId: "hour", withdrawalConsent: "true" });
+    expect(stripeRes.status).toBe(400);
+    expect(stripeRes.body.error).toBe("withdrawal consent is required before checkout");
+
+    const paypalRes = await session.postCsrf("/api/checkout/paypal", { productId: "hour", withdrawalConsent: 1 });
+    expect(paypalRes.status).toBe(400);
+    expect(paypalRes.body.error).toBe("withdrawal consent is required before checkout");
+  });
 });

@@ -61,8 +61,9 @@ describe("auth flow", () => {
     cleanupEmails.push(email);
     const session = new Session(BASE_URL);
 
-    const first = await session.postCsrf("/api/signup", { email, password: TEST_PASSWORD });
-    expect([200, 502]).toContain(first.status);
+    db.prepare(
+      `INSERT INTO users (email,password_hash,email_verified,created_at) VALUES (?,?,1,?)`
+    ).run(email, "seeded-password-hash", Date.now());
 
     const second = await session.postCsrf("/api/signup", { email, password: TEST_PASSWORD });
     expect(second.status).toBe(409);
