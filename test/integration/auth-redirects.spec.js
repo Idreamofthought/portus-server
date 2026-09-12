@@ -5,6 +5,8 @@ import { db } from "../../database2.js";
 import { createSession } from "../../auth.js";
 import { BASE_URL, uniqueEmail } from "./helpers.js";
 
+process.env.JWT_SECRET ||= "test-secret";
+
 function makeAuthCookie(userId) {
   const sid = createSession(userId);
   const token = jwt.sign({ uid: userId, sid }, process.env.JWT_SECRET, { expiresIn: "30d" });
