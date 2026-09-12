@@ -136,8 +136,8 @@ export function creditPayment({ pending, eventId, capturedAmount, capturedCurren
       : { changes: 1 };
     if (pending.provider === "paypal" && claim.changes === 0) return;
     db.prepare(`INSERT INTO processed_payment_events (id,created_at) VALUES (?,?)`).run(eventId, Date.now());
-    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,created_at) VALUES (?,?,?,?,?,?,?,?)`)
-      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, Date.now());
+    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,withdrawal_consent,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, 1, Date.now());
     const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(pending.user_id);
     if (row) db.prepare(`UPDATE time_tracking SET remaining_seconds=remaining_seconds+?,updated_at=?,last_active_at=NULL WHERE user_id=?`).run(pending.minutes*60, Date.now(), pending.user_id);
     else db.prepare(`INSERT INTO time_tracking (user_id,remaining_seconds,last_active_at,updated_at) VALUES (?,?,NULL,?)`).run(pending.user_id, pending.minutes*60, Date.now());
