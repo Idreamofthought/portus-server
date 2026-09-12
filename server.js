@@ -57,6 +57,7 @@ import {
   creditPayment
 } from "./payments.js";
 import { validateSave } from "./save-validation.js";
+import { ROUTES } from "./routes-config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -354,14 +355,14 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
   const token = req.query.token;
 
   if (typeof token !== "string")
-    return res.redirect(`${SITE_URL}/portus?verify=missing`);
+    return res.redirect(`${SITE_URL}${ROUTES.portusInfo}?verify=missing`);
 
   const row = db
     .prepare(`SELECT * FROM email_verification_tokens WHERE token_hash=?`)
     .get(hashToken(token));
 
   if (!row || row.used || row.expires_at < Date.now())
-    return res.redirect(`${SITE_URL}/portus?verify=invalid`);
+    return res.redirect(`${SITE_URL}${ROUTES.portusInfo}?verify=invalid`);
 
   const tx = db.transaction(() => {
     db.prepare(`UPDATE users SET email_verified=1 WHERE id=?`).run(
@@ -372,7 +373,7 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
   });
 
   tx();
-  res.redirect(`${SITE_URL}/portus?verify=success`);
+  res.redirect(`${SITE_URL}${ROUTES.portusInfo}?verify=success`);
 });
 
 // Resend verification
