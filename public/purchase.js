@@ -25,6 +25,7 @@ function showRetryButton() {
   retryButton.hidden = false;
   retryButton.disabled = false;
   retryButton.setAttribute("aria-hidden", "false");
+  retryButton.focus();
 }
 
 function hasTransientError(error) {
@@ -101,7 +102,7 @@ async function checkout(path) {
 cardButton.onclick = () => checkout("/api/checkout/stripe");
 paypalButton.onclick = () => checkout("/api/checkout/paypal");
 consentCheckbox.addEventListener("change", () => setCheckoutEnabled(consentCheckbox.checked));
-setCheckoutEnabled(false);
+setCheckoutEnabled(consentCheckbox.checked);
 
 const q = new URLSearchParams(location.search);
 hideRetryButton();

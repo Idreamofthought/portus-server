@@ -743,6 +743,7 @@ app.post(
         await createPayPalOrder({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: req.body.withdrawalConsent,
           siteUrl: SITE_URL
         })
       );
@@ -793,6 +794,7 @@ app.post(
         await createStripeCheckout({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: req.body.withdrawalConsent,
           siteUrl: SITE_URL
         })
       );
