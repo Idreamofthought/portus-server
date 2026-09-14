@@ -10,7 +10,8 @@
     "test": "node --test test/*.test.js",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:launch-sandbox": "RUN_LAUNCH_SANDBOX=1 node --test test/launch-sandbox.test.js",
-    "validate:structure": "node validate-structure.js"
+    "validate:structure": "node validate-structure.js",
+    "generate:sitemap": "node scripts/generate-sitemap.js"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",

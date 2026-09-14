@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.idreamofthought.org/portus-info</loc></url>
   <url><loc>https://www.idreamofthought.org/codex/</loc></url>
   <url><loc>https://www.idreamofthought.org/codex/volume-i.html</loc></url>
   <url><loc>https://www.idreamofthought.org/codex/volume-ii.html</loc></url>
   <url><loc>https://www.idreamofthought.org/codex/volume-iii.html</loc></url>
   <url><loc>https://www.idreamofthought.org/codex/volume-iv.html</loc></url>
+  <url><loc>https://www.idreamofthought.org/portus-info</loc></url>
 </urlset>
