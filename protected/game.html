@@ -1151,6 +1151,7 @@ let accessExpiresAt = 0;
 let tickInterval = null;
 let sessionInterval = null;
 let currentUser = null; // {email, captainName}
+let hasFreeAccess = false;
 
 let csrfPromise = null;
 async function getCsrf(){
@@ -1176,12 +1177,22 @@ function showPayBox(){
   document.getElementById('authBox').style.display = 'none';
   document.getElementById('payBox').style.display = 'block';
   document.getElementById('whoami').textContent = `Signed in as ${currentUser.email}`;
+  const payCardBtn = document.getElementById('payCardBtn');
+  const payPaypalBtn = document.getElementById('payPaypalBtn');
+  if(hasFreeAccess){
+    document.getElementById('verifyBanner').style.display = 'none';
+    payCardBtn.style.display = 'none';
+    payPaypalBtn.style.display = 'none';
+    return;
+  }
+  payCardBtn.style.display = '';
+  payPaypalBtn.style.display = '';
   const verified = !!currentUser.emailVerified;
   document.getElementById('verifyBanner').style.display = verified ? 'none' : 'block';
-  document.getElementById('payCardBtn').disabled = !verified;
-  document.getElementById('payPaypalBtn').disabled = !verified;
-  document.getElementById('payCardBtn').style.opacity = verified ? '1' : '0.5';
-  document.getElementById('payPaypalBtn').style.opacity = verified ? '1' : '0.5';
+  payCardBtn.disabled = !verified;
+  payPaypalBtn.disabled = !verified;
+  payCardBtn.style.opacity = verified ? '1' : '0.5';
+  payPaypalBtn.style.opacity = verified ? '1' : '0.5';
 }
 
 async function refreshFromServer(){
@@ -1193,18 +1204,35 @@ async function refreshFromServer(){
       captainName = me.captainName;
       document.getElementById('captainInput').value = captainName;
     }
-    showPayBox();
     const s = await api('/api/access');
+    hasFreeAccess = !!s.freeAccess;
+    showPayBox();
     if(s.canPlay){
       const discoveries = await api('/api/discoveries');
       codexEntries = discoveries.codexEntries || [];
       renderCodexPanel();
     }
+    if(hasFreeAccess){
+      accessExpiresAt = Infinity;
+      startPlaying();
+      return;
+    }
     accessExpiresAt = s.accessExpiresAt || 0;
-    if(s.canPlay){ await api('/api/access/heartbeat',{method:'POST'}); accessExpiresAt=Date.now()+(s.remainingSeconds*1000); startPlaying(); }
+    if(s.canPlay){
+      const heartbeat = await api('/api/access/heartbeat',{method:'POST'});
+      hasFreeAccess = !!heartbeat.freeAccess;
+      if(hasFreeAccess){
+        accessExpiresAt = Infinity;
+        startPlaying();
+        return;
+      }
+      accessExpiresAt = Date.now()+((heartbeat.remainingSeconds || 0)*1000);
+      startPlaying();
+    }
     else pausePlaying();
   } catch(e){
     currentUser = null;
+    hasFreeAccess = false;
     showAuthBox();
   }
 }
@@ -1217,6 +1245,11 @@ function startPlaying(){
   checkSession();
 }
 function pausePlaying(){
+  if(hasFreeAccess){
+    document.getElementById('paywall').style.display = 'none';
+    document.getElementById('timeline').textContent = '';
+    return;
+  }
   clearInterval(tickInterval); tickInterval = null;
   clearInterval(sessionInterval); sessionInterval = null;
   document.getElementById('timeline').textContent = '';
@@ -1228,11 +1261,25 @@ function pausePlaying(){
 
 async function heartbeatAccess(){
   if(!currentUser) return;
-  try{ const a=await api('/api/access/heartbeat',{method:'POST'}); accessExpiresAt=Date.now()+(a.remainingSeconds*1000); if(!a.canPlay) pausePlaying(); }
+  try{
+    const a=await api('/api/access/heartbeat',{method:'POST'});
+    hasFreeAccess = !!a.freeAccess;
+    if(hasFreeAccess){
+      accessExpiresAt = Infinity;
+      document.getElementById('timeline').textContent = '';
+      return;
+    }
+    accessExpiresAt = Date.now()+((a.remainingSeconds || 0)*1000);
+    if(!a.canPlay) pausePlaying();
+  }
   catch(e){ console.warn('access heartbeat failed',e); }
 }
 
 function checkSession(){
+  if(hasFreeAccess){
+    document.getElementById('timeline').textContent = '';
+    return;
+  }
   const msLeft = accessExpiresAt - Date.now();
   if(msLeft <= 0){ pausePlaying(); return; }
   const mins = Math.floor(msLeft/60000), secs = Math.floor((msLeft%60000)/1000);
@@ -1263,7 +1310,7 @@ document.getElementById('loginBtn').onclick = async ()=>{
 document.getElementById('logoutBtn').onclick = async ()=>{
   await api('/api/access/stop', {method:'POST'}).catch(()=>{});
   await api('/api/logout', {method:'POST'});
-  currentUser = null; accessExpiresAt = 0;
+  currentUser = null; accessExpiresAt = 0; hasFreeAccess = false;
   pausePlaying();
 };
 document.getElementById('payCardBtn').onclick = async ()=>{
