@@ -304,9 +304,9 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
     await sendVerificationEmail({ email, token: raw });
   } catch (err) {
     console.error("verification email failed", err);
-    issueAuthCookie(res, userId);
+    db.prepare(`DELETE FROM users WHERE id=?`).run(userId);
     return res.status(502).json({
-      error: "account created, but the verification email could not be sent"
+      error: "unable to send verification email; please try again later"
     });
   }
 
