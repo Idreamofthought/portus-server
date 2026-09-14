@@ -214,6 +214,9 @@ app.get("/what-is", (_req, res) =>
 app.get("/contact", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/contact.html"))
 );
+app.get("/start-here", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/start-here.html"))
+);
 app.get("/fragments", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/fragments.html"))
 );
