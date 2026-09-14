@@ -7,6 +7,20 @@ import { PRODUCTS, getProduct } from "./products.js";
 const PAYPAL_API_BASE = process.env.NODE_ENV === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
+async function getStripeCustomer(userId) {
+  const user = db.prepare(`SELECT email, stripe_customer_id FROM users WHERE id=?`).get(userId);
+  if (!user) throw new Error("unknown user");
+  if (user.stripe_customer_id) return user.stripe_customer_id;
+
+  const customer = await stripe.customers.create({
+    email: user.email,
+    metadata: { userId: String(userId) }
+  });
+  db.prepare(`UPDATE users SET stripe_customer_id=? WHERE id=? AND stripe_customer_id IS NULL`)
+    .run(customer.id, userId);
+  return db.prepare(`SELECT stripe_customer_id FROM users WHERE id=?`).get(userId).stripe_customer_id;
+}
+
 function getPayPalClient() {
   const { PAYPAL_CLIENT_ID: clientId, PAYPAL_CLIENT_SECRET: clientSecret } = process.env;
   if (!clientId || !clientSecret) throw new Error("PayPal is not configured");
@@ -55,9 +69,11 @@ export async function createStripeCheckout({ userId, productId, siteUrl }) {
   if (!stripe) throw new Error("Stripe is not configured");
   const product = getProduct(productId);
   if (!product) throw new Error("invalid product");
+  const customerId = await getStripeCustomer(userId);
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     managed_payments: { enabled: false },
+    customer: customerId,
     line_items: [{ price_data: {
       currency: product.currency.toLowerCase(),
       product_data: { name: `Portus — ${product.label}` },
@@ -87,11 +103,17 @@ export async function confirmStripeCheckout({ userId, sessionId }) {
       minutes: product.minutes,
       amount: product.amount,
       currency: product.currency,
-      consumed: 0
+      consumed: 0,
+      customer_id: session.customer,
+      checkout_session_id: session.id,
+      payment_intent_id: session.payment_intent
     },
     eventId: session.id,
     capturedAmount: Number(session.amount_total / 100).toFixed(2),
-    capturedCurrency: session.currency
+    capturedCurrency: session.currency,
+    customerId: session.customer,
+    checkoutSessionId: session.id,
+    paymentIntentId: session.payment_intent
   });
 }
 
@@ -113,15 +135,21 @@ export async function handleStripeWebhook(rawBody, signature) {
       minutes: product.minutes,
       amount: product.amount,
       currency: product.currency,
-      consumed: 0
+      consumed: 0,
+      customer_id: session.customer,
+      checkout_session_id: session.id,
+      payment_intent_id: session.payment_intent
     },
     eventId: session.id,
     capturedAmount: Number(session.amount_total / 100).toFixed(2),
-    capturedCurrency: session.currency
+    capturedCurrency: session.currency,
+    customerId: session.customer,
+    checkoutSessionId: session.id,
+    paymentIntentId: session.payment_intent
   });
 }
 
-export function creditPayment({ pending, eventId, capturedAmount, capturedCurrency }) {
+export function creditPayment({ pending, eventId, capturedAmount, capturedCurrency, customerId, checkoutSessionId, paymentIntentId }) {
   const expected = Number(pending.amount).toFixed(2);
   if (Number(capturedAmount).toFixed(2) !== expected) throw new Error("payment amount mismatch");
   const expectedCurrency = String(pending.currency || "").trim().toUpperCase();
@@ -136,8 +164,8 @@ export function creditPayment({ pending, eventId, capturedAmount, capturedCurren
       : { changes: 1 };
     if (pending.provider === "paypal" && claim.changes === 0) return;
     db.prepare(`INSERT INTO processed_payment_events (id,created_at) VALUES (?,?)`).run(eventId, Date.now());
-    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,created_at) VALUES (?,?,?,?,?,?,?,?)`)
-      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, Date.now());
+    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,customer_id,checkout_session_id,payment_intent_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, customerId || pending.customer_id || null, checkoutSessionId || pending.checkout_session_id || null, paymentIntentId || pending.payment_intent_id || null, Date.now());
     const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(pending.user_id);
     if (row) db.prepare(`UPDATE time_tracking SET remaining_seconds=remaining_seconds+?,updated_at=?,last_active_at=NULL WHERE user_id=?`).run(pending.minutes*60, Date.now(), pending.user_id);
     else db.prepare(`INSERT INTO time_tracking (user_id,remaining_seconds,last_active_at,updated_at) VALUES (?,?,NULL,?)`).run(pending.user_id, pending.minutes*60, Date.now());
