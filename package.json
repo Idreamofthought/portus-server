@@ -8,7 +8,8 @@
     "start": "node server.js",
     "check": "node --check server.js",
     "test": "node --test test/*.test.js",
-    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:integration:serve": "DATABASE_PATH=\"$PWD/portus2.db\" DISABLE_RATE_LIMITS=1 node server.js",
+    "test:integration": "DATABASE_PATH=\"$PWD/portus2.db\" NODE_OPTIONS=--experimental-vm-modules jest",
     "test:launch-sandbox": "RUN_LAUNCH_SANDBOX=1 node --test test/launch-sandbox.test.js",
     "validate:structure": "node validate-structure.js"
   },

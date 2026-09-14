@@ -53,6 +53,20 @@ export class Session {
     return body.csrfToken;
   }
 
+  async requestNoRedirect(method, path, { headers = {} } = {}) {
+    const cookieHeader = this._cookieHeader();
+    const res = await fetch(this.baseUrl + path, {
+      method,
+      redirect: "manual",
+      headers: {
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+        ...headers
+      }
+    });
+    this._storeCookies(res);
+    return { status: res.status, location: res.headers.get("location") };
+  }
+
   async postCsrf(path, body) {
     const csrfToken = await this.withCsrf();
     return this.request("POST", path, { body, headers: { "X-CSRF-Token": csrfToken } });
@@ -60,7 +74,7 @@ export class Session {
 }
 
 export function uniqueEmail(prefix = "test") {
-  return `${prefix}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}@example.com`;
+  return `${prefix}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}@resend.dev`;
 }
 
 export const TEST_PASSWORD = "Test1234!";

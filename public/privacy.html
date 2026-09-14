@@ -1,45 +1,114 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <link rel="stylesheet" href="/nav.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Politique de confidentialité (RGPD) — Portus</title>
+  <title>Privacy Policy — I Dream of Thought</title>
   <link rel="stylesheet" href="/shared.css">
 </head>
 <body>
-  <nav class="header-nav" aria-label="Navigation principale">
-    <ul>
-      <li><a href="/">Accueil</a></li>
-      <li><a href="/writing">Écriture</a></li>
-      <li><a href="/game">Portus</a></li>
-      <li><a href="/about">À propos</a></li>
-      <li><a href="/legal">Infos légales</a></li>
-    </ul>
+  <nav class="idot-topnav" aria-label="Site navigation">
+    <a class="idot-brand" href="/">I Dream of Thought</a>
+    <a href="/#branches">Tree</a>
+    <a href="/writing/index.html">Writing</a>
+    <a href="/what-is">About</a>
+    <a href="/contact">Contact</a>
+    <a class="idot-play" href="/game">Play Portus</a>
   </nav>
 
   <main>
-    <h1>Politique de confidentialité (RGPD)</h1>
-    <p>Le responsable du traitement des données est <strong>Richard Jenkins</strong>.</p>
-    <p>Les données collectées : email, sauvegardes de jeu, logs techniques, statut d’accès.</p>
-    <p>Elles servent à faire fonctionner le jeu, gérer votre compte et assurer la sécurité.</p>
-    <p>Base légale : exécution du contrat et intérêt légitime.</p>
-    <p>Les paiements sont gérés par Stripe et PayPal, qui traitent vos données bancaires.</p>
-    <p>Vous disposez des droits RGPD : accès, rectification, effacement, limitation, portabilité.</p>
-    <p>Contact : <strong>Richardjenkins@idreamofthought.org</strong>.</p>
-    <p><a href="/legal">Retour aux informations légales</a></p>
-  </main>
-  <footer>
-    <p><strong>Accès rapide légal</strong></p>
+    <h1>Privacy Policy</h1>
+    <p><em>Last updated: September 2026. Covers idreamofthought.org, including the Portus game and enquiries about CAST / RMJ English.</em></p>
+
+    <h2>1. Who controls your data</h2>
     <p>
-      <a href="/legal">Infos légales</a> ·
-      <a href="/mentions-legales">Mentions légales</a> ·
-      <a href="/cgu">CGU</a> ·
-      <a href="/cgv">CGV</a> ·
-      <a href="/cookies">Cookies</a>
+      Richard Jenkins, trading as I Dream of Thought (idreamofthought.org), is the data controller. Full legal
+      identification is on the <a href="/mentions-legales.html">legal notice</a> page. For any question about your data,
+      contact <a href="mailto:richardjenkins@idreamofthought.org">richardjenkins@idreamofthought.org</a>.
     </p>
-    <p>Contact : <a href="mailto:Richardjenkins@idreamofthought.org">Richardjenkins@idreamofthought.org</a></p>
-  </footer>
+
+    <h2>2. Data we collect</h2>
+    <h3>Portus accounts</h3>
+    <ul>
+      <li>Email address and a salted, hashed password (we never store your plain-text password).</li>
+      <li>Your gameplay/save state (captain name, city layout, progress).</li>
+      <li>Purchase records: amount, currency, product, provider, and date — payment card details are entered directly
+        with Stripe or PayPal and never reach our servers.</li>
+      <li>Short-lived security tokens for email verification and password resets.</li>
+      <li>Technical logs (e.g. IP address, request timing) used for rate-limiting and abuse prevention.</li>
+    </ul>
+    <h3>Professional-services enquiries (CAST / RMJ English)</h3>
+    <ul>
+      <li>Whatever you include in an enquiry email — typically your name, email address, and message content.</li>
+    </ul>
+
+    <h2>3. Why we process it, and on what legal basis</h2>
+    <ul>
+      <li><strong>Performance of a contract</strong> (Art. 6(1)(b) GDPR) — creating your account, running the game, processing payments, responding to service enquiries.</li>
+      <li><strong>Legitimate interest</strong> (Art. 6(1)(f) GDPR) — security logging, rate-limiting, and fraud prevention, balanced against your rights and kept to what's proportionate.</li>
+      <li><strong>Legal obligation</strong> (Art. 6(1)(c) GDPR) — keeping accounting/invoicing records for the period French law requires.</li>
+    </ul>
+
+    <h2>4. Who else sees it</h2>
+    <p>We use a small number of processors, each only for what they need to do their job:</p>
+    <ul>
+      <li><strong>Stripe</strong> and <strong>PayPal</strong> — payment processing. Each acts as an independent data controller for the payment details you give them directly.</li>
+      <li><strong>Resend</strong> — sends account emails (verification, password reset).</li>
+      <li><strong>Railway</strong> — hosts the application and database (see the <a href="/mentions-legales.html">legal notice</a> for their address).</li>
+    </ul>
+    <p>
+      Some of these providers may process data outside the European Economic Area (notably in the United States).
+      Where that happens, they do so under recognised safeguards such as the EU-U.S. Data Privacy Framework or
+      Standard Contractual Clauses. We do not sell your data, and we do not use it for advertising.
+    </p>
+
+    <h2>5. How long we keep it</h2>
+    <ul>
+      <li>Account and gameplay data: for as long as your account exists.</li>
+      <li>Verification and password-reset tokens: deleted automatically once expired (within 24 hours).</li>
+      <li>Short-lived payment-processing records (used only to prevent duplicate crediting): deleted after 365 days.</li>
+      <li>Purchase/invoice records: kept for the period required by French accounting and tax law (currently up to 10 years), even if you later delete your account, because we're legally required to keep them.</li>
+    </ul>
+
+    <h2>6. Cookies</h2>
+    <p>
+      We use two cookies, both strictly necessary for the site to function: a session cookie that keeps you signed in,
+      and a CSRF-protection cookie that helps prevent forged requests. Neither is used for advertising or tracking, and
+      under ePrivacy rules strictly-necessary cookies like these don't require a consent banner.
+    </p>
+
+    <h2>7. Your rights</h2>
+    <p>Under GDPR, you can ask us to:</p>
+    <ul>
+      <li>give you access to the data we hold about you;</li>
+      <li>correct inaccurate data;</li>
+      <li>delete your data (subject to the legal retention obligations in section 5);</li>
+      <li>restrict or object to certain processing;</li>
+      <li>provide your data in a portable format.</li>
+    </ul>
+    <p>
+      To exercise any of these, email <a href="mailto:richardjenkins@idreamofthought.org">richardjenkins@idreamofthought.org</a>.
+      You can also lodge a complaint with the French data protection authority, the
+      <a href="https://www.cnil.fr" target="_blank" rel="noopener">CNIL</a>, or with the supervisory authority in your
+      own EU country of residence.
+    </p>
+
+    <h2>8. Security</h2>
+    <p>
+      Passwords are hashed (never stored in plain text), traffic is encrypted in transit, and access to game/payment
+      actions is rate-limited and protected against forged requests. No system is perfectly secure, but we take
+      reasonable, proportionate measures to protect your data.
+    </p>
+
+    <h2>9. Age requirement</h2>
+    <p>Portus accounts require you to be at least 18 years old. We do not knowingly collect data from anyone under that age.</p>
+
+    <h2>10. Changes to this policy</h2>
+    <p>We may update this policy from time to time. Material changes will be reflected by an updated "Last updated" date above.</p>
+
+    <p><a href="/portus">Back to Portus</a> · <a href="/mentions-legales.html">Legal notice</a> · <a href="/terms.html">Terms of Service</a></p>
+  </main>
 </body>
 </html>
