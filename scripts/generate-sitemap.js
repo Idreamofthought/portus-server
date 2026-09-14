@@ -26,6 +26,7 @@ function walk(directory) {
 function toUrl(filePath) {
   const relativePath = `/${path.relative(homepageDirectory, filePath).split(path.sep).join("/")}`;
   if (canonicalPaths.has(relativePath)) return canonicalPaths.get(relativePath);
+  if (relativePath.endsWith("/index.html")) return relativePath.replace(/index\.html$/, "");
   if (relativePath.endsWith(".html")) return relativePath;
   return null;
 }
@@ -46,7 +47,7 @@ const groups = {
   main: urls.filter((url) => !url.startsWith("/tree/") && !url.startsWith("/codex/") && !url.startsWith("/writing/")),
   territories: urls.filter((url) => url.startsWith("/tree/branches/")),
   writing: urls.filter((url) => url.startsWith("/writing/") || url.startsWith("/tree/leaves/")),
-  portus: urls.filter((url) => url === "/portus-info" || url.startsWith("/codex/"))
+  portus: urls.filter((url) => url === "/portus-info" || url.startsWith("/codex/") || url.startsWith("/portus/"))
 };
 
 for (const [name, sitemapUrls] of Object.entries(groups)) {
