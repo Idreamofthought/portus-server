@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   email_verified INTEGER DEFAULT 0,
   captain_name TEXT DEFAULT '',
+  stripe_customer_id TEXT UNIQUE,
   created_at INTEGER NOT NULL
 );
 
@@ -58,6 +59,9 @@ CREATE TABLE IF NOT EXISTS purchases (
   minutes INTEGER NOT NULL,
   amount TEXT NOT NULL,
   currency TEXT NOT NULL,
+  customer_id TEXT,
+  checkout_session_id TEXT,
+  payment_intent_id TEXT,
   created_at INTEGER NOT NULL,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -129,6 +133,19 @@ CREATE TABLE IF NOT EXISTS player_discovery_rolls (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 `);
+
+const userColumns = db.prepare(`PRAGMA table_info(users)`).all();
+if (!userColumns.some((column) => column.name === "stripe_customer_id")) {
+  db.exec(`ALTER TABLE users ADD COLUMN stripe_customer_id TEXT`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_id ON users(stripe_customer_id)`);
+}
+
+const purchaseColumns = db.prepare(`PRAGMA table_info(purchases)`).all();
+for (const column of ["customer_id", "checkout_session_id", "payment_intent_id"]) {
+  if (!purchaseColumns.some((existing) => existing.name === column)) {
+    db.exec(`ALTER TABLE purchases ADD COLUMN ${column} TEXT`);
+  }
+}
 
 export function cleanupExpired() {
   const now = Date.now();
