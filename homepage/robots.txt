@@ -6,5 +6,10 @@ Disallow: /signup.html
 Disallow: /reset-password.html
 Disallow: /reset-request.html
 Disallow: /verify-email
+Disallow: /change-password.html
+Disallow: /settings.html
+Disallow: /purchase.html
+Disallow: /game
+Disallow: /portus/
 
 Sitemap: https://www.idreamofthought.org/sitemap.xml
