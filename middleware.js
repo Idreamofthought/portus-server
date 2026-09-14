@@ -38,7 +38,7 @@ export function wantsHTML(req) {
 export function requireVerified(req, res, next) {
   const row = db.prepare(`SELECT email_verified FROM users WHERE id=?`).get(req.user.uid);
   if (!row || !row.email_verified) {
-    if (wantsHTML(req)) return res.redirect(`${ROUTES.portusInfo}?verify=required`);
+    if (wantsHTML(req)) return res.redirect(`${ROUTES.portus}?verify=required`);
     return res.status(403).json({ error: "email not verified" });
   }
   next();
@@ -49,7 +49,7 @@ export function requirePaid(req, res, next) {
 
   const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(req.user.uid);
   if (!row || row.remaining_seconds <= 0) {
-    if (wantsHTML(req)) return res.redirect(`${ROUTES.portusInfo}?paid=required`);
+    if (wantsHTML(req)) return res.redirect(`${ROUTES.portus}?paid=required`);
     return res.status(403).json({ error: "no paid time" });
   }
   next();

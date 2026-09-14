@@ -136,10 +136,11 @@ app.use((req, res, next) => {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      `connect-src 'self' ${SITE_URL}`,
+      `connect-src 'self' ${SITE_URL} https://plausible.io`,
       "img-src 'self' data:",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://plausible.io",
       "style-src 'self' 'unsafe-inline'",
+      "form-action 'self' https://buttondown.email",
       "object-src 'none'",
       "frame-ancestors 'none'"
     ].join("; ")
@@ -180,8 +181,8 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 // STATIC FILES
 // ============================================================
 
-app.get(["/portus", "/portus/"], authenticateRequest, requireVerified, requirePaid, (_req, res) =>
-  res.sendFile(path.join(__dirname, "protected/game.html"))
+app.get(["/portus", "/portus/"], (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/portus/index.html"))
 );
 
 // /tree used to be a separate homepage; its content is now merged into
@@ -214,11 +215,17 @@ app.get("/what-is", (_req, res) =>
 app.get("/contact", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/contact.html"))
 );
+app.get("/press-kit", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/press-kit.html"))
+);
 app.get("/start-here", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/start-here.html"))
 );
 app.get("/fragments", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/fragments.html"))
+);
+app.get(["/writing", "/writing/"], (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/writing/index.html"))
 );
 app.get("/portus-info", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
@@ -380,14 +387,14 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
   const token = req.query.token;
 
   if (typeof token !== "string")
-    return res.redirect(`${SITE_URL}${ROUTES.portusInfo}?verify=missing`);
+    return res.redirect(`${SITE_URL}${ROUTES.portus}?verify=missing`);
 
   const row = db
     .prepare(`SELECT * FROM email_verification_tokens WHERE token_hash=?`)
     .get(hashToken(token));
 
   if (!row || row.used || row.expires_at < Date.now())
-    return res.redirect(`${SITE_URL}${ROUTES.portusInfo}?verify=invalid`);
+    return res.redirect(`${SITE_URL}${ROUTES.portus}?verify=invalid`);
 
   const tx = db.transaction(() => {
     db.prepare(`UPDATE users SET email_verified=1 WHERE id=?`).run(
@@ -398,7 +405,7 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
   });
 
   tx();
-  res.redirect(`${SITE_URL}${ROUTES.portusInfo}?verify=success`);
+  res.redirect(`${SITE_URL}${ROUTES.portus}?verify=success`);
 });
 
 // Resend verification

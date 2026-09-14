@@ -10,7 +10,6 @@ Disallow: /change-password.html
 Disallow: /settings.html
 Disallow: /purchase.html
 Disallow: /game
-Disallow: /portus/
 
 Sitemap: https://www.idreamofthought.org/sitemap.xml
 Sitemap: https://www.idreamofthought.org/sitemap-main.xml

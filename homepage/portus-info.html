@@ -18,16 +18,20 @@
   <meta name="twitter:image" content="https://www.idreamofthought.org/images/idream-of-thought-social-card.svg">
   <title>Portus - The Living World Game</title>
   <link rel="stylesheet" href="/css/identity.css">
+  <script defer data-domain="idreamofthought.org" src="https://plausible.io/js/script.js"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "VideoGame",
-    "name": "Portus",
-    "url": "https://www.idreamofthought.org/portus-info",
-    "description": "A dreamlike city-building game about memory, myth, and survival.",
-    "genre": ["City-building game", "Strategy game"],
-    "author": { "@type": "Person", "name": "Richard Jenkins" },
-    "isPartOf": { "@type": "WebSite", "name": "I Dream of Thought", "url": "https://www.idreamofthought.org/" }
+    "@graph": [
+      { "@type": "WebSite", "@id": "https://www.idreamofthought.org/#website", "name": "I Dream of Thought", "url": "https://www.idreamofthought.org/" },
+      { "@type": "Game", "@id": "https://www.idreamofthought.org/portus/#game", "name": "Portus", "url": "https://www.idreamofthought.org/portus/", "genre": ["City-building game", "Strategy game"], "description": "A dreamlike city-building game about memory, myth, and survival.", "creator": { "@type": "Person", "name": "Richard Jenkins" }, "isPartOf": { "@id": "https://www.idreamofthought.org/#website" } },
+      { "@type": "CreativeWork", "@id": "https://www.idreamofthought.org/portus-info#creative-work", "name": "Portus - The Living World Game", "about": { "@id": "https://www.idreamofthought.org/portus/#game" }, "author": { "@type": "Person", "name": "Richard Jenkins" } },
+      { "@type": "BreadcrumbList", "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.idreamofthought.org/" },
+        { "@type": "ListItem", "position": 2, "name": "Portus", "item": "https://www.idreamofthought.org/portus/" },
+        { "@type": "ListItem", "position": 3, "name": "Living World", "item": "https://www.idreamofthought.org/portus-info" }
+      ] }
+    ]
   }
   </script>
 </head>
@@ -35,9 +39,10 @@
 <nav class="idot-topnav" aria-label="Site navigation">
   <a class="idot-brand" href="/">I Dream of Thought</a>
   <a href="/#branches">Tree</a>
-  <a href="/writing/index.html">Writing</a>
+  <a href="/writing/">Writing</a>
   <a href="/what-is">About</a>
   <a href="/contact">Contact</a>
+  <a href="/lore/">Lore</a>
   <a class="idot-play" href="/game">Play Portus</a>
 </nav>
 
@@ -45,8 +50,9 @@
     <a class="wordmark" href="/home">I Dream of Thought</a>
     <nav aria-label="Primary navigation">
       <a href="/what-is">What is this?</a>
-      <a href="/writing/index.html">Writing</a>
-      <a class="active" href="/portus-info">Portus</a>
+      <a href="/writing/">Writing</a>
+      <a class="active" href="/portus/">Portus</a>
+      <a href="/lore/">Lore</a>
       <a class="nav-play" href="/game">Play Portus</a>
       <a href="/">The tree</a>
     </nav>
@@ -64,12 +70,35 @@
       </div>
     </section>
 
+    <section class="section roots-section">
+      <div class="section-marker">01 / Lore</div>
+      <div class="section-copy">
+        <h2>A city built inside a warning.</h2>
+        <p>You wake beside the sea with little more than a shoreline, a settlement to raise, and four powers moving through the harbour: Time, Chaos, Destiny, and Twilight.</p>
+        <p>The Codex records what the place remembers. Discoveries, disasters, rituals, and small acts of survival leave traces in the archive.</p>
+        <a class="text-link" href="/codex/">Read the Codex <span>↗</span></a>
+      </div>
+    </section>
+
     <section id="world" class="section roots-section">
-      <div class="section-marker">01 / The world</div>
+      <div class="section-marker">02 / The world</div>
       <div class="section-copy">
         <h2>A port at the edge of the sea.</h2>
         <p>Portus is about time, fate, ecology, and the fragile balance of places. Gather what you need, build carefully, interpret warnings, and live with the traces your choices leave behind.</p>
         <p>It is not a game of speed. It is a game of rhythm: a slow unfolding, like dusk settling over the Mediterranean.</p>
+      </div>
+    </section>
+
+    <section class="section split-section">
+      <div class="section-marker">03 / Screenshots</div>
+      <div class="section-copy">
+        <h2>Glimpses from the harbour.</h2>
+        <p>The live build centres on the settlement map, resource ledger, Codex, and event warnings. Replace these launch glimpses with captured screenshots as the visual pass matures.</p>
+        <div class="feature-grid">
+          <div class="feature-card"><strong>Settlement map</strong><small>Tile-based terrain, building placement, and coastal expansion.</small></div>
+          <div class="feature-card"><strong>Resource ledger</strong><small>Wood, stone, food, gold, research, favour, and pressure over time.</small></div>
+          <div class="feature-card"><strong>Codex fragments</strong><small>Lore entries unlocked by discovery, research, and play.</small></div>
+        </div>
       </div>
     </section>
 
@@ -85,16 +114,30 @@
     </section>
 
     <section class="section split-section">
-      <div class="section-marker">02 / Begin</div>
+      <div class="section-marker">04 / Begin</div>
       <div class="section-copy">
         <h2>Build. Interpret. Endure.</h2>
         <p>The Codex grows as you play, collecting fragments of lore, symbols, and echoes from the world. Portus is another branch from the same tree as the writing: slower than conquest, stranger than management, and attentive to what a landscape remembers.</p>
         <div class="door-links home-doors">
           <a href="/game">Play Portus</a>
           <a href="/portus/gameplay/">Gameplay overview</a>
+          <a href="/lore/">Lore tree</a>
           <a href="/codex/">Read the Codex</a>
           <a href="/start-here">Start here</a>
         </div>
+      </div>
+    </section>
+
+    <section class="section roots-section">
+      <div class="section-marker">05 / Roadmap</div>
+      <div class="section-copy">
+        <h2>What comes next.</h2>
+        <div class="feature-grid">
+          <div class="feature-card"><strong>Launch polish</strong><small>Sharper onboarding, clearer warnings, and improved save feedback.</small></div>
+          <div class="feature-card"><strong>Deeper systems</strong><small>More research, disasters, favour effects, and settlement choices.</small></div>
+          <div class="feature-card"><strong>World expansion</strong><small>More Codex volumes, quests, NPC dialogue, and public lore pages.</small></div>
+        </div>
+        <a class="text-link" href="/game">Play the current build <span>↗</span></a>
       </div>
     </section>
 
@@ -103,7 +146,7 @@
       <h2>Leave the shore changed.</h2>
       <div class="door-links">
         <a href="/what-is">What is this?</a>
-        <a href="/writing/index.html">Writing</a>
+        <a href="/writing/">Writing</a>
         <a href="/home">Home</a>
       </div>
     </section>
