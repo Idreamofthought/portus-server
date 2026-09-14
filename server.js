@@ -204,9 +204,7 @@ app.use("/portus", express.static(path.join(__dirname, "public")));
 // HOMEPAGE ROUTES
 // ============================================================
 
-app.get("/home", (_req, res) =>
-  res.sendFile(path.join(__dirname, "homepage/index.html"))
-);
+app.get("/home", (_req, res) => res.redirect(301, "/"));
 app.get("/about", (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/about.html"))
 );
