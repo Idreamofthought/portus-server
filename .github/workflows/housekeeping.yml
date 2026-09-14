@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Mark and close stale conversations
-        uses: actions/stale@v10
+        uses: actions/stale@v11
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           config-path: .github/stale.yml
