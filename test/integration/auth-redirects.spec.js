@@ -73,7 +73,7 @@ describe("auth redirect states", () => {
     cleanupEmails.push(user.email);
     const res = await requestHtml("/game", makeAuthCookie(user.userId));
     expect(res.status).toBe(302);
-    expect(res.location).toBe("/portus-info?verify=required");
+    expect(res.location).toBe("/portus?verify=required");
   });
 
   test("GET /game with verified session and no paid time redirects to paid status page", async () => {
@@ -81,7 +81,7 @@ describe("auth redirect states", () => {
     cleanupEmails.push(user.email);
     const res = await requestHtml("/game", makeAuthCookie(user.userId));
     expect(res.status).toBe(302);
-    expect(res.location).toBe("/portus-info?paid=required");
+    expect(res.location).toBe("/portus?paid=required");
   });
 
   test("GET /game with verified paid session returns game", async () => {
@@ -102,6 +102,14 @@ describe("auth redirect states", () => {
 
   test("GET /portus-info stays public", async () => {
     const res = await fetch(`${BASE_URL}/portus-info`, {
+      headers: { Accept: "text/html" },
+      redirect: "manual"
+    });
+    expect(res.status).toBe(200);
+  });
+
+  test("GET /portus stays public", async () => {
+    const res = await fetch(`${BASE_URL}/portus`, {
       headers: { Accept: "text/html" },
       redirect: "manual"
     });

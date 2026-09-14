@@ -12,16 +12,20 @@
   <meta property="og:url" content="https://www.idreamofthought.org/portus/gameplay/">
   <title>Portus Gameplay Overview</title>
   <link rel="stylesheet" href="/css/identity.css">
+  <script defer data-domain="idreamofthought.org" src="https://plausible.io/js/script.js"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": "Portus Gameplay Overview",
-    "description": "Learn how Portus works: gameplay systems, disasters, warnings, and favour.",
-    "url": "https://www.idreamofthought.org/portus/gameplay/",
-    "author": { "@type": "Person", "name": "Richard Jenkins" },
-    "about": { "@type": "VideoGame", "name": "Portus" },
-    "keywords": "Portus, gameplay, strategy, settlement building, disasters, warnings, favour"
+    "@graph": [
+      { "@type": "WebSite", "@id": "https://www.idreamofthought.org/#website", "name": "I Dream of Thought", "url": "https://www.idreamofthought.org/" },
+      { "@type": "Game", "@id": "https://www.idreamofthought.org/portus/#game", "name": "Portus", "url": "https://www.idreamofthought.org/portus/", "genre": ["City-building", "Strategy"], "creator": { "@type": "Person", "name": "Richard Jenkins" }, "isPartOf": { "@id": "https://www.idreamofthought.org/#website" } },
+      { "@type": "CreativeWork", "@id": "https://www.idreamofthought.org/portus/gameplay/#creative-work", "name": "Portus Gameplay Overview", "description": "Learn how Portus works: gameplay systems, disasters, warnings, and favour.", "url": "https://www.idreamofthought.org/portus/gameplay/", "author": { "@type": "Person", "name": "Richard Jenkins" }, "about": { "@id": "https://www.idreamofthought.org/portus/#game" }, "keywords": "Portus, gameplay, strategy, settlement building, disasters, warnings, favour" },
+      { "@type": "BreadcrumbList", "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.idreamofthought.org/" },
+        { "@type": "ListItem", "position": 2, "name": "Portus", "item": "https://www.idreamofthought.org/portus/" },
+        { "@type": "ListItem", "position": 3, "name": "Gameplay", "item": "https://www.idreamofthought.org/portus/gameplay/" }
+      ] }
+    ]
   }
   </script>
 </head>
@@ -30,8 +34,9 @@
     <a class="wordmark" href="/">I Dream of Thought</a>
     <nav aria-label="Primary navigation">
       <a href="/start-here">Start here</a>
-      <a href="/writing/index.html">Writing</a>
-      <a href="/portus-info">Portus</a>
+      <a href="/writing/">Writing</a>
+      <a href="/portus/">Portus</a>
+      <a href="/lore/">Lore</a>
       <a href="/codex/">Codex</a>
       <a class="nav-play" href="/game">Play Portus</a>
     </nav>
@@ -76,13 +81,14 @@
         <h2>Let the settlement become a story.</h2>
         <p>The Codex records lore encountered through play. Discoveries, changing seasons, unusual choices, and the aftermath of events give the world a memory beyond the resource ledger.</p>
         <div class="door-links home-doors">
-          <a href="/portus-info">Portus hub</a>
+          <a href="/portus/">Portus hub</a>
           <a href="/codex/">Portus Codex</a>
+          <a href="/lore/">Lore tree</a>
           <a href="/start-here">Start here</a>
         </div>
       </div>
     </section>
   </main>
-  <footer><a href="/">I Dream of Thought</a><span>Portus is a work in progress.</span><a href="/portus-info">Portus hub</a></footer>
+  <footer><a href="/">I Dream of Thought</a><span>Portus is a work in progress.</span><a href="/portus/">Portus hub</a></footer>
 </body>
 </html>

@@ -34,3 +34,26 @@ jobs:
 
       - name: Validate repository structure
         run: npm run validate:structure
+
+  deploy:
+    needs: test
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [[ -z "$RAILWAY_TOKEN" ]]; then
+            echo "RAILWAY_TOKEN is not configured; skipping deployment."
+            exit 0
+          fi
+          railway up --detach

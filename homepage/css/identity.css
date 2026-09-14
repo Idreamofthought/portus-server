@@ -50,6 +50,8 @@ nav a { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; }
 nav a:hover, nav a.active { color: var(--rust); }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   min-height: min(720px, 82vh);
   display: flex;
   flex-direction: column;
@@ -173,10 +175,131 @@ h1 em { color: var(--rust); font-size: 0.82em; }
 .door-links a { color: var(--paper-light); font-family: "Trebuchet MS", sans-serif; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .door-links a:hover { color: #f0ce8d; }
 .home-hero { min-height: min(650px, 76vh); }
+.home-hero > :not(.home-hero-mark) { position: relative; z-index: 1; }
+.home-hero-mark {
+  position: absolute;
+  right: clamp(24px, 10vw, 150px);
+  bottom: clamp(34px, 8vw, 110px);
+  width: clamp(190px, 26vw, 360px);
+  aspect-ratio: 1;
+  margin: 0;
+  border: 1px solid rgba(70, 84, 71, 0.28);
+  border-radius: 50%;
+  opacity: 0.9;
+}
+.home-hero-mark span { position: absolute; display: block; }
+.mark-moon { top: 15%; left: 58%; width: 23%; aspect-ratio: 1; border: 1px solid var(--gold); border-radius: 50%; background: rgba(195, 149, 80, 0.18); }
+.mark-trunk { left: 49%; top: 24%; width: 2px; height: 45%; background: var(--moss); }
+.mark-harbour { left: 26%; bottom: 26%; width: 48%; height: 22%; border: 1px solid var(--rust); border-top: 0; border-radius: 0 0 120px 120px; }
+.mark-root { left: 50%; bottom: 30%; width: 36%; height: 1px; background: var(--moss); transform-origin: left center; }
+.root-one { transform: rotate(24deg); }
+.root-two { transform: rotate(0deg); }
+.root-three { transform: rotate(-24deg); }
 .home-doors { justify-content: flex-start; gap: 18px 30px; }
 .home-doors a { color: var(--moss-deep); border-bottom: 1px solid var(--rust); padding-bottom: 8px; }
 .home-doors a span { margin-left: 8px; color: var(--rust); }
 .home-doors a:hover { color: var(--rust); }
+
+.portus-landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+  align-items: center;
+  gap: clamp(36px, 7vw, 110px);
+}
+.hero-copy { position: relative; z-index: 1; }
+.portus-map {
+  position: relative;
+  width: min(100%, 430px);
+  aspect-ratio: 1;
+  margin: 0;
+  border: 1px solid rgba(37, 54, 45, 0.24);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #d9d4c0, #f7f3e9);
+  box-shadow: 0 24px 60px rgba(37, 54, 45, 0.16);
+}
+.map-sea, .map-coast { position: absolute; inset: 0; border-radius: 50%; }
+.map-sea { background: radial-gradient(circle at 70% 70%, rgba(56, 85, 107, 0.28), transparent 28%); }
+.map-coast { clip-path: polygon(0 48%, 42% 30%, 78% 44%, 100% 36%, 100% 100%, 0 100%); background: rgba(166, 83, 55, 0.16); }
+.map-node {
+  position: absolute;
+  min-width: 84px;
+  padding: 7px 10px;
+  border: 1px solid rgba(37, 54, 45, 0.25);
+  border-radius: 999px;
+  color: var(--moss-deep);
+  background: rgba(247, 243, 233, 0.82);
+  font-family: "Trebuchet MS", sans-serif;
+  font-size: 0.66rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.harbour { left: 42%; bottom: 23%; }
+.settlement { left: 43%; top: 42%; }
+.forest { left: 16%; top: 36%; }
+.mountain { right: 13%; top: 23%; }
+.ruins { left: 28%; bottom: 39%; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 34px;
+}
+.feature-card {
+  min-height: 150px;
+  padding: 22px 20px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(247, 243, 233, 0.7);
+}
+.feature-card strong, .feature-card small { display: block; }
+.feature-card strong { color: var(--moss-deep); font-size: 1.15rem; font-weight: normal; }
+.feature-card small { margin-top: 10px; color: var(--moss); line-height: 1.45; }
+.content-index-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+.index-list { padding: 22px 20px; border: 1px solid var(--line); border-radius: 4px; background: rgba(247, 243, 233, 0.72); }
+.index-list h3 { margin: 0 0 14px; color: var(--moss-deep); font-size: 1.2rem; font-weight: normal; }
+.index-list a { display: block; padding: 8px 0; border-top: 1px solid rgba(37, 54, 45, 0.12); color: var(--moss-deep); text-decoration: none; }
+.index-list a:hover { color: var(--rust); }
+.newsletter-section { background: #e4dfce; }
+.newsletter-form { max-width: 620px; margin-top: 26px; }
+.newsletter-form label { display: block; margin-bottom: 8px; color: var(--moss-deep); font-family: "Trebuchet MS", sans-serif; font-size: 0.72rem; font-weight: bold; letter-spacing: 0.12em; text-transform: uppercase; }
+.newsletter-form div { display: flex; gap: 10px; }
+.newsletter-form input, .newsletter-form button { min-height: 48px; border: 1px solid var(--moss-deep); font: inherit; }
+.newsletter-form input { flex: 1 1 auto; min-width: 0; padding: 0 14px; background: var(--paper-light); }
+.newsletter-form button { flex: 0 0 auto; padding: 0 18px; color: var(--paper-light); background: var(--moss-deep); font-family: "Trebuchet MS", sans-serif; font-size: 0.76rem; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+
+.trailer-body { min-height: 100vh; color: var(--paper-light); background: #050705; }
+.trailer-stage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  background: radial-gradient(circle at 50% 52%, rgba(195, 149, 80, 0.18), transparent 22%), radial-gradient(circle at 50% 55%, rgba(56, 85, 107, 0.16), transparent 42%), #050705;
+}
+.trailer-audio { position: absolute; left: 24px; bottom: 24px; width: min(320px, calc(100% - 48px)); opacity: 0.76; z-index: 4; }
+.trailer-diagram { position: absolute; width: min(68vw, 520px); aspect-ratio: 1; border: 1px solid rgba(238, 233, 220, 0.18); border-radius: 50%; animation: trailer-pulse 5s ease-in-out infinite; }
+.trailer-diagram span { position: absolute; left: 50%; top: 50%; width: 42%; height: 1px; background: rgba(195, 149, 80, 0.42); transform-origin: left center; }
+.trailer-diagram span:nth-child(1) { transform: rotate(0deg); }
+.trailer-diagram span:nth-child(2) { transform: rotate(90deg); }
+.trailer-diagram span:nth-child(3) { transform: rotate(180deg); }
+.trailer-diagram span:nth-child(4) { transform: rotate(270deg); }
+.trailer-line, .trailer-title, .trailer-actions { position: absolute; text-align: center; }
+.trailer-line { max-width: 720px; margin: 0; color: rgba(238, 233, 220, 0); font-size: clamp(1.35rem, 4vw, 3.6rem); line-height: 1.1; animation: trailer-fade 24s linear infinite; }
+.line-one { animation-delay: 0s; }
+.line-two { animation-delay: 5s; }
+.line-three { animation-delay: 10s; }
+.line-four { animation-delay: 15s; }
+.trailer-title { margin: 0; color: rgba(238, 233, 220, 0); font-size: clamp(4rem, 12vw, 9rem); animation: trailer-title 24s linear infinite; }
+.trailer-title em { color: var(--gold); font-size: 0.34em; letter-spacing: 0.12em; text-transform: uppercase; }
+.trailer-actions { bottom: 42px; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; animation: trailer-actions 24s linear infinite; }
+@keyframes trailer-pulse { 0%, 100% { transform: scale(0.92); opacity: 0.42; } 50% { transform: scale(1.04); opacity: 0.84; } }
+@keyframes trailer-fade { 0%, 15%, 100% { opacity: 0; color: rgba(238, 233, 220, 0); transform: translateY(14px); } 5%, 11% { opacity: 1; color: rgba(238, 233, 220, 0.94); transform: translateY(0); } }
+@keyframes trailer-title { 0%, 76% { opacity: 0; color: rgba(238, 233, 220, 0); transform: scale(0.98); } 84%, 100% { opacity: 1; color: rgba(238, 233, 220, 0.98); transform: scale(1); } }
+@keyframes trailer-actions { 0%, 82% { opacity: 0; pointer-events: none; } 90%, 100% { opacity: 1; pointer-events: auto; } }
 
 footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 30px clamp(24px, 6vw, 92px); color: var(--moss); font-size: 0.85rem; }
 footer a { color: var(--moss-deep); text-decoration: none; }
@@ -197,10 +320,16 @@ footer a { color: var(--moss-deep); text-decoration: none; }
   .site-header { align-items: flex-start; flex-direction: column; gap: 18px; }
   nav { gap: 12px 18px; }
   .hero { min-height: 620px; padding-top: 70px; }
+  .home-hero-mark { width: 190px; right: 18px; bottom: 26px; opacity: 0.42; }
+  .portus-landing-hero { display: flex; }
+  .portus-map { width: min(100%, 320px); }
   .live-banner { align-items: flex-start; flex-direction: column; }
   .section { display: block; padding-top: 90px; padding-bottom: 90px; }
   .section-marker { margin-bottom: 28px; }
   .seasons { grid-template-columns: repeat(2, 1fr); }
+  .feature-grid { grid-template-columns: 1fr; }
+  .content-index-grid { grid-template-columns: 1fr; }
+  .newsletter-form div { flex-direction: column; }
   .tree-copy { grid-column: auto; }
   .tree-diagram { position: relative; right: auto; top: auto; width: 170px; margin: 60px auto 0; }
   footer { flex-direction: column; }
