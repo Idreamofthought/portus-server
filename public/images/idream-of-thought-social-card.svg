@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">I Dream of Thought - Writing, dreams, ideas, and Portus</title>
+  <desc id="desc">A creative archive by Richard Jenkins and the dreamlike city-building game Portus.</desc>
+  <rect width="1200" height="630" fill="#20231f"/>
+  <path d="M0 470 C220 390 360 560 590 450 S960 350 1200 430 V630 H0Z" fill="#25362d"/>
+  <path d="M0 530 C240 465 390 610 650 500 S980 430 1200 500 V630 H0Z" fill="#a65337" opacity=".72"/>
+  <circle cx="950" cy="150" r="92" fill="#c39550" opacity=".85"/>
+  <path d="M950 62 A92 92 0 1 0 950 238 A72 72 0 1 1 950 62Z" fill="#20231f"/>
+  <text x="86" y="190" fill="#c39550" font-family="Georgia, serif" font-size="32" letter-spacing="7">I DREAM OF THOUGHT</text>
+  <text x="82" y="300" fill="#f7f3e9" font-family="Georgia, serif" font-size="78">Writing, dreams,</text>
+  <text x="82" y="390" fill="#f7f3e9" font-family="Georgia, serif" font-size="78">ideas &amp; Portus</text>
+  <text x="88" y="505" fill="#f0ce8d" font-family="Trebuchet MS, sans-serif" font-size="24" letter-spacing="3">BUILD A CITY. DISCOVER ITS MEMORY.</text>
+</svg>
