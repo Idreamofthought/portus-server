@@ -1,8 +1,39 @@
-- A Dreamlike City-Building Experience
+# I Dream of Thought
 
-Portus is a surreal, atmospheric city-building game where the player shapes a drifting settlement suspended between dream and memory. The game blends pixel-art terrain with soft, mystical UI elements to create a quiet and contemplative experience.
+**Writing, dreams, ideas, and Portus by Richard Jenkins.**
 
-This repository contains the full Portus server, including the public game client, homepage, authentication, payments, protected game mode, dreamlike UI, and modular resource, research, favour, disaster, warning, and codex systems.
+I Dream of Thought is a creative home for poetry, fiction, philosophy, dream
+writing, nature, memory, and the ecology of imagination. Its interactive
+flagship is **Portus**, a dreamlike city-building game about memory, myth, and
+survival.
+
+## Portus
+
+> **Build a city. Discover its memory.**
+
+Portus is a surreal, atmospheric city-building game where a shipwreck survivor
+shapes a fragile settlement beside the sea. Gather resources, build carefully,
+interpret warnings, survive disasters, and uncover the lore of a world that
+seems to remember what happens in it.
+
+Portus is not designed as a race for expansion. It is a slower, stranger form
+of strategy: a place to explore, endure, and learn what a landscape asks of the
+people who inhabit it.
+
+### Explore the project
+
+- [I Dream of Thought](https://www.idreamofthought.org/) - the writing and creative archive
+- [Play Portus](https://www.idreamofthought.org/game) - enter the game
+- [About Portus](https://www.idreamofthought.org/portus-info) - read the premise and world overview
+- [Writing archive](https://www.idreamofthought.org/writing/index.html) - poetry, fiction, philosophy, dreams, and ideas
+- [Portus lore](lore/README.md) - worldbuilding, Codex, myths, events, and narrative sources
+
+## What this repository contains
+
+This repository contains the full Portus server and public creative site,
+including the game client, homepage, authentication, payments, protected game
+mode, dreamlike UI, and modular resource, research, favour, disaster, warning,
+and Codex systems.
 
 ## Features
 
