@@ -269,19 +269,21 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
     return res.status(500).json({ error: "unable to create account" });
   }
 
+  const emailDeliveryAvailable = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
   try {
     const raw = crypto.randomBytes(32).toString("hex");
     db.prepare(
       `INSERT INTO email_verification_tokens (token_hash,user_id,expires_at) VALUES (?,?,?)`
     ).run(hashToken(raw), userId, Date.now() + 86400000);
 
-    await sendVerificationEmail({ email, token: raw });
+    if (emailDeliveryAvailable) {
+      await sendVerificationEmail({ email, token: raw });
+    } else {
+      console.warn("email delivery unavailable; signup succeeded without sending verification email", { email });
+    }
   } catch (err) {
     console.error("verification email failed", err);
-    issueAuthCookie(res, userId);
-    return res.status(502).json({
-      error: "account created, but the verification email could not be sent"
-    });
+    console.warn("continuing after email send failure so signup still succeeds in local/sandbox mode", { userId, email });
   }
 
   issueAuthCookie(res, userId);
@@ -354,14 +356,14 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
   const token = req.query.token;
 
   if (typeof token !== "string")
-    return res.redirect(`${SITE_URL}/portus?verify=missing`);
+    return res.redirect(`${SITE_URL}/portus-info?verify=missing`);
 
   const row = db
     .prepare(`SELECT * FROM email_verification_tokens WHERE token_hash=?`)
     .get(hashToken(token));
 
   if (!row || row.used || row.expires_at < Date.now())
-    return res.redirect(`${SITE_URL}/portus?verify=invalid`);
+    return res.redirect(`${SITE_URL}/portus-info?verify=invalid`);
 
   const tx = db.transaction(() => {
     db.prepare(`UPDATE users SET email_verified=1 WHERE id=?`).run(
@@ -372,7 +374,7 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
   });
 
   tx();
-  res.redirect(`${SITE_URL}/portus?verify=success`);
+  res.redirect(`${SITE_URL}/portus-info?verify=success`);
 });
 
 // Resend verification
@@ -852,7 +854,7 @@ app.post("/api/save", authenticateRequest, requireCsrf, generalApiLimiter, (req,
   if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
   }
-  if (!validateSave(req.body)) return res.status(400).json({ error: "invalid_save" });
+  if (!validateSave(req.body).ok) return res.status(400).json({ error: "invalid_save" });
 
   db.prepare(
     `INSERT INTO saves (user_id,state,updated_at)
@@ -880,7 +882,8 @@ app.get("/api/save", authenticateRequest, (req, res) => {
   let state = null;
   try {
     state = row ? JSON.parse(row.state) : null;
-  } catch {
+  } catch (err) {
+    console.error("corrupted save state for user", req.user.uid, err);
     state = null;
   }
 

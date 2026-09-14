@@ -37,7 +37,7 @@ export function wantsHTML(req) {
 export function requireVerified(req, res, next) {
   const row = db.prepare(`SELECT email_verified FROM users WHERE id=?`).get(req.user.uid);
   if (!row || !row.email_verified) {
-    if (wantsHTML(req)) return res.redirect(`/portus?verify=required`);
+    if (wantsHTML(req)) return res.redirect(`/portus-info?verify=required`);
     return res.status(403).json({ error: "email not verified" });
   }
   next();
@@ -48,15 +48,16 @@ export function requirePaid(req, res, next) {
 
   const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(req.user.uid);
   if (!row || row.remaining_seconds <= 0) {
-    if (wantsHTML(req)) return res.redirect(`/portus?paid=required`);
+    if (wantsHTML(req)) return res.redirect(`/portus-info?paid=required`);
     return res.status(403).json({ error: "no paid time" });
   }
   next();
 }
 
 export const jsonRateLimitHandler = (_req, res) => res.status(429).json({ error: "Too many requests — please wait a bit and try again." });
-export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, handler: jsonRateLimitHandler });
-export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, handler: jsonRateLimitHandler });
-export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, handler: jsonRateLimitHandler });
-export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, handler: jsonRateLimitHandler });
-export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: 200, handler: jsonRateLimitHandler });
+const skip = () => process.env.DISABLE_RATE_LIMITS === "1";
+export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, handler: jsonRateLimitHandler, skip });
+export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, handler: jsonRateLimitHandler, skip });
+export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, handler: jsonRateLimitHandler, skip });
+export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, handler: jsonRateLimitHandler, skip });
+export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: 200, handler: jsonRateLimitHandler, skip });
