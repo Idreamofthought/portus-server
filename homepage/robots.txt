@@ -13,3 +13,7 @@ Disallow: /game
 Disallow: /portus/
 
 Sitemap: https://www.idreamofthought.org/sitemap.xml
+Sitemap: https://www.idreamofthought.org/sitemap-main.xml
+Sitemap: https://www.idreamofthought.org/sitemap-writing.xml
+Sitemap: https://www.idreamofthought.org/sitemap-territories.xml
+Sitemap: https://www.idreamofthought.org/sitemap-portus.xml
