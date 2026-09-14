@@ -14,7 +14,9 @@ export const db = new Database(configuredDatabasePath);
 db.pragma("foreign_keys = ON");
 db.pragma(process.env.NODE_ENV === "test" ? "journal_mode = DELETE" : "journal_mode = WAL");
 
+// Retention for webhook deduplication and in-flight order bookkeeping.
 const PAYMENT_RECORD_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+export const ACCOUNT_RETENTION_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -24,7 +26,8 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified INTEGER DEFAULT 0,
   captain_name TEXT DEFAULT '',
   stripe_customer_id TEXT UNIQUE,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  deleted_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -63,7 +66,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   checkout_session_id TEXT,
   payment_intent_id TEXT,
   created_at INTEGER NOT NULL,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS time_tracking (
@@ -139,12 +142,47 @@ if (!userColumns.some((column) => column.name === "stripe_customer_id")) {
   db.exec(`ALTER TABLE users ADD COLUMN stripe_customer_id TEXT`);
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_id ON users(stripe_customer_id)`);
 }
+if (!userColumns.some((column) => column.name === "deleted_at")) {
+  db.exec(`ALTER TABLE users ADD COLUMN deleted_at INTEGER`);
+}
 
 const purchaseColumns = db.prepare(`PRAGMA table_info(purchases)`).all();
 for (const column of ["customer_id", "checkout_session_id", "payment_intent_id"]) {
   if (!purchaseColumns.some((existing) => existing.name === column)) {
     db.exec(`ALTER TABLE purchases ADD COLUMN ${column} TEXT`);
   }
+}
+
+const purchasesCascadesFromUsers = db
+  .prepare(`PRAGMA foreign_key_list(purchases)`)
+  .all()
+  .some((foreignKey) => foreignKey.table === "users" && foreignKey.on_delete === "CASCADE");
+
+if (purchasesCascadesFromUsers) {
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE purchases_new (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        minutes INTEGER NOT NULL,
+        amount TEXT NOT NULL,
+        currency TEXT NOT NULL,
+        customer_id TEXT,
+        checkout_session_id TEXT,
+        payment_intent_id TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      );
+      INSERT INTO purchases_new SELECT
+        id, user_id, provider, product_id, minutes, amount, currency,
+        customer_id, checkout_session_id, payment_intent_id, created_at
+      FROM purchases;
+      DROP TABLE purchases;
+      ALTER TABLE purchases_new RENAME TO purchases;
+    `);
+  })();
 }
 
 export function cleanupExpired() {
@@ -155,4 +193,17 @@ export function cleanupExpired() {
   const paymentRecordCutoff = now - PAYMENT_RECORD_RETENTION_MS;
   db.prepare(`DELETE FROM processed_payment_events WHERE created_at < ?`).run(paymentRecordCutoff);
   db.prepare(`DELETE FROM pending_orders WHERE created_at < ?`).run(paymentRecordCutoff);
+
+  const accountRetentionCutoff = now - ACCOUNT_RETENTION_MS;
+  db.transaction(() => {
+    db.prepare(
+      `DELETE FROM purchases
+       WHERE user_id IN (SELECT id FROM users WHERE deleted_at IS NOT NULL AND deleted_at < ?)`
+    ).run(accountRetentionCutoff);
+    db.prepare(
+      `DELETE FROM users
+       WHERE deleted_at IS NOT NULL AND deleted_at < ?
+         AND NOT EXISTS (SELECT 1 FROM purchases WHERE purchases.user_id = users.id)`
+    ).run(accountRetentionCutoff);
+  })();
 }

@@ -535,11 +535,30 @@ app.post(
   }
 );
 
-// Delete account
+// Delete account while retaining anonymized purchase records for reconciliation.
 app.post("/api/delete-account", requireCsrf, authenticateRequest, generalApiLimiter, async (req, res) => {
   const userId = req.user.uid;
+  const now = Date.now();
+  const anonymizedEmail = `deleted-user-${userId}-${now}@deleted.idreamofthought.org`;
+  const unusablePasswordHash = crypto.randomBytes(32).toString("hex");
 
-  db.prepare(`DELETE FROM users WHERE id=?`).run(userId);
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE users
+         SET email=?, password_hash=?, captain_name='', stripe_customer_id=NULL, deleted_at=?
+       WHERE id=?`
+    ).run(anonymizedEmail, unusablePasswordHash, now, userId);
+
+    db.prepare(`DELETE FROM sessions WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM email_verification_tokens WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM password_reset_tokens WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM saves WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM time_tracking WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM player_discoveries WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM player_codex_unlocks WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM player_discovery_rolls WHERE user_id=?`).run(userId);
+  });
+  tx();
 
   res.clearCookie("auth", { path: "/" });
   res.json({ ok: true });
