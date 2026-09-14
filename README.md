@@ -147,6 +147,13 @@ The server runs at `http://localhost:8080`. The game is available at `http://loc
 
 For local development, set `NODE_ENV=development` and use an HTTP `SITE_URL`, such as `http://localhost:8080`.
 
+### Account Signup
+
+Signup creates an unverified account and sends a verification email through
+Resend. Production deployments must set `RESEND_API_KEY` and `EMAIL_FROM`,
+using a sender address from a verified Resend domain. If delivery fails, the
+new account is removed so the user can retry after email delivery is restored.
+
 ## Testing
 
 Run the default Node test suite:
@@ -187,6 +194,11 @@ Portus is deployed on Railway. The server exposes:
 
 Railway checks the `/health` endpoint and runs one replica in the configured
 `us-east4-eqdc4a` region. Deployment settings are stored in `railway.json`.
+
+Before testing signup on Railway, confirm `RESEND_API_KEY` and `EMAIL_FROM`
+are present in the service variables and that the `EMAIL_FROM` domain is
+verified in Resend. See the [Railway deployment checklist](docs/RAILWAY-DEPLOYMENT-CHECKLIST.md)
+for the complete release checks.
 
 The Portus client is mounted with:
 
