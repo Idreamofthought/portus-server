@@ -62,11 +62,35 @@ import { ROUTES } from "./routes-config.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
 const PORT = Number(process.env.PORT || 8080);
 const SITE_URL = process.env.SITE_URL || "https://www.idreamofthought.org";
 const MAX_SAVE_BYTES = 512 * 1024;
 const HEARTBEAT_MAX_GAP_MS = 30_000;
+
+export function startServer(port = PORT) {
+  if (app.locals.server) return app.locals.server;
+  app.locals.server = app.listen(port, () => {
+    console.log("Server running on port", port);
+  });
+  return app.locals.server;
+}
+
+export function closeServer() {
+  if (!app.locals.server) return;
+  const server = app.locals.server;
+  app.locals.server = undefined;
+  if (app.locals.cleanupExpiredTimer) {
+    clearInterval(app.locals.cleanupExpiredTimer);
+    app.locals.cleanupExpiredTimer = undefined;
+  }
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
 
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
@@ -379,8 +403,8 @@ app.get("/verify-email", passwordResetLimiter, (req, res) => {
 // Resend verification
 app.post(
   "/api/resend-verification",
-  authenticateRequest,
   requireCsrf,
+  authenticateRequest,
   passwordResetLimiter,
   async (req, res) => {
     const user = db
@@ -477,9 +501,9 @@ app.post("/api/reset-password", passwordResetLimiter, async (req, res) => {
 // Change password
 app.post(
   "/api/change-password",
-  authenticateRequest,
-  requireCsrf,
   authLimiter,
+  requireCsrf,
+  authenticateRequest,
   async (req, res) => {
     const oldPassword = req.body.oldPassword;
     const newPassword = req.body.newPassword;
@@ -512,7 +536,7 @@ app.post(
 );
 
 // Delete account
-app.post("/api/delete-account", authenticateRequest, requireCsrf, generalApiLimiter, async (req, res) => {
+app.post("/api/delete-account", requireCsrf, authenticateRequest, generalApiLimiter, async (req, res) => {
   const userId = req.user.uid;
 
   db.prepare(`DELETE FROM users WHERE id=?`).run(userId);
@@ -546,7 +570,7 @@ app.get("/api/access", authenticateRequest, (req, res) => {
 });
 
 // Heartbeat
-app.post("/api/access/heartbeat", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
+app.post("/api/access/heartbeat", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
   if (hasFreeAccess(req.user.uid)) {
     return res.json({
       remainingSeconds: null,
@@ -597,7 +621,7 @@ app.post("/api/access/heartbeat", authenticateRequest, requireCsrf, generalApiLi
 });
 
 // Stop access
-app.post("/api/access/stop", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
+app.post("/api/access/stop", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
   db.prepare(
     `UPDATE time_tracking SET last_active_at=NULL,updated_at=? WHERE user_id=?`
   ).run(Date.now(), req.user.uid);
@@ -627,7 +651,7 @@ app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (
   res.json({ discoveries, codexUnlocks, codexEntries });
 });
 
-app.post("/api/discoveries/roll", authenticateRequest, requireVerified, requirePaid, requireCsrf, generalApiLimiter, (req, res) => {
+app.post("/api/discoveries/roll", requireCsrf, authenticateRequest, requireVerified, requirePaid, generalApiLimiter, (req, res) => {
   const activity = req.body?.activity;
   const turnNumber = req.body?.turnNumber;
   const chance = ACTIVITY_DISCOVERY_CHANCES[activity];
@@ -719,10 +743,10 @@ app.get("/api/products", (_req, res) =>
 // PayPal checkout
 app.post(
   "/api/checkout/paypal",
+  checkoutLimiter,
+  requireCsrf,
   authenticateRequest,
   requireVerified,
-  requireCsrf,
-  checkoutLimiter,
   async (req, res) => {
     try {
       res.json(
@@ -744,9 +768,9 @@ app.post(
 // PayPal capture
 app.post(
   "/api/checkout/paypal/capture",
-  authenticateRequest,
-  requireCsrf,
   checkoutLimiter,
+  requireCsrf,
+  authenticateRequest,
   async (req, res) => {
     try {
       res.json(
@@ -765,10 +789,10 @@ app.post(
 // Stripe checkout
 app.post(
   "/api/checkout/stripe",
+  checkoutLimiter,
+  requireCsrf,
   authenticateRequest,
   requireVerified,
-  requireCsrf,
-  checkoutLimiter,
   async (req, res) => {
     try {
       res.json(
@@ -787,10 +811,10 @@ app.post(
 
 app.post(
   "/api/checkout/stripe/confirm",
+  checkoutLimiter,
+  requireCsrf,
   authenticateRequest,
   requireVerified,
-  requireCsrf,
-  checkoutLimiter,
   async (req, res) => {
     try {
       res.json(
@@ -848,12 +872,16 @@ app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
 });
 
 // Save game state
-app.post("/api/save", authenticateRequest, requireCsrf, generalApiLimiter, (req, res) => {
+app.post("/api/save", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
   const json = JSON.stringify(req.body ?? {});
   if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
   }
-  if (!validateSave(req.body)) return res.status(400).json({ error: "invalid_save" });
+
+  const validation = validateSave(req.body);
+  if (!validation.ok) {
+    return res.status(400).json({ error: validation.error || "invalid_save" });
+  }
 
   db.prepare(
     `INSERT INTO saves (user_id,state,updated_at)
@@ -896,9 +924,10 @@ app.use((err, _req, res, _next) => {
 
 // Cleanup expired tokens / orders
 cleanupExpired();
-setInterval(cleanupExpired, 24 * 60 * 60 * 1000).unref();
+app.locals.cleanupExpiredTimer = setInterval(cleanupExpired, 24 * 60 * 60 * 1000);
+app.locals.cleanupExpiredTimer.unref();
 
-// Start server
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
-});
+// Start server when launched directly.
+if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
+  startServer(PORT);
+}

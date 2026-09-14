@@ -5,8 +5,18 @@ import { db } from "./database2.js";
 import { ROUTES } from "./routes-config.js";
 
 export const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+export const DEFAULT_JWT_SECRET = process.env.NODE_ENV === "production" ? "" : "test-secret";
 const COOKIE_SECURE = process.env.NODE_ENV === "production";
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function getJwtSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be configured in production");
+  }
+  process.env.JWT_SECRET = DEFAULT_JWT_SECRET;
+  return process.env.JWT_SECRET;
+}
 
 export function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : email;
@@ -29,7 +39,7 @@ export function createSession(userId) {
 
 export function issueAuthCookie(res, userId) {
   const sid = createSession(userId);
-  const token = jwt.sign({ uid: userId, sid }, process.env.JWT_SECRET, { expiresIn: "30d" });
+  const token = jwt.sign({ uid: userId, sid }, getJwtSecret(), { expiresIn: "30d" });
   res.cookie("auth", token, { httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, maxAge: SESSION_LIFETIME_MS, path: "/" });
 }
 
@@ -46,7 +56,7 @@ export function authenticateRequest(req, res, next) {
   const token = req.cookies.auth;
   if (!token) return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "not logged in" });
   let payload;
-  try { payload = jwt.verify(token, process.env.JWT_SECRET); } catch { return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "invalid token" }); }
+  try { payload = jwt.verify(token, getJwtSecret()); } catch { return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "invalid token" }); }
   const session = db.prepare(`SELECT id,expires_at FROM sessions WHERE id=? AND user_id=?`).get(payload.sid, payload.uid);
   if (!session || session.expires_at < Date.now()) {
     res.clearCookie("auth");
