@@ -1,14 +1,18 @@
 import Database from "better-sqlite3";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const configuredDatabasePath = process.env.DATABASE_PATH;
-if (process.env.NODE_ENV === "production" && (!configuredDatabasePath || !path.isAbsolute(configuredDatabasePath))) {
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const defaultDatabasePath = path.join(moduleDir, "portus2.db");
+const configuredDatabasePath = process.env.DATABASE_PATH || defaultDatabasePath;
+
+if (process.env.NODE_ENV === "production" && (!process.env.DATABASE_PATH || !path.isAbsolute(process.env.DATABASE_PATH))) {
   throw new Error("DATABASE_PATH must be an absolute path in production; mount a Railway volume first");
 }
 
-export const db = new Database(configuredDatabasePath || "portus2.db");
+export const db = new Database(configuredDatabasePath);
 db.pragma("foreign_keys = ON");
-db.pragma("journal_mode = WAL");
+db.pragma(process.env.NODE_ENV === "test" ? "journal_mode = DELETE" : "journal_mode = WAL");
 
 const PAYMENT_RECORD_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 

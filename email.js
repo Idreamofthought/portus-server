@@ -1,6 +1,11 @@
-import { assertEmailConfig, configuredSender, resend } from "./resend.js";
+import { assertEmailConfig, configuredSender, emailConfigError, resend } from "./resend.js";
 
 async function sendEmail(options) {
+  if (emailConfigError && process.env.NODE_ENV !== "production") {
+    console.warn("Email delivery skipped in non-production environment:", emailConfigError);
+    return { skipped: true, data: null, error: null };
+  }
+
   assertEmailConfig();
 
   const result = await resend.emails.send(options);
