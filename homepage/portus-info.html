@@ -89,9 +89,15 @@
   </footer>
   <script>
     const accessMessage = document.getElementById("access-message");
-    if (new URLSearchParams(window.location.search).get("paid") === "required") {
+    const requiresPayment = new URLSearchParams(window.location.search).get("paid") === "required";
+    if (requiresPayment) {
       accessMessage.hidden = false;
-      accessMessage.textContent = "Your passage is ready. Sign in or create an account to enter Portus.";
+      accessMessage.textContent = "Your passage is ready. Choose a pass to enter Portus.";
+      document.querySelectorAll('a[href="/game"]').forEach((link) => {
+        link.href = "/purchase.html";
+        if (link.classList.contains("primary-cta")) link.innerHTML = "Get access to Portus <span>↗</span>";
+        else if (link.classList.contains("idot-play") || link.classList.contains("nav-play")) link.textContent = "Get access";
+      });
     }
   </script>
 </body>
