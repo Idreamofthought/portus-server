@@ -1,11 +1,24 @@
-# I Dream of Thought
+# Portus Game Server
 
-**Writing, dreams, ideas, and Portus by Richard Jenkins.**
+**A mythic strategy game of favour, catastrophe, and deep-time lore.**
+
+[![CI](https://github.com/idreamofthought/portus-server/actions/workflows/ci.yml/badge.svg)](https://github.com/idreamofthought/portus-server/actions/workflows/ci.yml)
+[![Live site](https://img.shields.io/badge/live-idreamofthought.org-38556b)](https://www.idreamofthought.org/)
+
+![Portus and I Dream of Thought](public/images/idream-of-thought-social-card.svg)
+
+Portus is a contemplative browser city-building game from Richard Jenkins and
+the I Dream of Thought creative universe. This repository contains its Express
+server, browser client, account and access systems, public site, and canonical
+worldbuilding sources.
 
 I Dream of Thought is a creative home for poetry, fiction, philosophy, dream
 writing, nature, memory, and the ecology of imagination. Its interactive
 flagship is **Portus**, a dreamlike city-building game about memory, myth, and
 survival.
+
+> This is an active private project. The source is visible for development and
+> documentation; no license is granted for reuse unless stated otherwise.
 
 ## Portus
 
@@ -30,10 +43,16 @@ people who inhabit it.
 
 ## What this repository contains
 
-This repository contains the full Portus server and public creative site,
-including the game client, homepage, authentication, payments, protected game
-mode, dreamlike UI, and modular resource, research, favour, disaster, warning,
-and Codex systems.
+The repository contains the full Portus server and public creative site:
+
+- Express routes for authentication, access, saves, payments, and webhooks
+- The browser game client and protected game mode
+- The I Dream of Thought homepage and writing tree
+- Modular resource, research, favour, disaster, warning, and Codex systems
+- Canonical Portus lore, quests, items, events, and NPC dialogue
+
+For API contracts, see [API.md](API.md). For launch and deployment checks, see
+[LAUNCH.md](LAUNCH.md) and [the Railway checklist](docs/RAILWAY-DEPLOYMENT-CHECKLIST.md).
 
 ## Features
 
@@ -275,3 +294,15 @@ npm run validate:structure
 ```
 
 It checks required directories and reports any legacy paths that need review.
+
+## Security
+
+Please do not report security vulnerabilities in public issues. See
+[SECURITY.md](SECURITY.md) for the responsible disclosure process.
+
+## License and reuse
+
+This repository does not currently publish an open-source license. Unless a
+file says otherwise, code, writing, artwork, audio, and Portus worldbuilding
+remain copyright of their respective creators. Contact the project owner before
+reusing or redistributing any material.
