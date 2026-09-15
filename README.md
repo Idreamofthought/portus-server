@@ -17,8 +17,10 @@ writing, nature, memory, and the ecology of imagination. Its interactive
 flagship is **Portus**, a dreamlike city-building game about memory, myth, and
 survival.
 
-> This is an active private project. The source is visible for development and
-> documentation; no license is granted for reuse unless stated otherwise.
+> Source is available here for viewing and development. No open-source
+> licence is published; all rights are reserved on the code, writing, art,
+> audio, and Portus lore unless a file states otherwise. See
+> [License and reuse](#license-and-reuse) below.
 
 ## Portus
 
@@ -37,7 +39,7 @@ people who inhabit it.
 
 - [I Dream of Thought](https://www.idreamofthought.org/) - the writing and creative archive
 - [Play Portus](https://www.idreamofthought.org/game) - enter the game
-- [About Portus](https://www.idreamofthought.org/portus-info) - read the premise and world overview
+- [About Portus](https://www.idreamofthought.org/portus/) - read the premise and world overview
 - [Writing archive](https://www.idreamofthought.org/writing/index.html) - poetry, fiction, philosophy, dreams, and ideas
 - [Portus lore](lore/README.md) - worldbuilding, Codex, myths, events, and narrative sources
 

@@ -227,9 +227,8 @@ app.get("/fragments", (_req, res) =>
 app.get(["/writing", "/writing/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/writing/index.html"))
 );
-app.get("/portus-info", (_req, res) =>
-  res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
-);
+// Legacy landing page, consolidated into /portus/ to give the site one Portus door.
+app.get("/portus-info", (_req, res) => res.redirect(301, "/portus/"));
 app.get("/legal", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/legal.html"))
 );
