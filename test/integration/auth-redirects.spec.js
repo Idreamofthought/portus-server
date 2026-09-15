@@ -100,12 +100,13 @@ describe("auth redirect states", () => {
     expect(res.status).toBe(200);
   });
 
-  test("GET /portus-info stays public", async () => {
+  test("GET /portus-info redirects to /portus/", async () => {
     const res = await fetch(`${BASE_URL}/portus-info`, {
       headers: { Accept: "text/html" },
       redirect: "manual"
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/portus/");
   });
 
   test("GET /portus stays public", async () => {

@@ -15,7 +15,6 @@ const canonicalPaths = new Map([
   ["/lore/index.html", "/lore/"],
   ["/press-kit.html", "/press-kit"],
   ["/portus/index.html", "/portus/"],
-  ["/portus-info.html", "/portus-info"],
   ["/start-here.html", "/start-here"],
   ["/writing/index.html", "/writing/"],
   ["/codex/index.html", "/codex/"]
@@ -52,7 +51,7 @@ const groups = {
   main: urls.filter((url) => !url.startsWith("/tree/") && !url.startsWith("/codex/") && !url.startsWith("/writing/")),
   territories: urls.filter((url) => url.startsWith("/tree/branches/")),
   writing: urls.filter((url) => url.startsWith("/writing/") || url.startsWith("/tree/leaves/")),
-  portus: urls.filter((url) => url === "/portus-info" || url.startsWith("/codex/") || url.startsWith("/lore/") || url.startsWith("/portus/"))
+  portus: urls.filter((url) => url.startsWith("/codex/") || url.startsWith("/lore/") || url.startsWith("/portus/"))
 };
 
 for (const [name, sitemapUrls] of Object.entries(groups)) {
