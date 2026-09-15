@@ -54,7 +54,7 @@ export function revokeAllSessions(userId) {
 export function authenticateRequest(req, res, next) {
   const wantsHTML = String(req.headers.accept || "").includes("text/html");
   const token = req.cookies.auth;
-  if (!token) return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "not logged in" });
+  if (!token) return wantsHTML ? res.redirect(ROUTES.signup) : res.status(401).json({ error: "not logged in" });
   let payload;
   try { payload = jwt.verify(token, getJwtSecret()); } catch { return wantsHTML ? res.redirect(ROUTES.login) : res.status(401).json({ error: "invalid token" }); }
   const session = db.prepare(`SELECT id,expires_at FROM sessions WHERE id=? AND user_id=?`).get(payload.sid, payload.uid);

@@ -62,10 +62,10 @@ describe("auth redirect states", () => {
     }
   });
 
-  test("GET /game without session redirects to login", async () => {
+  test("GET /game without session redirects to signup", async () => {
     const res = await requestHtml("/game");
     expect(res.status).toBe(302);
-    expect(res.location).toBe("/login.html");
+    expect(res.location).toBe("/signup.html");
   });
 
   test("GET /game with unverified session redirects to verification status page", async () => {
