@@ -627,6 +627,7 @@ let military = { soldiers:0, cap:0 };
 let droughtTicksLeft = 0;
 let captainName = '';
 let eventLog = [];
+let discoveryRollInFlight = false;
 let taxRate = 0;      // coin per citizen per tick
 let scenarioId = null;
 
@@ -870,6 +871,7 @@ function tick(){
 
   if(droughtTicksLeft>0) droughtTicksLeft--;
   maybeSendGodMessage();
+  maybeRollDiscovery();
   maybeTriggerDisaster();
   checkScenario();
 
@@ -1435,6 +1437,41 @@ function maybeSendGodMessage(){
   blessing.grant();
   logEvent(`✨ ${blessing.text}`);
   showToast(`✨ ${blessing.text}`);
+}
+
+function discoveryActivity(){
+  if(placedBuildings.some(b=>['docks','fisherhut'].includes(b.id))) return 'fishing';
+  if(placedBuildings.some(b=>['quarry','mine','goldmine','silvermine','coppermine'].includes(b.id))) return 'mining';
+  if(placedBuildings.some(b=>b.id==='fields')) return 'farming';
+  if(placedBuildings.some(b=>b.id==='claypit')) return 'clay_pit';
+  return 'turn';
+}
+
+async function maybeRollDiscovery(){
+  if(!currentUser || discoveryRollInFlight || tickCount === 0 || tickCount % 12 !== 0) return;
+  discoveryRollInFlight = true;
+  try{
+    const result = await api('/api/discoveries/roll', {
+      method:'POST',
+      body: JSON.stringify({ activity: discoveryActivity(), turnNumber: Math.floor(tickCount / 12) })
+    });
+    if(result.discovery){
+      const discovery = result.discovery;
+      const detail = discovery.type === 'archaeological_find' && !discovery.assembled
+        ? `fragment ${discovery.fragmentIndex}/${discovery.fragmentCount}`
+        : 'Codex entry unlocked';
+      const message = `🔎 Discovery: ${discovery.title} — ${detail}.`;
+      logEvent(message);
+      showToast(message);
+      const discoveries = await api('/api/discoveries');
+      codexEntries = discoveries.codexEntries || [];
+      renderCodexPanel();
+    }
+  } catch(e){
+    console.warn('discovery roll failed', e);
+  } finally {
+    discoveryRollInFlight = false;
+  }
 }
 
 function renderChronicle(){
