@@ -869,6 +869,7 @@ function tick(){
   happiness = Math.max(0, Math.min(100, happiness));
 
   if(droughtTicksLeft>0) droughtTicksLeft--;
+  maybeSendGodMessage();
   maybeTriggerDisaster();
   checkScenario();
 
@@ -1420,6 +1421,22 @@ function logEvent(msg){
   eventLog = eventLog.slice(0,20);
   renderChronicle();
 }
+
+const GOD_MESSAGES = [
+  { text:'The gods of the shore remember your settlement. Fishers find a small catch.', grant:()=>addRes('fish', 3) },
+  { text:'A quiet blessing passes through the storehouses. Your grain is protected.', grant:()=>addRes('wheat', 3) },
+  { text:'The old stones answer your work. A little stone rises from the earth.', grant:()=>addRes('stone', 3) },
+  { text:'A thought from beyond the harbour settles into the library.', grant:()=>{ research += 2; } }
+];
+
+function maybeSendGodMessage(){
+  if(tickCount === 0 || tickCount % 24 !== 0 || Math.random() > 0.7) return;
+  const blessing = GOD_MESSAGES[rnd(GOD_MESSAGES.length)];
+  blessing.grant();
+  logEvent(`✨ ${blessing.text}`);
+  showToast(`✨ ${blessing.text}`);
+}
+
 function renderChronicle(){
   const el = document.getElementById('chronicle');
   if(!el) return;
