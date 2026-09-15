@@ -43,6 +43,7 @@
   .res b{color:var(--gold); font-weight:600;}
   .res.warn{border-color:#c1440e; color:#ffb199;}
   .res.coin{border-color:var(--gold); color:var(--gold);}
+  .res[title]{cursor:help;}
 
   #statusbar{
     display:flex; align-items:center; gap:8px; padding:4px 10px; font-size:11px;
@@ -56,6 +57,16 @@
     touch-action:pan-x pan-y;
   }
   canvas{display:block; image-rendering:pixelated;}
+  #minimapWrap{
+    position:absolute; top:10px; left:10px; z-index:14; padding:4px;
+    background:rgba(30,25,20,0.82); border:1px solid var(--gold); border-radius:6px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.35); pointer-events:none;
+  }
+  #minimap{display:block; width:150px; height:100px; image-rendering:pixelated;}
+  #minimapLabel{
+    margin-top:2px; color:#e8dcc8; font:9px/1 -apple-system,sans-serif;
+    text-align:center; text-transform:uppercase; letter-spacing:0.7px;
+  }
 
   #toast{
     position:absolute; top:8px; left:50%; transform:translateX(-50%);
@@ -332,6 +343,10 @@
   <div id="main">
     <div id="mapwrap">
       <canvas id="canvas"></canvas>
+      <div id="minimapWrap" aria-label="Settlement minimap">
+        <canvas id="minimap" width="150" height="100"></canvas>
+        <div id="minimapLabel">Settlement map</div>
+      </div>
       <div id="toast"></div>
       <div id="legend">Tap a building, then tap the map to place it</div>
       <button id="cancelBtn">✕ Cancel</button>
@@ -700,7 +715,7 @@ const BUILDINGS = [
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), capBonus:{food:250}},
  {id:'road', name:"Road", ic:'🛤️', cat:'Infrastructure', cost:{stone:5}, workers:0,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain),
-   desc:'Buildings next to a road produce 15% more'},
+   desc:'Adjacent production buildings produce 15% more'},
  {id:'well', name:"Well", ic:'💧', cat:'Infrastructure', cost:{stone:15}, workers:1,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain) && nearTerrain(x,y,['river','sea'],3),
    happinessBonus:4, desc:'Irrigates nearby fields, +happiness'},
@@ -873,6 +888,30 @@ const TERRAIN_COLOR = {
   forest:'#4c6b3f', mountain:'#8c8577'
 };
 const DEPOSIT_COLOR = { gold:'#d4a017', silver:'#c9c9c9', copper:'#b5651d', clay:'#8a4a1c', salt:'#f2f2f2' };
+const RESOURCE_INFO = {
+  wood:'Wood: basic building material, produced by the Woodcutter.',
+  stone:'Stone: durable building material, produced by the Quarry.',
+  clay:'Clay: raw material for pottery and some buildings.',
+  pottery:'Pottery: crafted goods used by Scribes and for storage.',
+  tools:'Tools: crafted equipment used by advanced buildings.',
+  goldOre:'Gold ore: mined raw metal for the Foundry.',
+  silverOre:'Silver ore: mined raw metal for the Foundry.',
+  copperOre:'Copper ore: mined raw metal for the Foundry.',
+  gold:'Gold: valuable refined metal and trade wealth.',
+  silver:'Silver: refined metal used for trade.',
+  copper:'Copper: refined metal used for trade.',
+  wheat:'Wheat: staple crop, milled into flour.',
+  flour:'Flour: milled wheat used to bake bread.',
+  bread:'Bread: food made from flour for the settlement.',
+  olives:'Olives: crop used to make olive oil.',
+  oliveOil:'Olive oil: valuable food and trade good.',
+  chickpeas:'Chickpeas: nourishing crop for the settlement.',
+  grapes:'Grapes: crop used for food and trade.',
+  salt:'Salt: coastal resource used in trade and preservation.',
+  fish:'Fish: food gathered from the coast and rivers.',
+  deer:'Deer: food gathered from nearby woodland.',
+  scrolls:'Scrolls: knowledge goods used by the Library.'
+};
 
 function render(){
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
@@ -895,12 +934,14 @@ function render(){
 
     if(t.building){
       const def = BLD_BY_ID[t.building.id];
-      ctx.fillStyle='rgba(255,250,240,0.85)';
+      const isRoad = t.building.id === 'road';
+      ctx.fillStyle=isRoad ? 'rgba(111,78,48,0.9)' : 'rgba(255,250,240,0.85)';
       ctx.beginPath();
-      if(ctx.roundRect) ctx.roundRect(x*TS+2,y*TS+2,TS-4,TS-4,4);
+      if(isRoad) ctx.fillRect(x*TS+7,y*TS+11,TS-14,8);
+      else if(ctx.roundRect) ctx.roundRect(x*TS+2,y*TS+2,TS-4,TS-4,4);
       else ctx.rect(x*TS+2,y*TS+2,TS-4,TS-4);
-      ctx.fill();
-      ctx.font = (TS-10)+'px serif';
+      if(!isRoad) ctx.fill();
+      ctx.font = (isRoad ? 13 : TS-10)+'px serif';
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(def.ic, x*TS+TS/2, y*TS+TS/2+1);
       if(def.isField){
@@ -916,6 +957,28 @@ function render(){
     const ok = inBounds(x,y) && !grid[y][x].building && def.valid(x,y) && canAfford(def.cost);
     ctx.fillStyle = ok ? 'rgba(120,200,120,0.45)' : 'rgba(220,80,60,0.45)';
     ctx.fillRect(x*TS,y*TS,TS,TS);
+  }
+  renderMinimap();
+}
+
+function renderMinimap(){
+  const mini = document.getElementById('minimap');
+  if(!mini || !grid.length) return;
+  const miniCtx = mini.getContext('2d');
+  const tileWidth = mini.width / COLS;
+  const tileHeight = mini.height / ROWS;
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+    const tile = grid[y][x];
+    miniCtx.fillStyle = TERRAIN_COLOR[tile.terrain];
+    miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.ceil(tileWidth),Math.ceil(tileHeight));
+    if(tile.deposit){
+      miniCtx.fillStyle = DEPOSIT_COLOR[tile.deposit];
+      miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.max(1,tileWidth),Math.max(1,tileHeight));
+    }
+    if(tile.building){
+      miniCtx.fillStyle = tile.building.id === 'road' ? '#6f4e30' : '#fff4d6';
+      miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.max(2,tileWidth),Math.max(2,tileHeight));
+    }
   }
 }
 
@@ -939,6 +1002,8 @@ function renderRes(){
     if(v<0.05 && !['wood','stone'].includes(k)) return;
     const d=document.createElement('div');
     d.className='res';
+    d.title = RESOURCE_INFO[k] || k;
+    d.setAttribute('aria-label', `${RESOURCE_INFO[k] || k}: ${Math.floor(v)}`);
     d.textContent = `${ic} ${Math.floor(v)}`;
     bar.appendChild(d);
   });
