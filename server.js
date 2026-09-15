@@ -92,6 +92,30 @@ export function closeServer() {
   });
 }
 
+let shuttingDown = false;
+
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}; shutting down gracefully`);
+
+  const closePromise = closeServer() || Promise.resolve();
+  const timeout = setTimeout(() => process.exit(1), 10_000);
+  try {
+    await closePromise;
+    db.close();
+    clearTimeout(timeout);
+    process.exit(0);
+  } catch (error) {
+    console.error("Graceful shutdown failed", error);
+    clearTimeout(timeout);
+    process.exit(1);
+  }
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
