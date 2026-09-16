@@ -20,7 +20,7 @@
 - [ ] `FREE_ACCESS_EMAILS` contains comma-separated email addresses for free access; entries are trimmed and case-insensitive.
 - [ ] Railway logs show no startup, database, CSRF, or email errors.
 - [ ] The production domain serves HTTPS and redirects are correct.
-- [ ] A backup or recovery path exists for the production SQLite database.
+- [ ] Database backup/recovery: run a Postgres restore test against a disposable recovery database, confirm the app can start and read restored data, and record the exact restore commands and validation steps.
 
 ## Deliberate launch trade-offs
 
