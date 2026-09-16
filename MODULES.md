@@ -1,82 +1,17 @@
 # Portus Modules
 
-Portus keeps browser game systems in `public/` and server infrastructure at the repository root. The browser entry point is `public/main.js`.
-
-## Browser Modules
-
-### `public/main.js`
-
-Application orchestrator. Creates the game state, initializes resources, research, favour, disasters, warnings, codex, UI, and sound, then owns the canvas render loop and pointer/camera input.
-
-### `public/game.js`
-
-Core game state and placement engine. Exports `initGame`, `placeBuilding`, and `startGameLoop`. Placement validates bounds, building IDs, terrain, and occupancy.
-
-### `public/map.js`
-
-Generates and queries the world grid. The current world is 50 columns by 33 rows with 24x24 tiles. Provides bounds, neighbor, terrain, deposit, and nearby-building helpers.
-
-### `public/buildings.js`
-
-Building catalogue and placement/effect helpers. Defines building IDs, names, categories, costs, workers, terrain rules, production, consumption, and special effects.
-
-### `public/resources.js`
-
-Initializes resources and provides resource reads, additions, consumption, cost checks, spending, and production updates.
-
-### `public/research.js`
-
-Defines technology entries, starts and advances research, completes unlocks, applies bonuses, and exposes research display data.
-
-### `public/favour.js`
-
-Models mystical influence. Handles favour changes, offerings, rituals, twilight mode, and periodic updates.
-
-### `public/disasters.js`
-
-Defines disaster types, initializes disaster state, and triggers random events that affect the settlement.
-
-### `public/warnings.js`
-
-Builds alerts from resource, environment, favour, and disaster conditions. Warnings also feed the notification UI.
-
-### `public/codex.js`
-
-Stores lore entries, unlocks codex records, filters by category, updates codex state, and renders codex content.
-
-### `public/ui.js`
-
-Builds the building toolbar, audio controls, panel controls, notifications, resource ledger, research, codex, warnings, disasters, and favour views.
-
-### `public/sound.js`
-
-Provides browser Web Audio for the quiet inharmonic ambient bed and building-specific placement tones. Ambient music starts after a user gesture to comply with autoplay policies.
-
-### `public/sound-manager.js`
-
-Legacy file-based sound manager retained for older integrations. New game audio uses `sound.js`.
-
-### `public/time.js`
-
-Contains the expanded time-state and tick implementation used by the older system path, including seasons, favour, production, disasters, and warnings.
-
-### `public/helpers.js`
-
-Small deterministic utilities: random values, clamping, array choice, and distance calculations.
-
-### `public/app.js`
-
-Same-origin browser API client. Fetches and caches CSRF tokens, sends credentials, and exposes JSON GET, POST, PUT, DELETE, and current-user helpers.
-
-### Account and payment clients
-
-`public/login.js`, `public/signup.js`, `public/reset-request.js`, `public/reset-password.js`, `public/change-password.js`, `public/settings.js`, and `public/purchase.js` connect the corresponding forms to the server API.
+The live browser game is served from a single file: `protected/game.html`.
+It contains the map generator, building catalogue, economy tick, research
+tree, quests, disasters, and save/load logic inline in one script, plus the
+paywall/auth UI that talks to the server API. There is no separate
+client-side module split in production — `protected/game.html` is the
+source of truth for gameplay logic.
 
 ## Server Modules
 
 ### `server.js`
 
-Express entry point. Configures security headers, CORS, cookies, JSON parsing, static mounts, page routes, account routes, access control, saves, payments, and webhooks.
+Express entry point. Configures security headers, CORS, cookies, JSON parsing, static mounts, page routes, account routes, access control, saves, payments, and webhooks. Serves `protected/game.html` at `/game` behind auth/paywall middleware.
 
 ### `auth.js`
 
@@ -102,22 +37,26 @@ Opens the SQLite database, applies the database schema/migrations, and cleans up
 
 Construct verification and reset messages and send them through the configured Resend client.
 
+### `data/discovery_catalog.js`
+
+Shared artifact/archaeological-find catalogue and per-activity discovery odds, used by the `/api/discoveries*` routes in `server.js`.
+
+## Client Account/Payment Pages
+
+`public/login.js`, `public/signup.js`, `public/reset-request.js`, `public/reset-password.js`, `public/change-password.js`, `public/settings.js`, and `public/purchase.js` connect the corresponding forms to the server API via `public/app.js`.
+
+### `public/app.js`
+
+Same-origin browser API client. Fetches and caches CSRF tokens, sends credentials, and exposes JSON GET, POST, PUT, DELETE, and current-user helpers.
+
 ## State Shape
 
-The active game state is created by `initGame()` and extended by `main.js`:
+The client game state in `protected/game.html` is a set of module-level variables (`res`, `cap`, `pop`, `happiness`, `boats`, `coin`, `research`, `unlockedTechs`, `techBonus`, `military`, `taxRate`, `scenarioId`, `questsCompleted`, `grid`, `placedBuildings`, ...). `getState()`/`applyState()` serialize and restore this for offline save codes and cloud saves.
 
-```text
-state
-  tick
-  grid
-  ui
-  resources
-  research
-  favour
-  disasters
-  warnings
-  codex
-```
+## Historical Note
+
+Earlier drafts of this document described a modular client split (`public/main.js`, `game.js`, `map.js`, `buildings.js`, `resources.js`, `research.js`, `favour.js`, `disasters.js`, `warnings.js`, `codex.js`, `ui.js`, `sound.js`, `sound-manager.js`, `helpers.js`, `time.js`) and a set of Express routes under `routes/` (`buildings.js`, `disasters.js`, `favour.js`, `research.js`, `resources.js`, `time.js`, `warnings.js`). None of those client files exist, and the routes were empty stubs never imported by `server.js` — they have been removed. If that modular architecture is revived, update this file to match what actually exists.
+
 
 Keep new game data inside this state object. Avoid module-level mutable gameplay state unless it is an intentional world-level cache.
 

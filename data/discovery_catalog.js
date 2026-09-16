@@ -3,7 +3,8 @@ export const ACTIVITY_DISCOVERY_CHANCES = Object.freeze({
   fishing: 0.04,
   mining: 0.05,
   farming: 0.03,
-  clay_pit: 0.04
+  clay_pit: 0.04,
+  quest: 0.5
 });
 
 export const ARTIFACTS = Object.freeze([

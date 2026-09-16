@@ -1,26 +1,32 @@
 const SAVE_KEYS = new Set([
   "v", "captain", "res", "cap", "pop", "happiness", "boats", "coin", "research",
-  "unlockedTechs", "techBonus", "military", "droughtTicksLeft", "taxRate", "scenarioId",
-  "scenarioState", "grid", "buildings"
+  "unlockedTechs", "techBonus", "techHappinessBonus", "questsCompleted", "military",
+  "droughtTicksLeft", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
 ]);
 
-const RESOURCE_KEYS = new Set([
+export const RESOURCE_KEYS = new Set([
   "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
   "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
   "deer", "bread", "scrolls", "flour", "oliveOil", "salt"
 ]);
 
-const BUILDING_IDS = new Set([
-  "house", "farmerhut", "fisherhut", "fields", "woodcutter", "quarry", "claypit",
-  "pottery", "toolsmith", "foundry", "silvermine", "coppermine", "goldmine", "library",
-  "market", "tradingpost", "taxoffice", "barracks", "docks", "boatbuilder", "granary",
-  "warehouse", "well", "sewer"
+export const BUILDING_IDS = new Set([
+  "house", "farmerhut", "fisherhut", "fields", "quarry", "claypit", "potter",
+  "sawmill", "workshop", "blacksmith", "foundry", "hunterlodge", "docks", "boatbuilder",
+  "goldmine", "silvermine", "coppermine", "saltmine", "mill", "baker", "oliveoilmill",
+  "stockage", "granary", "road", "well", "sewer", "police", "fire", "doctor", "dentist",
+  "school", "bar", "temple", "scribe", "library", "market", "tradingpost", "mint",
+  "taxoffice", "barracks"
+]);
+
+export const TECH_BONUS_KEYS = new Set([
+  "field", "quarry", "fish", "foundry", "trade", "wood", "clay", "raid", "research"
 ]);
 
 const TERRAIN_CODES = new Set(["grass", "forest", "mountain", "river", "sea", "sand"]);
-const DEPOSIT_CODES = new Set(["clay", "salt"]);
-const COLS = 30;
-const ROWS = 20;
+const DEPOSIT_CODES = new Set(["clay", "salt", "gold", "silver", "copper"]);
+export const COLS = 44;
+export const ROWS = 30;
 const MAX_NUMBER = 1e9;
 const MAX_FAVOUR = 100;
 
@@ -81,7 +87,9 @@ export function validateSave(value) {
   if (!exactKeys(value.pop, new Set(["count", "capacity"])) || !finiteNumber(value.pop.count, { min: 0 }) || !finiteNumber(value.pop.capacity, { min: 0 })) return invalid();
   if (!finiteNumber(value.happiness, { min: 0, max: 100 }) || !finiteNumber(value.boats, { min: 0 }) || !finiteNumber(value.coin, { min: 0 })) return invalid();
   if (!finiteNumber(value.research, { min: 0 }) || !Array.isArray(value.unlockedTechs) || !value.unlockedTechs.every((id) => typeof id === "string" && id.length <= 64)) return invalid();
-  if (!validateNumberMap(value.techBonus, new Set(["field", "quarry", "fish", "foundry", "trade"]), { min: 0, max: MAX_NUMBER })) return invalid();
+  if (!validateNumberMap(value.techBonus, TECH_BONUS_KEYS, { min: 0, max: MAX_NUMBER })) return invalid();
+  if (!finiteNumber(value.techHappinessBonus, { min: -MAX_FAVOUR, max: MAX_FAVOUR })) return invalid();
+  if (!Array.isArray(value.questsCompleted) || !value.questsCompleted.every((id) => typeof id === "string" && id.length <= 64)) return invalid();
   if (!exactKeys(value.military, new Set(["soldiers", "cap"])) || !finiteNumber(value.military.soldiers, { min: 0 }) || !finiteNumber(value.military.cap, { min: 0 })) return invalid();
   if (!finiteNumber(value.droughtTicksLeft, { min: 0 }) || !finiteNumber(value.taxRate, { min: 0, max: MAX_NUMBER })) return invalid();
   if (value.scenarioId !== null && typeof value.scenarioId !== "string") return invalid();
