@@ -92,13 +92,15 @@ export function validSaveFixture() {
     coin: 20,
     research: 0,
     unlockedTechs: [],
-    techBonus: { field: 1, quarry: 1, fish: 1, foundry: 1, trade: 1 },
+    techBonus: { field: 1, quarry: 1, fish: 1, foundry: 1, trade: 1, wood: 1, clay: 1, raid: 1, research: 1 },
+    techHappinessBonus: 0,
+    questsCompleted: [],
     military: { soldiers: 0, cap: 0 },
     droughtTicksLeft: 0,
     taxRate: 0,
     scenarioId: null,
     scenarioState: { disastersSurvived: 0, failed: false },
-    grid: Array.from({ length: 20 }, () => Array.from({ length: 30 }, () => ({ terrain: "grass", deposit: null }))),
+    grid: Array.from({ length: 30 }, () => Array.from({ length: 44 }, () => ({ terrain: "grass", deposit: null }))),
     buildings: [{ id: "house", x: 0, y: 0 }]
   };
 }
