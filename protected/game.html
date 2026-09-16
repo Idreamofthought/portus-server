@@ -528,6 +528,8 @@ import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTe
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
 import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
 import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoodOf, addResTo, canAffordFrom, payFrom } from '/game-assets/resources.js';
+import { QUESTS } from '/game-assets/quests.js';
+import { SCENARIOS } from '/game-assets/scenarios.js';
 
 let selectedCrop = 'wheat';
 
@@ -1483,30 +1485,25 @@ document.querySelectorAll('.actionbtn.raid').forEach(btn=>{
 });
 
 /* ---------------- QUESTS ---------------- */
-const QUESTS = [
-  {id:'roots', name:'Roots in the Soil', desc:'Build a House and a Field.',
-    check:()=> placedBuildings.some(b=>b.id==='house') && placedBuildings.some(b=>b.id==='fields'),
-    reward:()=>{ addRes('wood',20); }, rewardText:'+20 wood'},
-  {id:'millers-chain', name:"The Miller's Chain", desc:'Build a Mill and a Baker to turn wheat into bread.',
-    check:()=> placedBuildings.some(b=>b.id==='mill') && placedBuildings.some(b=>b.id==='baker'),
-    reward:()=>{ research += 10; }, rewardText:'+10 research'},
-  {id:'seven-wanderers', name:'Seven Wanderers', desc:'Maintain buildings from 7 distinct categories at once.',
-    check:()=> new Set(placedBuildings.map(b=>BLD_BY_ID[b.id].cat)).size >= 7,
-    reward:()=>{ coin += 15; techHappinessBonus += 3; }, rewardText:'+15 coin, +3 happiness'},
-  {id:'divisible-hour', name:'The Divisible Hour', desc:'Store at least 60 of three different resources at once.',
-    check:()=> Object.values(res).filter(v=>v>=60).length >= 3,
-    reward:()=>{ research += 15; }, rewardText:'+15 research'},
-  {id:'measure-that-bends', name:'A Measure That Bends', desc:'Research at least two technologies, then survive a disaster.',
-    check:()=> unlockedTechs.size >= 2 && scenarioState.disastersSurvived >= 1,
-    reward:()=>{ coin += 20; research += 5; }, rewardText:'+20 coin, +5 research'},
-];
+// Quest definitions live in protected/js/quests.js; this builds the ctx
+// they check/reward against and applies rewards to local state.
+function questCtx(){
+  return {
+    placedBuildings, BLD_BY_ID, res, unlockedTechs, scenarioState,
+    addRes,
+    addCoin: (n)=>{ coin += n; },
+    addResearch: (n)=>{ research += n; },
+    addTechHappiness: (n)=>{ techHappinessBonus += n; },
+  };
+}
 
 function checkQuests(){
+  const ctx = questCtx();
   QUESTS.forEach((q,idx)=>{
     if(questsCompleted.has(q.id)) return;
-    if(q.check()){
+    if(q.check(ctx)){
       questsCompleted.add(q.id);
-      q.reward();
+      q.reward(ctx);
       logEvent(`🧭 Quest complete: ${q.name} — ${q.rewardText}`);
       showToast(`🧭 Quest complete: ${q.name}`);
       rollQuestDiscovery(idx);
@@ -1549,23 +1546,18 @@ function renderQuestsPanel(){
 }
 
 /* ---------------- SCENARIOS / GOALS ---------------- */
-const SCENARIOS = [
-  {id:'growth', name:'Growth Race', ic:'👥', desc:'Reach a population of 40.',
-    target:40, progress:()=>pop.count, format:v=>`${Math.floor(v)}/40 citizens`},
-  {id:'trade', name:'Trade Empire', ic:'🪙', desc:'Bank 300 coin.',
-    target:300, progress:()=>coin, format:v=>`${Math.floor(v)}/300 coin`},
-  {id:'builder', name:'Master Builder', ic:'🏗️', desc:'Construct 15 buildings.',
-    target:15, progress:()=>placedBuildings.length, format:v=>`${Math.floor(v)}/15 buildings`},
-  {id:'survivor', name:'Survivor', ic:'🛡️', desc:'Live through 5 disasters without happiness dropping below 20.',
-    target:5, progress:()=>scenarioState.disastersSurvived, format:v=>`${Math.floor(v)}/5 disasters survived`},
-];
+// Scenario definitions live in protected/js/scenarios.js.
 let scenarioState = { disastersSurvived:0, failed:false };
+
+function scenarioCtx(){
+  return { pop, coin, placedBuildings, scenarioState };
+}
 
 function checkScenario(){
   if(!scenarioId) return;
   const sc = SCENARIOS.find(s=>s.id===scenarioId);
   if(!sc) return;
-  const val = sc.progress();
+  const val = sc.progress(scenarioCtx());
   if(val >= sc.target && !scenarioState.completed){
     scenarioState.completed = true;
     logEvent(`🎯 Goal complete: ${sc.name}!`);
@@ -1576,9 +1568,10 @@ function renderGoalsPanel(){
   const list = document.getElementById('scenarioList');
   if(!list) return;
   list.innerHTML = '';
+  const ctx = scenarioCtx();
   SCENARIOS.forEach(sc=>{
     const active = scenarioId===sc.id;
-    const val = sc.progress();
+    const val = sc.progress(ctx);
     const pct = Math.min(100, Math.round((val/sc.target)*100));
     const row = document.createElement('div');
     row.className = 'tech' + (active && scenarioState.completed ? ' done' : '');
