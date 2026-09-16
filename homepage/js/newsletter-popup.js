@@ -2,6 +2,6 @@
 // Extracted from an inline onsubmit= handler so script-src can drop 'unsafe-inline'.
 document.querySelectorAll('form.newsletter-form[target="popupwindow"]').forEach((form) => {
   form.addEventListener('submit', () => {
-    window.open('https://buttondown.email/idreamofthought', 'popupwindow');
+    window.open('https://buttondown.com/richardjenkins09', 'popupwindow');
   });
 });
