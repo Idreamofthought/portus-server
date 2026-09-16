@@ -530,6 +530,7 @@ import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
 import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoodOf, addResTo, canAffordFrom, payFrom } from '/game-assets/resources.js';
 import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
+import { pickDisaster } from '/game-assets/disasters.js';
 
 let selectedCrop = 'wheat';
 
@@ -1385,36 +1386,27 @@ function resolveInvasion(){
   }
 }
 
-function triggerDisaster(type){
-  let msg='';
-  const sewerRelief = placedBuildings.some(b=>b.id==='sewer') ? 0.7 : 1;
-  if(type==='earthquake'){
-    const hit = damageRandomBuildings(1+rnd(2));
-    happiness = Math.max(0, happiness-8*sewerRelief);
-    msg = `🌍 Earthquake! ${hit} building(s) collapsed.`;
-  } else if(type==='volcano'){
-    const hit = damageRandomBuildings(2+rnd(2), b=>nearTerrainOfBuilding(b,'mountain'));
-    const popLoss = rnd(2);
-    pop.count = Math.max(1, pop.count-popLoss);
-    happiness = Math.max(0, happiness-15*sewerRelief);
-    msg = `🌋 The mountain erupted! ${hit} building(s) destroyed${popLoss? `, ${popLoss} lives lost`:''}.`;
-  } else if(type==='tsunami'){
-    const hit = damageRandomBuildings(2+rnd(2), b=>['docks','fisherhut','boatbuilder'].includes(b.id));
-    boats = Math.max(0, boats-2);
-    happiness = Math.max(0, happiness-10*sewerRelief);
-    msg = `🌊 Tsunami struck the coast! ${hit} coastal building(s) destroyed.`;
-  } else if(type==='flood'){
-    const hit = damageRandomBuildings(1+rnd(2), b=>nearTerrainOfBuilding(b,'river'));
-    res.wheat *= 0.6; res.wood *= 0.8; res.clay *= 0.8;
-    happiness = Math.max(0, happiness-6*sewerRelief);
-    msg = `🌧️ The river burst its banks! ${hit} building(s) damaged, stores waterlogged.`;
-  } else if(type==='drought'){
-    droughtTicksLeft = 40;
-    happiness = Math.max(0, happiness-5*sewerRelief);
-    msg = `☀️ Drought has set in — field yields will suffer until it breaks.`;
-  } else if(type==='invasion'){
-    msg = resolveInvasion();
-  }
+// DISASTER_TYPES/pickDisaster live in protected/js/disasters.js; this ctx
+// wires their stateless resolve() logic to game.html's mutable state.
+function disasterCtx(){
+  return {
+    rnd, damageRandomBuildings, nearTerrainOfBuilding, resolveInvasion,
+    sewerRelief: placedBuildings.some(b=>b.id==='sewer') ? 0.7 : 1,
+    hasMountainBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'mountain')),
+    hasCoastalBuild: placedBuildings.some(b=>['docks','fisherhut','boatbuilder'].includes(b.id)),
+    hasRiverBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'river')),
+    hasFields: placedBuildings.some(b=>BLD_BY_ID[b.id].isField),
+    droughtTicksLeft, coin,
+    addHappiness: (delta)=>{ happiness = Math.max(0, happiness+delta); },
+    reducePop: (n)=>{ pop.count = Math.max(1, pop.count-n); },
+    reduceBoats: (n)=>{ boats = Math.max(0, boats-n); },
+    waterlogStores: ()=>{ res.wheat *= 0.6; res.wood *= 0.8; res.clay *= 0.8; },
+    startDrought: (ticks)=>{ droughtTicksLeft = ticks; },
+  };
+}
+
+function triggerDisaster(disaster, ctx){
+  const msg = disaster.resolve(ctx);
   logEvent(msg);
   showToast(msg);
   if(happiness >= 20) scenarioState.disastersSurvived = (scenarioState.disastersSurvived||0) + 1;
@@ -1422,18 +1414,9 @@ function triggerDisaster(type){
 }
 
 function maybeTriggerDisaster(){
-  const hasMountainBuild = placedBuildings.some(b=>nearTerrainOfBuilding(b,'mountain'));
-  const hasCoastalBuild = placedBuildings.some(b=>['docks','fisherhut','boatbuilder'].includes(b.id));
-  const hasRiverBuild = placedBuildings.some(b=>nearTerrainOfBuilding(b,'river'));
-  const hasFields = placedBuildings.some(b=>BLD_BY_ID[b.id].isField);
-
-  if(Math.random() < 0.0012) return triggerDisaster('earthquake');
-  if(hasMountainBuild && Math.random() < 0.0006) return triggerDisaster('volcano');
-  if(hasCoastalBuild && Math.random() < 0.0008) return triggerDisaster('tsunami');
-  if(hasRiverBuild && Math.random() < 0.0009) return triggerDisaster('flood');
-  if(hasFields && droughtTicksLeft<=0 && Math.random() < 0.001) return triggerDisaster('drought');
-  const invasionChance = 0.0009 + Math.min(0.002, coin/60000);
-  if(Math.random() < invasionChance) return triggerDisaster('invasion');
+  const ctx = disasterCtx();
+  const disaster = pickDisaster(ctx);
+  if(disaster) triggerDisaster(disaster, ctx);
 }
 
 /* ---------------- ARMY UI ---------------- */
