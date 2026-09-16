@@ -11,8 +11,8 @@ const gameHtmlPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..
 const gameHtml = fs.readFileSync(gameHtmlPath, "utf8");
 
 function extractScript() {
-  const match = gameHtml.match(/<script>([\s\S]*?)<\/script>/);
-  assert.ok(match, "expected an inline <script> in protected/game.html");
+  const match = gameHtml.match(/<script type="module">([\s\S]*?)<\/script>/);
+  assert.ok(match, "expected the inline module <script> in protected/game.html");
   return match[1];
 }
 
@@ -34,10 +34,11 @@ test("game.html techBonus keys match save-validation TECH_BONUS_KEYS", () => {
   assert.deepEqual(new Set(keys), TECH_BONUS_KEYS);
 });
 
-test("game.html grid dimensions match save-validation COLS/ROWS", () => {
-  const script = extractScript();
-  const dimsMatch = script.match(/const COLS = (\d+), ROWS = (\d+)/);
-  assert.ok(dimsMatch, "expected a COLS/ROWS declaration in game.html");
+test("protected/js/map.js grid dimensions match save-validation COLS/ROWS", () => {
+  const mapJsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/js/map.js");
+  const mapJs = fs.readFileSync(mapJsPath, "utf8");
+  const dimsMatch = mapJs.match(/export const COLS = (\d+), ROWS = (\d+)/);
+  assert.ok(dimsMatch, "expected a COLS/ROWS declaration in protected/js/map.js");
   assert.equal(Number(dimsMatch[1]), COLS);
   assert.equal(Number(dimsMatch[2]), ROWS);
 });

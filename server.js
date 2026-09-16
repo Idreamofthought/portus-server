@@ -285,6 +285,15 @@ app.get("/cookies", generalApiLimiter, (_req, res) =>
 app.get("/game", authenticateRequest, requireVerified, requirePaid, (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
+// Extracted game logic modules (map, buildings, etc.) — gated behind the
+// same paywall as /game since they're only useful alongside it.
+app.use(
+  "/game-assets",
+  authenticateRequest,
+  requireVerified,
+  requirePaid,
+  express.static(path.join(__dirname, "protected/js"))
+);
 // /text-game needs no explicit route -- public/ is already mounted as
 // static at root, and Express serves public/text-game/index.html for
 // both /text-game and /text-game/ automatically.
