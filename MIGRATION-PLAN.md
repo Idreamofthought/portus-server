@@ -1,6 +1,10 @@
 # Creative Tree Migration Plan
 
 The creative tree is served from `homepage/tree` and is available at `/tree/`.
+`site/writing/` holds canonical source material for the same essays/fragments,
+but the live site is still served from `homepage/tree/` (see `site/README.md`)
+— treat `homepage/tree/` as the deployed source of truth until a content build
+step keeps the two in sync automatically.
 
 ## Current structure
 
