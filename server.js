@@ -162,7 +162,7 @@ app.use((req, res, next) => {
       "default-src 'self'",
       `connect-src 'self' ${SITE_URL} https://plausible.io`,
       "img-src 'self' data:",
-      "script-src 'self' 'unsafe-inline' https://plausible.io",
+      "script-src 'self' https://plausible.io",
       "style-src 'self' 'unsafe-inline'",
       "form-action 'self' https://buttondown.email",
       "object-src 'none'",
