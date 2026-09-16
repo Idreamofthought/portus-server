@@ -5,15 +5,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUILDING_IDS, TECH_BONUS_KEYS, RESOURCE_KEYS, TERRAIN_CODES, DEPOSIT_CODES, SAVE_KEYS, COLS, ROWS } from "../save-validation.js";
 
-// Guards against protected/game.html and save-validation.js drifting apart,
+// Guards against protected/js/game.js and save-validation.js drifting apart,
 // which previously caused every cloud save to be silently rejected.
-const gameHtmlPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/game.html");
-const gameHtml = fs.readFileSync(gameHtmlPath, "utf8");
+const gameJsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/js/game.js");
 
 function extractScript() {
-  const match = gameHtml.match(/<script type="module">([\s\S]*?)<\/script>/);
-  assert.ok(match, "expected the inline module <script> in protected/game.html");
-  return match[1];
+  return fs.readFileSync(gameJsPath, "utf8");
 }
 
 // Splits an object-literal body on top-level commas only, so nested calls
