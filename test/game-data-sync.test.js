@@ -66,6 +66,17 @@ test("protected/js/resources.js FOOD_KEYS/GENERAL_KEYS match save-validation RES
   assert.deepEqual(new Set([...FOOD_KEYS, ...GENERAL_KEYS]), RESOURCE_KEYS);
 });
 
+test("trade and production resources/buildings are defined and tracked in validation", async () => {
+  const { RESOURCE_KEYS, BUILDING_IDS } = await import("../save-validation.js");
+  assert.ok(RESOURCE_KEYS.has("marble"));
+  assert.ok(RESOURCE_KEYS.has("tin"));
+  assert.ok(RESOURCE_KEYS.has("honey"));
+  assert.ok(RESOURCE_KEYS.has("wax"));
+  assert.ok(BUILDING_IDS.has("tinmine"));
+  assert.ok(BUILDING_IDS.has("marblequarry"));
+  assert.ok(BUILDING_IDS.has("beekeeper"));
+});
+
 test("protected/js/presentation.js covers every resource/terrain/deposit key", async () => {
   const { RESOURCE_INFO, TERRAIN_COLOR, DEPOSIT_COLOR } = await import("../protected/js/presentation.js");
   for (const key of RESOURCE_KEYS) {

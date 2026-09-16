@@ -6,7 +6,7 @@ export const TERRAIN_COLOR = {
   forest:'#4c6b3f', mountain:'#8c8577'
 };
 
-export const DEPOSIT_COLOR = { gold:'#d4a017', silver:'#c9c9c9', copper:'#b5651d', clay:'#8a4a1c', salt:'#f2f2f2' };
+export const DEPOSIT_COLOR = { gold:'#d4a017', silver:'#c9c9c9', copper:'#b5651d', clay:'#8a4a1c', salt:'#f2f2f2', marble:'#e3d7bb', tin:'#7a8ea0' };
 
 export const RESOURCE_INFO = {
   wood:'Wood: basic building material, produced by the Woodcutter.',
@@ -30,5 +30,10 @@ export const RESOURCE_INFO = {
   salt:'Salt: coastal resource used in trade and preservation.',
   fish:'Fish: food gathered from the coast and rivers.',
   deer:'Deer: food gathered from nearby woodland.',
-  scrolls:'Scrolls: knowledge goods used by the Library.'
+  scrolls:'Scrolls: knowledge goods used by the Library and scholarly work.',
+  marble:'Marble: fine stone prized in prestigious buildings and statues.',
+  tin:'Tin: smelted metal used in alloys and trade routes.',
+  bronze:'Bronze: alloyed metal used for statuary and durable civic works.',
+  honey:'Honey: a sweet trade good gathered by beekeepers.',
+  wax:'Wax: a valuable crafting material and trade staple.'
 };

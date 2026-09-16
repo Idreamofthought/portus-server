@@ -50,10 +50,10 @@
   canvas{display:block; image-rendering:pixelated;}
   #minimapWrap{
     position:absolute; top:10px; left:10px; z-index:14; padding:4px;
-    background:rgba(30,25,20,0.82); border:1px solid var(--gold); border-radius:6px;
+    width:128px; background:rgba(30,25,20,0.7); border:1px solid var(--gold); border-radius:6px;
     box-shadow:0 2px 8px rgba(0,0,0,0.35); pointer-events:none;
   }
-  #minimap{display:block; width:150px; height:100px; image-rendering:pixelated; pointer-events:auto; cursor:pointer;}
+  #minimap{display:block; width:120px; height:80px; image-rendering:pixelated; pointer-events:auto; cursor:pointer;}
   #minimapLabel{
     margin-top:2px; color:#e8dcc8; font:9px/1 -apple-system,sans-serif;
     text-align:center; text-transform:uppercase; letter-spacing:0.7px;
@@ -169,6 +169,11 @@
   }
   .actionbtn.secondary{background:#f2ece0; border-color:#c9bfa8; color:#6b5f4a;}
   .actionbtn.raid{background:#fbe9e2; border-color:var(--terracotta); color:#8a3a1c;}
+  .trade-item{padding:8px 0; border-bottom:1px solid #ece2cc;}
+  .trade-header{display:flex; justify-content:space-between; align-items:center; font-weight:600; margin-bottom:4px;}
+  .trade-header small{color:#8a7a5c; font-weight:400;}
+  .trade-actions{display:flex; flex-direction:column; gap:6px;}
+  .trade-actions .actionbtn{margin:0;}
   #chronicle{
     font-size:10px; color:#6b5f4a; max-height:110px; overflow-y:auto; line-height:1.5;
   }

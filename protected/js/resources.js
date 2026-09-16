@@ -4,13 +4,13 @@
 // beyond the objects passed in.
 
 export const FOOD_KEYS = ['wheat','olives','chickpeas','grapes','fish','deer','bread'];
-export const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt'];
+export const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt','marble','tin','bronze','honey','wax'];
 
 export const PRICES = {
   wood:0.4, stone:0.5, clay:0.4, pottery:1.4, tools:2, scrolls:1.8,
   goldOre:3, silverOre:2, copperOre:1.4, gold:8, silver:5, copper:3,
   wheat:0.7, olives:1.1, chickpeas:0.9, grapes:1.0, fish:0.7, deer:1.3, bread:1.6,
-  flour:1.1, oliveOil:2.4, salt:1.8
+  flour:1.1, oliveOil:2.4, salt:1.8, marble:3.8, tin:3.2, bronze:5.6, honey:2.4, wax:3.6
 };
 
 export function createResources(){
@@ -18,7 +18,7 @@ export function createResources(){
     wood:60, stone:30, clay:0, pottery:0, tools:10,
     goldOre:0, silverOre:0, copperOre:0, gold:0, silver:0, copper:0,
     wheat:0, olives:0, chickpeas:0, grapes:0, fish:0, deer:0, bread:0, scrolls:0,
-    flour:0, oliveOil:0, salt:0
+    flour:0, oliveOil:0, salt:0, marble:0, tin:0, bronze:0, honey:0, wax:0
   };
 }
 
