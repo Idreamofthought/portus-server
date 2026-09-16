@@ -79,7 +79,7 @@ export function validSaveFixture() {
   const resourceKeys = [
     "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
     "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
-    "deer", "bread", "scrolls", "flour", "oliveOil", "salt"
+    "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax"
   ];
   return {
     v: 1,
