@@ -43,3 +43,16 @@ test("protected/js/map.js grid dimensions match save-validation COLS/ROWS", () =
   assert.equal(Number(dimsMatch[1]), COLS);
   assert.equal(Number(dimsMatch[2]), ROWS);
 });
+
+test("protected/js/research.js techBonus effects only use known TECH_BONUS_KEYS", async () => {
+  const { TECHS } = await import("../protected/js/research.js");
+  const techIds = new Set(TECHS.map((t) => t.id));
+  for (const tech of TECHS) {
+    for (const key of Object.keys(tech.effects?.techBonus || {})) {
+      assert.ok(TECH_BONUS_KEYS.has(key), `${tech.id} references unknown techBonus key "${key}"`);
+    }
+    for (const reqId of tech.requires || []) {
+      assert.ok(techIds.has(reqId), `${tech.id} requires unknown tech "${reqId}"`);
+    }
+  }
+});

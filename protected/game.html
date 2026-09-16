@@ -526,6 +526,7 @@
 <script type="module">
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
+import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
 
 let selectedCrop = 'wheat';
 
@@ -558,30 +559,18 @@ const FOOD_KEYS = ['wheat','olives','chickpeas','grapes','fish','deer','bread'];
 const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt'];
 
 /* ---- Research / Tech tree ---- */
+// Tech definitions live in protected/js/research.js; techBonus/cap/military/
+// techHappinessBonus stay local mutable state, applied via applyTechEffects().
 const techBonus = { field:1, quarry:1, fish:1, foundry:1, trade:1, wood:1, clay:1, raid:1, research:1 };
-const TECHS = [
-  // Tier 1 — Foundations (no prerequisites)
-  {id:'irrigation', name:'Irrigation', desc:'+25% field yield', cost:8, tier:1, requires:[], apply:()=>techBonus.field*=1.25},
-  {id:'masonry', name:'Masonry', desc:'+25% quarry output', cost:8, tier:1, requires:[], apply:()=>techBonus.quarry*=1.25},
-  {id:'seafaring', name:'Seafaring', desc:'+25% fish catch', cost:10, tier:1, requires:[], apply:()=>techBonus.fish*=1.25},
-  {id:'woodcraft', name:'Woodcraft', desc:'+25% woodcutter output', cost:8, tier:1, requires:[], apply:()=>techBonus.wood*=1.25},
-  {id:'claycraft', name:'Claycraft', desc:'+25% claypit output', cost:8, tier:1, requires:[], apply:()=>techBonus.clay*=1.25},
-  {id:'scholarship', name:'Scholarship', desc:'+25% research from Libraries', cost:10, tier:1, requires:[], apply:()=>techBonus.research*=1.25},
-  // Tier 2 — requires one Tier 1 tech
-  {id:'metallurgy', name:'Metallurgy', desc:'+25% foundry refining', cost:16, tier:2, requires:['masonry'], apply:()=>techBonus.foundry*=1.25},
-  {id:'navigation', name:'Navigation', desc:'+20% trade income', cost:16, tier:2, requires:['seafaring'], apply:()=>techBonus.trade*=1.2},
-  {id:'croprotation', name:'Crop Rotation', desc:'+80 food storage capacity', cost:18, tier:2, requires:['irrigation'], apply:()=>cap.food+=80},
-  {id:'carpentry', name:'Carpentry', desc:'+60 general storage capacity', cost:18, tier:2, requires:['woodcraft'], apply:()=>cap.general+=60},
-  {id:'fortification', name:'Fortification', desc:'+3 military capacity', cost:18, tier:2, requires:['masonry'], apply:()=>military.cap+=3},
-  {id:'philosophy', name:'Philosophy', desc:'+6 happiness', cost:16, tier:2, requires:['scholarship'], apply:()=>techHappinessBonus+=6},
-  // Tier 3 — requires one Tier 2 tech
-  {id:'engineering', name:'Engineering', desc:'+40 general storage, +15% quarry', cost:26, tier:3, requires:['metallurgy'], apply:()=>{cap.general+=40; techBonus.quarry*=1.15;}},
-  {id:'maritimetrade', name:'Maritime Trade', desc:'+30% trade income', cost:28, tier:3, requires:['navigation'], apply:()=>techBonus.trade*=1.3},
-  {id:'granaryscience', name:'Granary Science', desc:'+120 food storage, +15% field yield', cost:30, tier:3, requires:['croprotation'], apply:()=>{cap.food+=120; techBonus.field*=1.15;}},
-  {id:'siegecraft', name:'Siege Craft', desc:'+20% raid strength, +4 military capacity', cost:28, tier:3, requires:['fortification'], apply:()=>{techBonus.raid*=1.2; military.cap+=4;}},
-  {id:'greatlibrary', name:'Great Library', desc:'+30% research, +10 happiness', cost:32, tier:3, requires:['philosophy'], apply:()=>{techBonus.research*=1.3; techHappinessBonus+=10;}},
-];
 let unlockedTechs = new Set();
+
+function applyTechEffects(tech){
+  const eff = tech.effects || {};
+  if(eff.techBonus) Object.entries(eff.techBonus).forEach(([k,mult])=> techBonus[k]*=mult);
+  if(eff.cap) Object.entries(eff.cap).forEach(([k,amt])=> cap[k]+=amt);
+  if(eff.military) Object.entries(eff.military).forEach(([k,amt])=> military[k]+=amt);
+  if(eff.techHappinessBonus) techHappinessBonus += eff.techHappinessBonus;
+}
 
 function totalFood(){ return FOOD_KEYS.reduce((s,k)=>s+res[k],0); }
 function addRes(key, amt){
@@ -1028,7 +1017,6 @@ function renderResearchPanel(){
   document.getElementById('rpCount').textContent = Math.floor(research);
   const list = document.getElementById('researchList');
   list.innerHTML='';
-  const techName = id => (TECHS.find(t=>t.id===id)||{}).name || id;
   [1,2,3].forEach(tierNum=>{
     const tierTechs = TECHS.filter(t=>t.tier===tierNum);
     if(!tierTechs.length) return;
@@ -1037,7 +1025,7 @@ function renderResearchPanel(){
     list.appendChild(label);
     tierTechs.forEach(t=>{
       const done = unlockedTechs.has(t.id);
-      const reqMet = (t.requires||[]).every(r=>unlockedTechs.has(r));
+      const reqMet = techRequirementsMet(t, unlockedTechs);
       const row=document.createElement('div');
       row.className='tech'+(done?' done':'');
       const reqLine = (!done && t.requires && t.requires.length)
@@ -1052,7 +1040,7 @@ function renderResearchPanel(){
           if(research >= t.cost){
             research -= t.cost;
             unlockedTechs.add(t.id);
-            t.apply();
+            applyTechEffects(t);
             showToast(`Researched ${t.name}`);
             renderRes();
           } else {
