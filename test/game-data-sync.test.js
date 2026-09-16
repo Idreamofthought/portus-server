@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BUILDING_IDS, TECH_BONUS_KEYS, COLS, ROWS } from "../save-validation.js";
+import { BUILDING_IDS, TECH_BONUS_KEYS, RESOURCE_KEYS, COLS, ROWS } from "../save-validation.js";
 
 // Guards against protected/game.html and save-validation.js drifting apart,
 // which previously caused every cloud save to be silently rejected.
@@ -42,6 +42,11 @@ test("protected/js/map.js grid dimensions match save-validation COLS/ROWS", () =
   assert.ok(dimsMatch, "expected a COLS/ROWS declaration in protected/js/map.js");
   assert.equal(Number(dimsMatch[1]), COLS);
   assert.equal(Number(dimsMatch[2]), ROWS);
+});
+
+test("protected/js/resources.js FOOD_KEYS/GENERAL_KEYS match save-validation RESOURCE_KEYS", async () => {
+  const { FOOD_KEYS, GENERAL_KEYS } = await import("../protected/js/resources.js");
+  assert.deepEqual(new Set([...FOOD_KEYS, ...GENERAL_KEYS]), RESOURCE_KEYS);
 });
 
 test("protected/js/research.js techBonus effects only use known TECH_BONUS_KEYS", async () => {
