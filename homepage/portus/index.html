@@ -133,22 +133,6 @@
     <span>Portus is a work in progress.</span>
     <span><a href="/lore/">Lore</a> · <a href="/writing/">Writing</a> · <a href="/privacy">Privacy</a></span>
   </footer>
-  <script>
-    const accessMessage = document.getElementById("access-message");
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("paid") === "required" || params.get("verify") === "required") {
-      accessMessage.hidden = false;
-      accessMessage.textContent = params.get("verify") === "required"
-        ? "Verify your email address before entering Portus."
-        : "Choose a pass to enter the playable build of Portus.";
-      if (params.get("paid") === "required") {
-        document.querySelectorAll('a[href="/game"]').forEach((link) => {
-          link.href = "/purchase.html";
-          if (link.classList.contains("primary-cta")) link.innerHTML = "Get access to Portus <span>↗</span>";
-          else if (link.classList.contains("nav-play")) link.textContent = "Get access";
-        });
-      }
-    }
-  </script>
+  <script src="/portus/js/access-message.js" defer></script>
 </body>
 </html>
