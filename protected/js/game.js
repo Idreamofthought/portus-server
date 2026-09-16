@@ -10,6 +10,13 @@ import { GOD_MESSAGES } from '/game-assets/blessings.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
 
 let selectedCrop = 'wheat';
+const TRADE_GOODS = [
+  { id: 'marble', label: 'Marble', buyCost: 12, sellValue: 4 },
+  { id: 'tin', label: 'Tin', buyCost: 10, sellValue: 3 },
+  { id: 'bronze', label: 'Bronze', buyCost: 15, sellValue: 5 },
+  { id: 'honey', label: 'Honey', buyCost: 8, sellValue: 3 },
+  { id: 'wax', label: 'Wax', buyCost: 9, sellValue: 3 }
+];
 
 /* ---------------- RESOURCES ---------------- */
 // FOOD_KEYS/GENERAL_KEYS/PRICES and the helper logic live in
@@ -88,6 +95,12 @@ function tick(){
       for(const [ore,bar] of pairs){
         let amt = Math.min(1*laborRatio, res[ore]);
         if(amt>0){ res[ore]-=amt; addRes(bar, amt*0.8*techBonus.foundry*roadBoost); }
+      }
+      const bronzeAmt = Math.min(1*laborRatio, res.tin, res.copper);
+      if(bronzeAmt > 0){
+        res.tin -= bronzeAmt;
+        res.copper -= bronzeAmt;
+        addRes('bronze', bronzeAmt * 0.8 * techBonus.foundry * roadBoost);
       }
       return;
     }
@@ -260,10 +273,10 @@ function renderMinimap(){
 /* ---------------- UI: RESOURCE BAR ---------------- */
 const RES_DISPLAY = [
   ['wood','🪵'],['stone','🪨'],['clay','🧱'],['pottery','🏺'],['tools','🔧'],
-  ['goldOre','🟡'],['silverOre','⚪'],['copperOre','🟠'],
-  ['gold','💰'],['silver','🥈'],['copper','🥉'],
+  ['goldOre','🟡'],['silverOre','⚪'],['copperOre','🟠'],['gold','💰'],['silver','🥈'],['copper','🥉'],['bronze','🟠'],
   ['wheat','🌾'],['flour','🌾➡️'],['bread','🍞'],['olives','🫒'],['oliveOil','🛢️'],
   ['chickpeas','🌱'],['grapes','🍇'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
+  ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','🕯️']
 ];
 function renderRes(){
   const bar = document.getElementById('resbar');
@@ -294,6 +307,7 @@ function renderRes(){
   updateArmyPanel();
   renderGoalsPanel();
   updateTaxPanel();
+  renderTradePanel();
 }
 
 /* ---------------- UI: BUILD PANEL ---------------- */
@@ -458,22 +472,28 @@ function renderResearchPanel(){
       row.className='tech'+(done?' done':'');
       const reqLine = (!done && t.requires && t.requires.length)
         ? `<div class="tdesc">Requires: ${t.requires.map(techName).join(', ')}</div>` : '';
+      const scrollCostNote = res.scrolls > 0 ? ' (1 scroll if available)' : '';
       row.innerHTML =
         `<div class="tname">${t.name}</div>
          <div class="tdesc">${t.desc}</div>
          ${reqLine}
-         <button ${done||!reqMet? 'disabled':''}>${done? '✓ Researched' : 'Unlock — '+t.cost+' pts'}</button>`;
+         <button ${done||!reqMet? 'disabled':''}>${done? '✓ Researched' : 'Unlock — '+t.cost+' pts'+scrollCostNote}</button>`;
       if(!done && reqMet){
         row.querySelector('button').onclick = ()=>{
-          if(research >= t.cost){
-            research -= t.cost;
-            unlockedTechs.add(t.id);
-            applyTechEffects(t);
-            showToast(`Researched ${t.name}`);
-            renderRes();
-          } else {
+          if(research < t.cost){
             showToast('Not enough research points');
+            return;
           }
+          research -= t.cost;
+          if(res.scrolls > 0){
+            res.scrolls -= 1;
+            showToast(`Researched ${t.name} using 1 scroll`);
+          } else {
+            showToast(`Researched ${t.name}`);
+          }
+          unlockedTechs.add(t.id);
+          applyTechEffects(t);
+          renderRes();
         };
       }
       list.appendChild(row);
@@ -511,6 +531,51 @@ function renderCodexPanel(){
       article.appendChild(unavailable);
     }
     list.appendChild(article);
+  });
+}
+
+function renderTradePanel(){
+  const list = document.getElementById('tradeList');
+  if(!list) return;
+  list.replaceChildren();
+  const hasTradingPost = placedBuildings.some((b)=>b.id==='tradingpost');
+  if(!hasTradingPost){
+    const empty = document.createElement('p');
+    empty.className = 'pnote';
+    empty.textContent = 'Build a Trading Post to buy and sell rare goods.';
+    list.appendChild(empty);
+    return;
+  }
+
+  TRADE_GOODS.forEach((good)=>{
+    const row = document.createElement('div');
+    row.className = 'trade-item';
+    const stock = Math.floor(res[good.id] || 0);
+    row.innerHTML = `
+      <div class="trade-header">
+        <span>${good.label}</span>
+        <small>${stock} stock</small>
+      </div>
+      <div class="trade-actions">
+        <button class="actionbtn secondary trade-buy" data-good="${good.id}">Buy — ${good.buyCost} coin</button>
+        <button class="actionbtn trade-sell" data-good="${good.id}">Sell — +${good.sellValue} coin</button>
+      </div>
+    `;
+    row.querySelector('.trade-buy').onclick = ()=>{
+      if(coin < good.buyCost){ showToast('Not enough coin'); return; }
+      coin -= good.buyCost;
+      addRes(good.id, 1);
+      showToast(`Bought ${good.label}`);
+      renderRes();
+    };
+    row.querySelector('.trade-sell').onclick = ()=>{
+      if((res[good.id] || 0) < 1){ showToast(`No ${good.label} to sell`); return; }
+      res[good.id] -= 1;
+      coin += good.sellValue;
+      showToast(`Sold ${good.label}`);
+      renderRes();
+    };
+    list.appendChild(row);
   });
 }
 

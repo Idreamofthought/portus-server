@@ -8,15 +8,15 @@ export { SAVE_KEYS };
 export const RESOURCE_KEYS = new Set([
   "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
   "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
-  "deer", "bread", "scrolls", "flour", "oliveOil", "salt"
+  "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax"
 ]);
 
 export const BUILDING_IDS = new Set([
-  "house", "farmerhut", "fisherhut", "fields", "quarry", "claypit", "potter",
-  "sawmill", "workshop", "blacksmith", "foundry", "hunterlodge", "docks", "boatbuilder",
-  "goldmine", "silvermine", "coppermine", "saltmine", "mill", "baker", "oliveoilmill",
+  "house", "farmerhut", "fisherhut", "fields", "quarry", "marblequarry", "claypit", "potter",
+  "sawmill", "beekeeper", "workshop", "blacksmith", "foundry", "hunterlodge", "docks", "boatbuilder",
+  "goldmine", "silvermine", "coppermine", "tinmine", "saltmine", "mill", "baker", "oliveoilmill",
   "stockage", "granary", "road", "well", "sewer", "police", "fire", "doctor", "dentist",
-  "school", "bar", "temple", "scribe", "library", "market", "tradingpost", "mint",
+  "school", "bar", "temple", "statue", "scribe", "library", "market", "tradingpost", "mint",
   "taxoffice", "barracks"
 ]);
 
@@ -25,7 +25,7 @@ export const TECH_BONUS_KEYS = new Set([
 ]);
 
 const TERRAIN_CODES = new Set(["grass", "forest", "mountain", "river", "sea", "sand"]);
-const DEPOSIT_CODES = new Set(["clay", "salt", "gold", "silver", "copper"]);
+const DEPOSIT_CODES = new Set(["clay", "salt", "gold", "silver", "copper", "marble", "tin"]);
 export { TERRAIN_CODES, DEPOSIT_CODES };
 export const COLS = 44;
 export const ROWS = 30;
