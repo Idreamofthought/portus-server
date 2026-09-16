@@ -223,7 +223,6 @@ app.get(["/tree", "/tree/", "/tree/index.html"], (_req, res) =>
 );
 
 app.use(express.static(path.join(__dirname, "homepage")));
-app.use("/homepage", express.static(path.join(__dirname, "homepage")));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
