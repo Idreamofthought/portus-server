@@ -294,6 +294,13 @@ app.use(
   requirePaid,
   express.static(path.join(__dirname, "protected/js"))
 );
+app.use(
+  "/game-assets",
+  authenticateRequest,
+  requireVerified,
+  requirePaid,
+  express.static(path.join(__dirname, "protected/css"))
+);
 // /text-game needs no explicit route -- public/ is already mounted as
 // static at root, and Express serves public/text-game/index.html for
 // both /text-game and /text-game/ automatically.

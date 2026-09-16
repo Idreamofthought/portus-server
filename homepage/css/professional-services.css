@@ -1,0 +1,80 @@
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #0d0d0d, #1a1a1a);
+            color: #f2e9d8;
+            font-family: "Segoe UI", sans-serif;
+            padding: 40px 20px;
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffd37a;
+            font-size: 2.6rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .intro {
+            font-size: 1.2rem;
+            margin: 0 auto 2.5rem;
+            max-width: 720px;
+            opacity: 0.9;
+            text-align: center;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .service {
+            background: #222;
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        h2 {
+            color: #ffd37a;
+            font-size: 1.6rem;
+            margin: 0 0 0.75rem;
+        }
+
+        .service p { margin: 0; opacity: 0.88; }
+
+        .contact-box {
+            border-top: 1px solid #4a4133;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            text-align: center;
+        }
+
+        a {
+            color: #ffd37a;
+            text-decoration: none;
+        }
+
+        a:hover, a:focus-visible { text-decoration: underline; }
+
+        .actions a {
+            display: inline-block;
+            margin: 0.5rem 0.75rem;
+        }
+
+        nav {
+            margin-top: 3rem;
+            text-align: center;
+        }
+
+        nav a { margin: 0 1rem; }
+
+        @media (max-width: 600px) {
+            body { padding: 28px 16px; }
+            h1 { font-size: 2.2rem; }
+        }
+    
