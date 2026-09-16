@@ -531,6 +531,7 @@ import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoo
 import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
 import { pickDisaster } from '/game-assets/disasters.js';
+import { RAID_TIERS, resolveRaid } from '/game-assets/army.js';
 
 let selectedCrop = 'wheat';
 
@@ -1440,29 +1441,15 @@ document.getElementById('disbandBtn').onclick = ()=>{
   showToast('Soldier returned to civic life');
   updateArmyPanel();
 };
-const RAID_TIERS = {
-  small:{soldiers:3, enemy:[2,5], reward:[10,25]},
-  medium:{soldiers:6, enemy:[5,10], reward:[25,60]},
-  large:{soldiers:10, enemy:[9,16], reward:[60,140]},
-};
 document.querySelectorAll('.actionbtn.raid').forEach(btn=>{
   btn.onclick = ()=>{
     const tier = RAID_TIERS[btn.dataset.tier];
     if(military.soldiers < tier.soldiers){ showToast('Not enough soldiers for this raid'); return; }
-    const enemyStrength = tier.enemy[0] + rnd(tier.enemy[1]-tier.enemy[0]+1);
-    if(tier.soldiers*techBonus.raid >= enemyStrength){
-      const loot = tier.reward[0] + rnd(tier.reward[1]-tier.reward[0]+1);
-      coin += loot;
-      const losses = Math.floor(tier.soldiers*0.1*Math.random());
-      military.soldiers -= losses;
-      logEvent(`🗡️ Raid succeeded: +${loot} coin, lost ${losses} soldiers.`);
-      showToast(`Raid successful! +${loot} coin`);
-    } else {
-      const losses = Math.floor(tier.soldiers*(0.4+Math.random()*0.4));
-      military.soldiers -= losses;
-      logEvent(`🗡️ Raid failed: lost ${losses} soldiers.`);
-      showToast('Raid failed — soldiers lost');
-    }
+    const result = resolveRaid(tier, { rnd, raidBonus: techBonus.raid });
+    coin += result.loot;
+    military.soldiers -= result.losses;
+    logEvent(result.message);
+    showToast(result.toast);
     updateArmyPanel(); renderRes();
   };
 });
