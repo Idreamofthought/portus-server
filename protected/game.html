@@ -532,6 +532,8 @@ import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
 import { pickDisaster } from '/game-assets/disasters.js';
 import { RAID_TIERS, resolveRaid } from '/game-assets/army.js';
+import { GOD_MESSAGES } from '/game-assets/blessings.js';
+import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
 
 let selectedCrop = 'wheat';
 
@@ -711,36 +713,6 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 canvas.width = COLS*TS;
 canvas.height = ROWS*TS;
-
-const TERRAIN_COLOR = {
-  sea:'#2b6777', river:'#3f8fa3', sand:'#e8dcc8', grass:'#8fa15e',
-  forest:'#4c6b3f', mountain:'#8c8577'
-};
-const DEPOSIT_COLOR = { gold:'#d4a017', silver:'#c9c9c9', copper:'#b5651d', clay:'#8a4a1c', salt:'#f2f2f2' };
-const RESOURCE_INFO = {
-  wood:'Wood: basic building material, produced by the Woodcutter.',
-  stone:'Stone: durable building material, produced by the Quarry.',
-  clay:'Clay: raw material for pottery and some buildings.',
-  pottery:'Pottery: crafted goods used by Scribes and for storage.',
-  tools:'Tools: crafted equipment used by advanced buildings.',
-  goldOre:'Gold ore: mined raw metal for the Foundry.',
-  silverOre:'Silver ore: mined raw metal for the Foundry.',
-  copperOre:'Copper ore: mined raw metal for the Foundry.',
-  gold:'Gold: valuable refined metal and trade wealth.',
-  silver:'Silver: refined metal used for trade.',
-  copper:'Copper: refined metal used for trade.',
-  wheat:'Wheat: staple crop, milled into flour.',
-  flour:'Flour: milled wheat used to bake bread.',
-  bread:'Bread: food made from flour for the settlement.',
-  olives:'Olives: crop used to make olive oil.',
-  oliveOil:'Olive oil: valuable food and trade good.',
-  chickpeas:'Chickpeas: nourishing crop for the settlement.',
-  grapes:'Grapes: crop used for food and trade.',
-  salt:'Salt: coastal resource used in trade and preservation.',
-  fish:'Fish: food gathered from the coast and rivers.',
-  deer:'Deer: food gathered from nearby woodland.',
-  scrolls:'Scrolls: knowledge goods used by the Library.'
-};
 
 function render(){
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
@@ -1278,17 +1250,10 @@ function logEvent(msg){
   renderChronicle();
 }
 
-const GOD_MESSAGES = [
-  { text:'The gods of the shore remember your settlement. Fishers find a small catch.', grant:()=>addRes('fish', 3) },
-  { text:'A quiet blessing passes through the storehouses. Your grain is protected.', grant:()=>addRes('wheat', 3) },
-  { text:'The old stones answer your work. A little stone rises from the earth.', grant:()=>addRes('stone', 3) },
-  { text:'A thought from beyond the harbour settles into the library.', grant:()=>{ research += 2; } }
-];
-
 function maybeSendGodMessage(){
   if(tickCount === 0 || tickCount % 24 !== 0 || Math.random() > 0.7) return;
   const blessing = GOD_MESSAGES[rnd(GOD_MESSAGES.length)];
-  blessing.grant();
+  blessing.grant({ addRes, addResearch: (n)=>{ research += n; } });
   logEvent(`✨ ${blessing.text}`);
   showToast(`✨ ${blessing.text}`);
 }

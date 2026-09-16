@@ -3,6 +3,7 @@ const SAVE_KEYS = new Set([
   "unlockedTechs", "techBonus", "techHappinessBonus", "questsCompleted", "military",
   "droughtTicksLeft", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
 ]);
+export { SAVE_KEYS };
 
 export const RESOURCE_KEYS = new Set([
   "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
@@ -25,6 +26,7 @@ export const TECH_BONUS_KEYS = new Set([
 
 const TERRAIN_CODES = new Set(["grass", "forest", "mountain", "river", "sea", "sand"]);
 const DEPOSIT_CODES = new Set(["clay", "salt", "gold", "silver", "copper"]);
+export { TERRAIN_CODES, DEPOSIT_CODES };
 export const COLS = 44;
 export const ROWS = 30;
 const MAX_NUMBER = 1e9;
