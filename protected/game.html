@@ -527,16 +527,15 @@
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
 import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
+import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoodOf, addResTo, canAffordFrom, payFrom } from '/game-assets/resources.js';
 
 let selectedCrop = 'wheat';
 
 /* ---------------- RESOURCES ---------------- */
-let res = {
-  wood:60, stone:30, clay:0, pottery:0, tools:10,
-  goldOre:0, silverOre:0, copperOre:0, gold:0, silver:0, copper:0,
-  wheat:0, olives:0, chickpeas:0, grapes:0, fish:0, deer:0, bread:0, scrolls:0,
-  flour:0, oliveOil:0, salt:0
-};
+// FOOD_KEYS/GENERAL_KEYS/PRICES and the helper logic live in
+// protected/js/resources.js; these wrappers bind that logic to the local
+// mutable res/cap so existing call sites don't need to change.
+let res = createResources();
 let cap = { general:150, food:150 };
 let pop = { count:6, capacity:10 };
 let happiness = 55;
@@ -555,9 +554,6 @@ let scenarioId = null;
 let techHappinessBonus = 0;
 let questsCompleted = new Set();
 
-const FOOD_KEYS = ['wheat','olives','chickpeas','grapes','fish','deer','bread'];
-const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt'];
-
 /* ---- Research / Tech tree ---- */
 // Tech definitions live in protected/js/research.js; techBonus/cap/military/
 // techHappinessBonus stay local mutable state, applied via applyTechEffects().
@@ -572,22 +568,10 @@ function applyTechEffects(tech){
   if(eff.techHappinessBonus) techHappinessBonus += eff.techHappinessBonus;
 }
 
-function totalFood(){ return FOOD_KEYS.reduce((s,k)=>s+res[k],0); }
-function addRes(key, amt){
-  if(FOOD_KEYS.includes(key)){
-    let room = cap.food - totalFood();
-    res[key] += Math.max(0, Math.min(amt, room));
-  } else {
-    let room = cap.general - GENERAL_KEYS.reduce((s,k)=>s+res[k],0) + res[key];
-    res[key] = Math.min(res[key]+amt, cap.general);
-  }
-}
-function canAfford(cost){
-  return Object.entries(cost).every(([k,v]) => (res[k]||0) >= v);
-}
-function pay(cost){
-  Object.entries(cost).forEach(([k,v]) => res[k] -= v);
-}
+function totalFood(){ return totalFoodOf(res); }
+function addRes(key, amt){ addResTo(res, cap, key, amt); }
+function canAfford(cost){ return canAffordFrom(res, cost); }
+function pay(cost){ payFrom(res, cost); }
 
 /* ---------------- BUILDINGS ---------------- */
 // Catalogue lives in protected/js/buildings.js; imported at the top of this script.
@@ -595,12 +579,6 @@ function pay(cost){
 let placedBuildings = []; // {id, x, y, crop?}
 let selectedBuild = null;
 
-const PRICES = {
-  wood:0.4, stone:0.5, clay:0.4, pottery:1.4, tools:2, scrolls:1.8,
-  goldOre:3, silverOre:2, copperOre:1.4, gold:8, silver:5, copper:3,
-  wheat:0.7, olives:1.1, chickpeas:0.9, grapes:1.0, fish:0.7, deer:1.3, bread:1.6,
-  flour:1.1, oliveOil:2.4, salt:1.8
-};
 
 /* ---------------- ECONOMY TICK ---------------- */
 function totalWorkersNeeded(){
