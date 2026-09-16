@@ -155,9 +155,16 @@ app.set("trust proxy", 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
+// Set CSP_REPORT_ONLY=1 to deploy a policy change in observe-only mode (e.g. in
+// staging) before enforcing it -- same policy, but violations are only logged
+// to the browser console, nothing is actually blocked.
+const cspHeaderName = process.env.CSP_REPORT_ONLY === "1"
+  ? "Content-Security-Policy-Report-Only"
+  : "Content-Security-Policy";
+
 app.use((req, res, next) => {
   res.setHeader(
-    "Content-Security-Policy",
+    cspHeaderName,
     [
       "default-src 'self'",
       `connect-src 'self' ${SITE_URL} https://plausible.io`,
