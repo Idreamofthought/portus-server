@@ -62,7 +62,7 @@
     background:rgba(30,25,20,0.82); border:1px solid var(--gold); border-radius:6px;
     box-shadow:0 2px 8px rgba(0,0,0,0.35); pointer-events:none;
   }
-  #minimap{display:block; width:150px; height:100px; image-rendering:pixelated;}
+  #minimap{display:block; width:150px; height:100px; image-rendering:pixelated; pointer-events:auto; cursor:pointer;}
   #minimapLabel{
     margin-top:2px; color:#e8dcc8; font:9px/1 -apple-system,sans-serif;
     text-align:center; text-transform:uppercase; letter-spacing:0.7px;
@@ -353,11 +353,20 @@
 
       <div id="menuStack">
         <button class="menuBtn" data-panel="researchPanel">📜 Research</button>
+        <button class="menuBtn" data-panel="questsPanel">🧭 Quests</button>
         <button class="menuBtn" data-panel="codexPanel">📖 Codex</button>
         <button class="menuBtn" data-panel="armyPanel">⚔️ Army</button>
         <button class="menuBtn" data-panel="goalsPanel">🎯 Goals</button>
         <button class="menuBtn" data-panel="taxPanel">💰 Taxes</button>
         <button class="menuBtn" data-panel="savePanel">💾 Save</button>
+      </div>
+
+      <div id="questsPanel" class="sidepanel">
+        <div class="panelHead">
+          <span>Quests</span>
+          <button class="closeP">✕</button>
+        </div>
+        <div id="questsList" class="panelBody"></div>
       </div>
 
       <div id="researchPanel" class="sidepanel">
@@ -516,7 +525,7 @@
 
 <script>
 /* ---------------- MAP GENERATION ---------------- */
-const COLS = 30, ROWS = 20, TS = 30;
+const COLS = 44, ROWS = 30, TS = 26;
 let grid = []; // grid[y][x] = {terrain, deposit, building}
 let selectedCrop = 'wheat';
 
@@ -565,7 +574,7 @@ function genMap(){
     rx = Math.max(2, Math.min(COLS-3, rx));
   }
   // forest patches
-  for(let i=0;i<6;i++){
+  for(let i=0;i<10;i++){
     let fx = 6+rnd(COLS-10), fy = 2+rnd(ROWS-6);
     for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
       let d=Math.hypot(x-fx,y-fy);
@@ -630,18 +639,35 @@ let eventLog = [];
 let discoveryRollInFlight = false;
 let taxRate = 0;      // coin per citizen per tick
 let scenarioId = null;
+let techHappinessBonus = 0;
+let questsCompleted = new Set();
 
 const FOOD_KEYS = ['wheat','olives','chickpeas','grapes','fish','deer','bread'];
 const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt'];
 
 /* ---- Research / Tech tree ---- */
-const techBonus = { field:1, quarry:1, fish:1, foundry:1, trade:1 };
+const techBonus = { field:1, quarry:1, fish:1, foundry:1, trade:1, wood:1, clay:1, raid:1, research:1 };
 const TECHS = [
-  {id:'irrigation', name:'Irrigation', desc:'+25% field yield', cost:8, apply:()=>techBonus.field*=1.25},
-  {id:'masonry', name:'Masonry', desc:'+25% quarry output', cost:8, apply:()=>techBonus.quarry*=1.25},
-  {id:'seafaring', name:'Seafaring', desc:'+25% fish catch', cost:10, apply:()=>techBonus.fish*=1.25},
-  {id:'metallurgy', name:'Metallurgy', desc:'+25% foundry refining', cost:14, apply:()=>techBonus.foundry*=1.25},
-  {id:'currency', name:'Currency', desc:'+30% trade income from markets', cost:16, apply:()=>techBonus.trade*=1.3},
+  // Tier 1 — Foundations (no prerequisites)
+  {id:'irrigation', name:'Irrigation', desc:'+25% field yield', cost:8, tier:1, requires:[], apply:()=>techBonus.field*=1.25},
+  {id:'masonry', name:'Masonry', desc:'+25% quarry output', cost:8, tier:1, requires:[], apply:()=>techBonus.quarry*=1.25},
+  {id:'seafaring', name:'Seafaring', desc:'+25% fish catch', cost:10, tier:1, requires:[], apply:()=>techBonus.fish*=1.25},
+  {id:'woodcraft', name:'Woodcraft', desc:'+25% woodcutter output', cost:8, tier:1, requires:[], apply:()=>techBonus.wood*=1.25},
+  {id:'claycraft', name:'Claycraft', desc:'+25% claypit output', cost:8, tier:1, requires:[], apply:()=>techBonus.clay*=1.25},
+  {id:'scholarship', name:'Scholarship', desc:'+25% research from Libraries', cost:10, tier:1, requires:[], apply:()=>techBonus.research*=1.25},
+  // Tier 2 — requires one Tier 1 tech
+  {id:'metallurgy', name:'Metallurgy', desc:'+25% foundry refining', cost:16, tier:2, requires:['masonry'], apply:()=>techBonus.foundry*=1.25},
+  {id:'navigation', name:'Navigation', desc:'+20% trade income', cost:16, tier:2, requires:['seafaring'], apply:()=>techBonus.trade*=1.2},
+  {id:'croprotation', name:'Crop Rotation', desc:'+80 food storage capacity', cost:18, tier:2, requires:['irrigation'], apply:()=>cap.food+=80},
+  {id:'carpentry', name:'Carpentry', desc:'+60 general storage capacity', cost:18, tier:2, requires:['woodcraft'], apply:()=>cap.general+=60},
+  {id:'fortification', name:'Fortification', desc:'+3 military capacity', cost:18, tier:2, requires:['masonry'], apply:()=>military.cap+=3},
+  {id:'philosophy', name:'Philosophy', desc:'+6 happiness', cost:16, tier:2, requires:['scholarship'], apply:()=>techHappinessBonus+=6},
+  // Tier 3 — requires one Tier 2 tech
+  {id:'engineering', name:'Engineering', desc:'+40 general storage, +15% quarry', cost:26, tier:3, requires:['metallurgy'], apply:()=>{cap.general+=40; techBonus.quarry*=1.15;}},
+  {id:'maritimetrade', name:'Maritime Trade', desc:'+30% trade income', cost:28, tier:3, requires:['navigation'], apply:()=>techBonus.trade*=1.3},
+  {id:'granaryscience', name:'Granary Science', desc:'+120 food storage, +15% field yield', cost:30, tier:3, requires:['croprotation'], apply:()=>{cap.food+=120; techBonus.field*=1.15;}},
+  {id:'siegecraft', name:'Siege Craft', desc:'+20% raid strength, +4 military capacity', cost:28, tier:3, requires:['fortification'], apply:()=>{techBonus.raid*=1.2; military.cap+=4;}},
+  {id:'greatlibrary', name:'Great Library', desc:'+30% research, +10 happiness', cost:32, tier:3, requires:['philosophy'], apply:()=>{techBonus.research*=1.3; techHappinessBonus+=10;}},
 ];
 let unlockedTechs = new Set();
 
@@ -679,16 +705,19 @@ const BUILDINGS = [
  {id:'claypit', name:"Claypit", ic:'🕳️', cat:'Production', cost:{wood:20}, workers:2,
    valid:(x,y)=>grid[y][x].deposit==='clay', produce:{clay:2}},
  {id:'potter', name:"Potter", ic:'🏺', cat:'Production', cost:{wood:30,stone:10}, workers:2,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{clay:2}, produce:{pottery:1.6}},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{clay:2}, produce:{pottery:1.6},
+   desc:'Needs clay (from a Claypit) — produces pottery'},
  {id:'sawmill', name:"Woodcutter", ic:'🪓', cat:'Production', cost:{wood:20}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain) && nearTerrain(x,y,['forest'],1), produce:{wood:3}},
  {id:'workshop', name:"Workshop", ic:'🔨', cat:'Production', cost:{wood:40,stone:20}, workers:3,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{wood:1.5,stone:1}, produce:{tools:1.6}},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{wood:1.5,stone:1}, produce:{tools:1.6},
+   desc:'Needs wood and stone — produces tools'},
  {id:'blacksmith', name:"Blacksmith", ic:'⚒️', cat:'Production', cost:{wood:30,stone:30}, workers:3,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{copper:1,wood:1}, produce:{tools:2}},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{copper:1,wood:1}, produce:{tools:2},
+   desc:'Needs copper (from a Foundry) — produces tools'},
  {id:'foundry', name:"Foundry", ic:'🔥', cat:'Production', cost:{stone:50,wood:20}, workers:3,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain),
-   special:'foundry'},
+   special:'foundry', desc:'Refines ore from mines into gold, silver and copper'},
  {id:'hunterlodge', name:"Hunter's Lodge", ic:'🏹', cat:'Production', cost:{wood:25}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain) && nearTerrain(x,y,['forest'],1), produce:{deer:1.5}},
  {id:'docks', name:"Docks", ic:'⚓', cat:'Production', cost:{wood:40}, workers:2,
@@ -705,11 +734,14 @@ const BUILDINGS = [
  {id:'saltmine', name:"Salt Flats", ic:'🧂', cat:'Mining', cost:{wood:35,stone:25}, workers:3,
    valid:(x,y)=>grid[y][x].deposit==='salt', produce:{salt:1.3}},
  {id:'mill', name:"Mill", ic:'⚙️', cat:'Production', cost:{wood:35,stone:15}, workers:2,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{wheat:2}, produce:{flour:1.6}},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{wheat:2}, produce:{flour:1.6},
+   desc:'Needs wheat (from a Field) — produces flour'},
  {id:'baker', name:"Baker", ic:'🍞', cat:'Production', cost:{wood:25,stone:10}, workers:2,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{flour:1.5}, produce:{bread:1.3}},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{flour:1.5}, produce:{bread:1.3},
+   desc:'Needs flour (from a Mill) — produces bread'},
  {id:'oliveoilmill', name:"Olive Press", ic:'🛢️', cat:'Production', cost:{wood:30,stone:15}, workers:2,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{olives:2}, produce:{oliveOil:1.4}},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{olives:2}, produce:{oliveOil:1.4},
+   desc:'Needs olives (from a Field planted with olives) — produces olive oil'},
  {id:'stockage', name:"Storage Yard", ic:'📦', cat:'Storage', cost:{wood:50,stone:30}, workers:1,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), capBonus:{general:200}},
  {id:'granary', name:"Granary", ic:'🏛️', cat:'Storage', cost:{wood:40,stone:20}, workers:1,
@@ -740,15 +772,18 @@ const BUILDINGS = [
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), happinessBonus:12},
  {id:'scribe', name:"Scribe's House", ic:'✒️', cat:'Knowledge', cost:{wood:25,pottery:6}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain),
-   consume:{pottery:0.6}, produce:{scrolls:1.2}},
+   consume:{pottery:0.6}, produce:{scrolls:1.2}, desc:'Needs pottery (from a Potter) — produces scrolls'},
  {id:'library', name:"Library", ic:'📚', cat:'Knowledge', cost:{wood:40,stone:20,tools:5}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain),
-   consume:{scrolls:1}, special:'library', happinessBonus:4},
+   consume:{scrolls:1}, special:'library', happinessBonus:4, desc:'Needs scrolls (from a Scribe\'s House) — converts them into research points'},
  {id:'market', name:"Market", ic:'🛒', cat:'Trade', cost:{wood:30,stone:10}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), special:'market'},
  {id:'tradingpost', name:"Trading Post", ic:'🐫', cat:'Trade', cost:{wood:50,stone:20,tools:5}, workers:3,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain) && (nearTerrain(x,y,['sea','river'],2)||true),
    special:'caravan'},
+ {id:'mint', name:"Mint", ic:'🪙', cat:'Trade', cost:{stone:40,tools:15}, workers:2,
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{silver:1,copper:1}, special:'mint',
+   desc:'Needs silver and copper (from a Foundry) — strikes coin directly'},
  {id:'taxoffice', name:"Tax Office", ic:'🏦', cat:'Trade', cost:{wood:40,stone:25}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), special:'taxoffice',
    desc:'Unlocks the Taxes panel'},
@@ -806,11 +841,16 @@ function tick(){
     if(def.special==='library'){
       let amt = Math.min(1*laborRatio, res.scrolls);
       let schoolBoost = placedBuildings.some(x=>x.id==='school') ? 1.2 : 1;
-      if(amt>0){ res.scrolls -= amt; research += amt*0.7*schoolBoost; }
+      if(amt>0){ res.scrolls -= amt; research += amt*0.7*schoolBoost*techBonus.research; }
       return;
     }
     if(def.special==='taxoffice'){
       tradeIncome += taxRate * pop.count * laborRatio;
+      return;
+    }
+    if(def.special==='mint'){
+      const amt = Math.min(1*laborRatio, res.silver, res.copper);
+      if(amt>0){ res.silver -= amt; res.copper -= amt; tradeIncome += amt*6*techBonus.trade; }
       return;
     }
     if(def.special==='market'){
@@ -836,7 +876,11 @@ function tick(){
     }
     if(def.produce){
       Object.entries(def.produce).forEach(([k,v])=>{
-        let mult = (k==='fish') ? techBonus.fish : (k==='stone' && def.id==='quarry') ? techBonus.quarry : 1;
+        let mult = 1;
+        if(k==='fish') mult = techBonus.fish;
+        else if(k==='stone' && def.id==='quarry') mult = techBonus.quarry;
+        else if(k==='wood' && def.id==='sawmill') mult = techBonus.wood;
+        else if(k==='clay' && def.id==='claypit') mult = techBonus.clay;
         addRes(k, v*laborRatio*mult*roadBoost);
       });
     }
@@ -865,7 +909,7 @@ function tick(){
   // happiness from services
   let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
   let taxPenalty = taxRate * 400;
-  let target = Math.min(100, Math.max(0, 40 + bonus - taxPenalty));
+  let target = Math.min(100, Math.max(0, 40 + bonus + techHappinessBonus - taxPenalty));
   happiness += (target-happiness)*0.02;
   happiness = Math.max(0, Math.min(100, happiness));
 
@@ -874,6 +918,7 @@ function tick(){
   maybeRollDiscovery();
   maybeTriggerDisaster();
   checkScenario();
+  checkQuests();
 
   render();
   renderRes();
@@ -1008,6 +1053,7 @@ function renderRes(){
     d.title = RESOURCE_INFO[k] || k;
     d.setAttribute('aria-label', `${RESOURCE_INFO[k] || k}: ${Math.floor(v)}`);
     d.textContent = `${ic} ${Math.floor(v)}`;
+    d.onclick = ()=> showToast(RESOURCE_INFO[k] || k);
     bar.appendChild(d);
   });
   document.getElementById('popline').textContent = `👥 Population ${pop.count}/${pop.capacity}`;
@@ -1017,6 +1063,7 @@ function renderRes(){
     `Storage cap: general ${cap.general} · food ${cap.food}`;
   renderResearchPanel();
   renderCodexPanel();
+  renderQuestsPanel();
   updateArmyPanel();
   renderGoalsPanel();
   updateTaxPanel();
@@ -1074,6 +1121,10 @@ function selectBuild(id){
   document.getElementById('cancelBtn').style.display = selectedBuild ? 'block':'none';
   document.getElementById('cropbar').style.display = selectedBuild==='fields' ? 'flex':'none';
   updateBuildPreview(selectedBuild);
+  const legend = document.getElementById('legend');
+  if(selectedBuild==='fields') legend.textContent = '👉 Pick a crop above, then tap the map to plant';
+  else if(selectedBuild) legend.textContent = `Tap the map to place ${BLD_BY_ID[selectedBuild].name}`;
+  else legend.textContent = 'Tap a building, then tap the map to place it';
   render();
 }
 document.getElementById('cancelBtn').onclick = ()=> selectBuild(null);
@@ -1103,6 +1154,17 @@ canvas.addEventListener('touchstart', e=>{
 canvas.addEventListener('touchend', e=>{
   if(hoverTile) placeAt(hoverTile);
 }, {passive:true});
+document.getElementById('minimap').addEventListener('click', e=>{
+  const rect = e.currentTarget.getBoundingClientRect();
+  const relX = (e.clientX-rect.left)/rect.width;
+  const relY = (e.clientY-rect.top)/rect.height;
+  const wrap = document.getElementById('mapwrap');
+  wrap.scrollTo({
+    left: Math.max(0, relX*canvas.width - wrap.clientWidth/2),
+    top: Math.max(0, relY*canvas.height - wrap.clientHeight/2),
+    behavior:'smooth'
+  });
+});
 
 function showToast(msg){
   const t=document.getElementById('toast');
@@ -1156,28 +1218,40 @@ function renderResearchPanel(){
   document.getElementById('rpCount').textContent = Math.floor(research);
   const list = document.getElementById('researchList');
   list.innerHTML='';
-  TECHS.forEach(t=>{
-    const done = unlockedTechs.has(t.id);
-    const row=document.createElement('div');
-    row.className='tech'+(done?' done':'');
-    row.innerHTML =
-      `<div class="tname">${t.name}</div>
-       <div class="tdesc">${t.desc}</div>
-       <button ${done? 'disabled':''}>${done? '✓ Researched' : 'Unlock — '+t.cost+' pts'}</button>`;
-    if(!done){
-      row.querySelector('button').onclick = ()=>{
-        if(research >= t.cost){
-          research -= t.cost;
-          unlockedTechs.add(t.id);
-          t.apply();
-          showToast(`Researched ${t.name}`);
-          renderRes();
-        } else {
-          showToast('Not enough research points');
-        }
-      };
-    }
-    list.appendChild(row);
+  const techName = id => (TECHS.find(t=>t.id===id)||{}).name || id;
+  [1,2,3].forEach(tierNum=>{
+    const tierTechs = TECHS.filter(t=>t.tier===tierNum);
+    if(!tierTechs.length) return;
+    const label=document.createElement('div');
+    label.className='catlabel'; label.textContent=`Tier ${tierNum}`;
+    list.appendChild(label);
+    tierTechs.forEach(t=>{
+      const done = unlockedTechs.has(t.id);
+      const reqMet = (t.requires||[]).every(r=>unlockedTechs.has(r));
+      const row=document.createElement('div');
+      row.className='tech'+(done?' done':'');
+      const reqLine = (!done && t.requires && t.requires.length)
+        ? `<div class="tdesc">Requires: ${t.requires.map(techName).join(', ')}</div>` : '';
+      row.innerHTML =
+        `<div class="tname">${t.name}</div>
+         <div class="tdesc">${t.desc}</div>
+         ${reqLine}
+         <button ${done||!reqMet? 'disabled':''}>${done? '✓ Researched' : 'Unlock — '+t.cost+' pts'}</button>`;
+      if(!done && reqMet){
+        row.querySelector('button').onclick = ()=>{
+          if(research >= t.cost){
+            research -= t.cost;
+            unlockedTechs.add(t.id);
+            t.apply();
+            showToast(`Researched ${t.name}`);
+            renderRes();
+          } else {
+            showToast('Not enough research points');
+          }
+        };
+      }
+      list.appendChild(row);
+    });
   });
 }
 
@@ -1516,7 +1590,7 @@ function damageRandomBuildings(count, filterFn){
 function resolveInvasion(){
   const enemyStrength = 4 + rnd(10) + Math.floor(coin/40);
   const myStrength = military.soldiers;
-  if(myStrength >= enemyStrength && myStrength>0){
+  if(myStrength*techBonus.raid >= enemyStrength && myStrength>0){
     const lost = Math.floor(myStrength*0.1*Math.random());
     military.soldiers -= lost;
     const loot = 5+rnd(15);
@@ -1615,7 +1689,7 @@ document.querySelectorAll('.actionbtn.raid').forEach(btn=>{
     const tier = RAID_TIERS[btn.dataset.tier];
     if(military.soldiers < tier.soldiers){ showToast('Not enough soldiers for this raid'); return; }
     const enemyStrength = tier.enemy[0] + rnd(tier.enemy[1]-tier.enemy[0]+1);
-    if(tier.soldiers >= enemyStrength){
+    if(tier.soldiers*techBonus.raid >= enemyStrength){
       const loot = tier.reward[0] + rnd(tier.reward[1]-tier.reward[0]+1);
       coin += loot;
       const losses = Math.floor(tier.soldiers*0.1*Math.random());
@@ -1631,6 +1705,72 @@ document.querySelectorAll('.actionbtn.raid').forEach(btn=>{
     updateArmyPanel(); renderRes();
   };
 });
+
+/* ---------------- QUESTS ---------------- */
+const QUESTS = [
+  {id:'roots', name:'Roots in the Soil', desc:'Build a House and a Field.',
+    check:()=> placedBuildings.some(b=>b.id==='house') && placedBuildings.some(b=>b.id==='fields'),
+    reward:()=>{ addRes('wood',20); }, rewardText:'+20 wood'},
+  {id:'millers-chain', name:"The Miller's Chain", desc:'Build a Mill and a Baker to turn wheat into bread.',
+    check:()=> placedBuildings.some(b=>b.id==='mill') && placedBuildings.some(b=>b.id==='baker'),
+    reward:()=>{ research += 10; }, rewardText:'+10 research'},
+  {id:'seven-wanderers', name:'Seven Wanderers', desc:'Maintain buildings from 7 distinct categories at once.',
+    check:()=> new Set(placedBuildings.map(b=>BLD_BY_ID[b.id].cat)).size >= 7,
+    reward:()=>{ coin += 15; techHappinessBonus += 3; }, rewardText:'+15 coin, +3 happiness'},
+  {id:'divisible-hour', name:'The Divisible Hour', desc:'Store at least 60 of three different resources at once.',
+    check:()=> Object.values(res).filter(v=>v>=60).length >= 3,
+    reward:()=>{ research += 15; }, rewardText:'+15 research'},
+  {id:'measure-that-bends', name:'A Measure That Bends', desc:'Research at least two technologies, then survive a disaster.',
+    check:()=> unlockedTechs.size >= 2 && scenarioState.disastersSurvived >= 1,
+    reward:()=>{ coin += 20; research += 5; }, rewardText:'+20 coin, +5 research'},
+];
+
+function checkQuests(){
+  QUESTS.forEach((q,idx)=>{
+    if(questsCompleted.has(q.id)) return;
+    if(q.check()){
+      questsCompleted.add(q.id);
+      q.reward();
+      logEvent(`🧭 Quest complete: ${q.name} — ${q.rewardText}`);
+      showToast(`🧭 Quest complete: ${q.name}`);
+      rollQuestDiscovery(idx);
+    }
+  });
+}
+
+async function rollQuestDiscovery(questIndex){
+  if(!currentUser) return;
+  try{
+    const result = await api('/api/discoveries/roll', {
+      method:'POST',
+      body: JSON.stringify({ activity: 'quest', turnNumber: questIndex })
+    });
+    if(result.discovery){
+      const message = `🔎 Your quest uncovered: ${result.discovery.title}.`;
+      logEvent(message);
+      showToast(message);
+      const discoveries = await api('/api/discoveries');
+      codexEntries = discoveries.codexEntries || [];
+      renderCodexPanel();
+    }
+  } catch(e){ console.warn('quest discovery roll failed', e); }
+}
+
+function renderQuestsPanel(){
+  const list = document.getElementById('questsList');
+  if(!list) return;
+  list.replaceChildren();
+  QUESTS.forEach(q=>{
+    const done = questsCompleted.has(q.id);
+    const row=document.createElement('div');
+    row.className='tech'+(done?' done':'');
+    row.innerHTML =
+      `<div class="tname">${q.name}${done?' ✓':''}</div>
+       <div class="tdesc">${q.desc}</div>
+       <div class="tdesc">Reward: ${q.rewardText}</div>`;
+    list.appendChild(row);
+  });
+}
 
 /* ---------------- SCENARIOS / GOALS ---------------- */
 const SCENARIOS = [
@@ -1709,7 +1849,8 @@ function getState(){
     captain: captainName,
     res, cap, pop, happiness, boats, coin, research,
     unlockedTechs: Array.from(unlockedTechs),
-    techBonus,
+    techBonus, techHappinessBonus,
+    questsCompleted: Array.from(questsCompleted),
     military,
     droughtTicksLeft,
     taxRate, scenarioId, scenarioState,
@@ -1730,6 +1871,8 @@ function applyState(s){
   coin = s.coin; research = s.research; droughtTicksLeft = s.droughtTicksLeft||0;
   unlockedTechs = new Set(s.unlockedTechs||[]);
   Object.assign(techBonus, s.techBonus||{});
+  techHappinessBonus = s.techHappinessBonus || 0;
+  questsCompleted = new Set(s.questsCompleted||[]);
   military = s.military || {soldiers:0,cap:0};
   taxRate = s.taxRate || 0;
   scenarioId = s.scenarioId || null;
