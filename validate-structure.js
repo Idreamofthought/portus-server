@@ -27,7 +27,7 @@ function check(label, relativePath) {
 
 console.log("Portus structure validation\n");
 
-for (const directory of ["public", "public/sounds", "protected", "routes", "models", "migrations"]) {
+for (const directory of ["public", "public/sounds", "protected", "protected/js", "migrations"]) {
   check("required path", directory);
 }
 
