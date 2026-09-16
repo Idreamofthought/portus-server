@@ -6,12 +6,13 @@ stable paths.
 
 ## Portus canon
 
-- [Narrative lore books](../portus/lore/): the ordered story and world books.
-- [Codex entries](../portus/codex/): unlockable knowledge grouped by subject.
+- [Narrative lore books](../portus/lore/book1_lie_of_the_land.md): the ordered story and world books.
+- [Codex entries](../portus/codex/artifacts/README.md): unlockable knowledge grouped by subject.
 - [Quests](../portus/quests/): progression chains and rewards.
-- [Items](../portus/items/): artifact and item definitions.
-- [Events](../portus/events/): encounters, disasters, and relic rules.
-- [NPC dialogue](../portus/npc_dialogue/): reusable character and encounter dialogue.
+- [Items](../portus/items/README.md): artifact and item definitions.
+- [Events](../portus/events/README.md): encounters, disasters, and relic rules.
+- [NPC dialogue](../portus/npc_dialogue/README.md): reusable character and encounter dialogue.
+- [Artifact category reference](../docs/ARTIFACT-CATEGORIES.md): the seven category lore notes and intended effects.
 
 ## Runtime connection
 
@@ -25,6 +26,7 @@ an API endpoint.
 
 ## Public writing
 
-The public creative writing source is indexed separately in [site/](../site/) and
-served from the existing `homepage/` and `public/writing/` surfaces. It is related
+The public creative writing source is indexed separately in [site/README.md](../site/README.md) and
+served from the existing [homepage writing index](../homepage/writing/index.html) and
+[public writing index](../public/writing/index.html) surfaces. It is related
 to Portus thematically but is not part of the game's unlockable Codex canon.

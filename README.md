@@ -42,6 +42,7 @@ people who inhabit it.
 - [About Portus](https://www.idreamofthought.org/portus/) - read the premise and world overview
 - [Writing archive](https://www.idreamofthought.org/writing/index.html) - poetry, fiction, philosophy, dreams, and ideas
 - [Portus lore](lore/README.md) - worldbuilding, Codex, myths, events, and narrative sources
+- [Portus documentation](docs/README.md) - systems, worldbuilding, artifacts, and developer guides
 
 ## What this repository contains
 
