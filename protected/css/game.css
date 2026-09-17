@@ -215,6 +215,22 @@
   .pfine{font-size:10px; color:#a89a80; margin:16px 0 0; line-height:1.4;}
   #timeline{font-weight:600; color:var(--gold);}
 
+  #orientationOverlay{
+    display:none; position:fixed; inset:0; z-index:997; background:rgba(10,8,6,0.94);
+    align-items:center; justify-content:center; padding:20px; font-family:-apple-system,sans-serif;
+  }
+  #orientationCard{
+    width:min(100%,320px); padding:24px 20px; text-align:center; color:var(--paper);
+    border:1px solid var(--gold); background:#2b2622; box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  }
+  .orientationIcon{margin-bottom:8px; color:var(--gold); font-size:42px; line-height:1;}
+  #orientationCard h2{margin:0 0 8px; font:normal 20px Georgia,serif;}
+  #orientationCard p{margin:0; color:#c9bfa8; font-size:13px; line-height:1.4;}
+
+  @media (orientation: portrait) and (max-width: 700px){
+    #orientationOverlay{display:flex;}
+  }
+
   /* simple tutorial overlay */
   #tutorialOverlay{
     position:fixed; inset:0; z-index:998; background:rgba(10,8,6,0.85);
