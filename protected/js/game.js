@@ -241,10 +241,18 @@ function render(){
   }
   if(selectedBuild && hoverTile){
     const {x,y} = hoverTile;
-    const def = BLD_BY_ID[selectedBuild];
-    const ok = inBounds(x,y) && !grid[y][x].building && def.valid(x,y) && canAfford(def.cost);
-    ctx.fillStyle = ok ? 'rgba(120,200,120,0.45)' : 'rgba(220,80,60,0.45)';
-    ctx.fillRect(x*TS,y*TS,TS,TS);
+    if(selectedBuild === 'demolish'){
+      const hasBuilding = inBounds(x,y) && grid[y][x].building;
+      ctx.fillStyle = hasBuilding ? 'rgba(220,80,60,0.55)' : 'rgba(120,120,120,0.35)';
+      ctx.fillRect(x*TS,y*TS,TS,TS);
+    } else {
+      const def = BLD_BY_ID[selectedBuild];
+      if(def){
+        const ok = inBounds(x,y) && !grid[y][x].building && def.valid(x,y) && canAfford(def.cost);
+        ctx.fillStyle = ok ? 'rgba(120,200,120,0.45)' : 'rgba(220,80,60,0.45)';
+        ctx.fillRect(x*TS,y*TS,TS,TS);
+      }
+    }
   }
   renderMinimap();
 }
@@ -318,6 +326,26 @@ function renderPanel(){
     return;
   }
   list.innerHTML='';
+
+  // Add Demolish button at the top
+  const toolLabel = document.createElement('div');
+  toolLabel.className = 'catlabel';
+  toolLabel.textContent = 'Tools';
+  list.appendChild(toolLabel);
+
+  const demoBtn = document.createElement('button');
+  demoBtn.className = 'bldbtn demolish';
+  demoBtn.dataset.id = 'demolish';
+  demoBtn.innerHTML = `
+    <span class="ic" aria-label="Demolish icon">🔨</span>
+    <span class="info">
+      Demolish Building
+      <div class="cost">Refunds 100% resources</div>
+    </span>
+  `;
+  demoBtn.onclick = () => selectBuild('demolish');
+  list.appendChild(demoBtn);
+
   CATS.forEach(cat=>{
     const label=document.createElement('div');
     label.className='catlabel'; label.textContent=cat;
@@ -349,6 +377,11 @@ function updateBuildPreview(id){
     bodyEl.textContent = 'Tap a building on the right, then tap the map to place it.';
     return;
   }
+  if(id === 'demolish'){
+    titleEl.textContent = '🔨 Demolish Building';
+    bodyEl.textContent = 'Refunds 100% of the cost. Tap any building on the map to demolish it.';
+    return;
+  }
   const def = BLD_BY_ID[id];
   titleEl.textContent = `${def.ic} ${def.name}`;
   const costStr = Object.entries(def.cost).map(([k,v])=>`${v} ${k}`).join(', ');
@@ -364,6 +397,7 @@ function selectBuild(id){
   updateBuildPreview(selectedBuild);
   const legend = document.getElementById('legend');
   if(selectedBuild==='fields') legend.textContent = '👉 Pick a crop above, then tap the map to plant';
+  else if(selectedBuild==='demolish') legend.textContent = '👉 Tap any building on the map to demolish it';
   else if(selectedBuild) legend.textContent = `Tap the map to place ${BLD_BY_ID[selectedBuild].name}`;
   else legend.textContent = 'Tap a building, then tap the map to place it';
   render();
@@ -388,12 +422,28 @@ function tileFromEvent(e){
 }
 canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); render(); });
 canvas.addEventListener('click', e=> placeAt(tileFromEvent(e)));
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+
 canvas.addEventListener('touchstart', e=>{
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchMoved = false;
   hoverTile = tileFromEvent(e);
   render();
 }, {passive:true});
+canvas.addEventListener('touchmove', e=>{
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  if(Math.hypot(dx, dy) > 10){
+    touchMoved = true;
+  }
+}, {passive:true});
 canvas.addEventListener('touchend', e=>{
-  if(hoverTile) placeAt(hoverTile);
+  if(!touchMoved && hoverTile) placeAt(hoverTile);
 }, {passive:true});
 document.getElementById('minimap').addEventListener('click', e=>{
   const rect = e.currentTarget.getBoundingClientRect();
@@ -414,9 +464,32 @@ function showToast(msg){
   showToast._t = setTimeout(()=> t.classList.remove('show'), 1600);
 }
 
+function demolishAt(x, y){
+  const tile = grid[y][x];
+  if(!tile.building){ showToast('No building here to demolish'); return; }
+  const b = tile.building;
+  const def = BLD_BY_ID[b.id];
+  if(def && def.cost){
+    Object.entries(def.cost).forEach(([k,v])=> {
+      if(k === 'coin'){
+        coin += v;
+      } else {
+        addRes(k, v);
+      }
+    });
+  }
+  removeBuilding(b);
+  showToast(`Demolished ${def ? def.name : b.id} and refunded resources`);
+  render(); renderRes();
+}
+
 function placeAt({x,y}){
   if(!selectedBuild) return;
   if(!inBounds(x,y)) return;
+  if(selectedBuild === 'demolish'){
+    demolishAt(x, y);
+    return;
+  }
   const def = BLD_BY_ID[selectedBuild];
   const tile = grid[y][x];
   if(tile.building){ showToast('Tile already occupied'); return; }
