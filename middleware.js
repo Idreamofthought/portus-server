@@ -57,6 +57,15 @@ export function requirePaid(req, res, next) {
 
 export const jsonRateLimitHandler = (_req, res) => res.status(429).json({ error: "Too many requests — please wait a bit and try again." });
 export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 50, handler: jsonRateLimitHandler });
+// Counts only failed logins, so shared/NAT addresses aren't penalised for normal
+// traffic. The per-account lockout in security.js is the precise control; this is
+// the backstop against one host spraying many accounts.
+export const loginLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 100,
+  skipSuccessfulRequests: true,
+  handler: jsonRateLimitHandler
+});
 export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, handler: jsonRateLimitHandler });
 export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 50, handler: jsonRateLimitHandler });
 export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, handler: jsonRateLimitHandler });
