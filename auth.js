@@ -47,6 +47,17 @@ export function revokeSession(id) {
   if (id) db.prepare(`DELETE FROM sessions WHERE id=?`).run(id);
 }
 
+// Logout still needs the claims from an expired token, but the signature must
+// hold: an unverified payload would let a caller name any session or user.
+export function verifyAuthToken(token, { ignoreExpiration = false } = {}) {
+  if (!token) return null;
+  try {
+    return jwt.verify(token, getJwtSecret(), { ignoreExpiration });
+  } catch {
+    return null;
+  }
+}
+
 export function revokeAllSessions(userId) {
   db.prepare(`DELETE FROM sessions WHERE user_id=?`).run(userId);
 }
