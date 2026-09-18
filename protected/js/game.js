@@ -663,7 +663,17 @@ function updateBuildingTooltip(e){
 }
 canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); updateBuildingTooltip(e); render(); });
 canvas.addEventListener('mouseleave', ()=> document.getElementById('buildingTooltip').classList.remove('show'));
-canvas.addEventListener('click', e=> placeAt(tileFromEvent(e)));
+canvas.addEventListener('click', e=>{
+  const tile = tileFromEvent(e);
+  if(!selectedBuild){
+    if(inBounds(tile.x, tile.y) && grid[tile.y][tile.x].building?.id === 'tradingpost'){
+      openPanel('tradePanel');
+      playTone('click');
+    }
+    return;
+  }
+  placeAt(tile);
+});
 let touchStartX = 0;
 let touchStartY = 0;
 let touchMoved = false;
@@ -774,22 +784,31 @@ function placeAt({x,y}){
 }
 
 /* ---------------- MENU PANELS ---------------- */
+function closeAllPanels(){
+  document.querySelectorAll('.sidepanel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.menuBtn').forEach(b=>b.classList.remove('active'));
+}
+function openPanel(panelId){
+  const panel = document.getElementById(panelId);
+  if(!panel) return;
+  closeAllPanels();
+  panel.classList.add('open');
+  const btn = document.querySelector(`.menuBtn[data-panel="${panelId}"]`);
+  if(btn) btn.classList.add('active');
+  if(panelId === 'tradePanel') renderTradePanel();
+}
 document.querySelectorAll('.menuBtn').forEach(btn=>{
   btn.onclick = ()=>{
     playTone('click');
     const panelId = btn.dataset.panel;
     const panel = document.getElementById(panelId);
     const isOpen = panel.classList.contains('open');
-    document.querySelectorAll('.sidepanel').forEach(p=>p.classList.remove('open'));
-    document.querySelectorAll('.menuBtn').forEach(b=>b.classList.remove('active'));
-    if(!isOpen){ panel.classList.add('open'); btn.classList.add('active'); }
+    if(isOpen) closeAllPanels();
+    else openPanel(panelId);
   };
 });
 document.querySelectorAll('.closeP').forEach(btn=>{
-  btn.onclick = ()=>{
-    btn.closest('.sidepanel').classList.remove('open');
-    document.querySelectorAll('.menuBtn').forEach(b=>b.classList.remove('active'));
-  };
+  btn.onclick = ()=> closeAllPanels();
 });
 
 function renderResearchPanel(){
@@ -885,19 +904,20 @@ function renderTradePanel(){
     return;
   }
 
+  const legend = document.createElement('div');
+  legend.className = 'trade-legend';
+  legend.innerHTML = '<span>Good</span><span>Stock</span><span>Buy</span><span>Sell</span>';
+  list.appendChild(legend);
+
   TRADE_GOODS.forEach((good)=>{
     const row = document.createElement('div');
-    row.className = 'trade-item';
+    row.className = 'trade-row';
     const stock = Math.floor(res[good.id] || 0);
     row.innerHTML = `
-      <div class="trade-header">
-        <span>${good.label}</span>
-        <small>${stock} stock</small>
-      </div>
-      <div class="trade-actions">
-        <button class="actionbtn secondary trade-buy" data-good="${good.id}">Buy — ${good.buyCost} coin</button>
-        <button class="actionbtn trade-sell" data-good="${good.id}">Sell — +${good.sellValue} coin</button>
-      </div>
+      <span class="good">${good.label}</span>
+      <span class="stock">${stock}</span>
+      <button class="actionbtn secondary trade-buy" data-good="${good.id}">${good.buyCost}🪙</button>
+      <button class="actionbtn trade-sell" data-good="${good.id}">+${good.sellValue}🪙</button>
     `;
     row.querySelector('.trade-buy').onclick = ()=>{
       if(coin < good.buyCost){ showToast('Not enough coin'); return; }
