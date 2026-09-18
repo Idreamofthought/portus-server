@@ -25,7 +25,6 @@ import {
   authenticateRequest,
   revokeSession,
   revokeAllSessions,
-  verifyAuthToken,
   hashPassword,
   verifyPassword
 } from "./auth.js";
@@ -84,6 +83,10 @@ export function startServer(port = PORT) {
   app.locals.server = app.listen(port, () => {
     console.log("Server running on port", port);
   });
+  // periodic cleanup (5 minutes)
+  cleanupExpired();
+  app.locals.cleanupExpiredTimer = setInterval(cleanupExpired, 5 * 60 * 1000);
+  app.locals.cleanupExpiredTimer.unref();
   return app.locals.server;
 }
 
@@ -110,11 +113,12 @@ async function shutdown(signal) {
   shuttingDown = true;
   console.log(`Received ${signal}; shutting down gracefully`);
 
-  const closePromise = closeServer() || Promise.resolve();
   const timeout = setTimeout(() => process.exit(1), 10_000);
   try {
-    await closePromise;
-    db.close();
+    await (closeServer() || Promise.resolve());
+    if (typeof db.close === "function") {
+      await db.close();
+    }
     clearTimeout(timeout);
     process.exit(0);
   } catch (error) {
@@ -147,7 +151,7 @@ const CODEX_ENTRY_IDS = new Set([
 ]);
 
 function readCodexEntry(entryId) {
-  if (!CODEX_ENTRY_IDS.has(entryId) || !/^[a-z0-9_/-]+$/.test(entryId)) return null;
+  if (!CODEX_ENTRY_IDS.has(entryId) || !/^[a-z0-9_\/-]+$/.test(entryId)) return null;
   const filePath = path.join(__dirname, "portus", "codex", `${entryId}.md`);
   try {
     const content = fs.readFileSync(filePath, "utf8");
@@ -167,9 +171,6 @@ app.set("trust proxy", 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
-// Set CSP_REPORT_ONLY=1 to deploy a policy change in observe-only mode (e.g. in
-// staging) before enforcing it -- same policy, but violations are only logged
-// to the browser console, nothing is actually blocked.
 const cspHeaderName = process.env.CSP_REPORT_ONLY === "1"
   ? "Content-Security-Policy-Report-Only"
   : "Content-Security-Policy";
@@ -191,11 +192,12 @@ app.use((req, res, next) => {
   next();
 });
 
+const allowedOrigin = SITE_URL || "http://localhost:8080";
 app.use(cookieParser());
-app.use(cors({ origin: SITE_URL, credentials: true }));
+app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // ============================================================
-// STRIPE WEBHOOK
+// STRIPE WEBHOOK (raw body)
 // ============================================================
 
 app.post(
@@ -216,7 +218,8 @@ app.post(
   }
 );
 
-app.use(express.json({ limit: "600kb" }));
+// JSON body (for normal APIs & PayPal)
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
@@ -228,8 +231,6 @@ app.get(["/portus", "/portus/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus/index.html"))
 );
 
-// /tree used to be a separate homepage; its content is now merged into
-// the real homepage (homepage/index.html). Redirect old links/bookmarks.
 app.get(["/tree", "/tree/", "/tree/index.html"], (_req, res) =>
   res.redirect(301, "/#branches")
 );
@@ -241,7 +242,20 @@ app.use(express.static(path.join(__dirname, "public")));
 // PORTUS GAME ROUTING
 // ============================================================
 
-app.use("/portus", express.static(path.join(__dirname, "public")));
+app.use(
+  "/game-assets",
+  authenticateRequest,
+  requireVerified,
+  requirePaid,
+  express.static(path.join(__dirname, "protected/js"))
+);
+app.use(
+  "/game-assets",
+  authenticateRequest,
+  requireVerified,
+  requirePaid,
+  express.static(path.join(__dirname, "protected/css"))
+);
 
 // ============================================================
 // HOMEPAGE ROUTES
@@ -269,7 +283,6 @@ app.get("/fragments", (_req, res) =>
 app.get(["/writing", "/writing/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/writing/index.html"))
 );
-// Legacy landing page, consolidated into /portus/ to give the site one Portus door.
 app.get("/portus-info", (_req, res) => res.redirect(301, "/portus/"));
 app.get("/legal", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/legal.html"))
@@ -303,25 +316,6 @@ app.get("/cookies", generalApiLimiter, (_req, res) =>
 app.get("/game", authenticateRequest, requireVerified, requirePaid, (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
-// Extracted game logic modules (map, buildings, etc.) — gated behind the
-// same paywall as /game since they're only useful alongside it.
-app.use(
-  "/game-assets",
-  authenticateRequest,
-  requireVerified,
-  requirePaid,
-  express.static(path.join(__dirname, "protected/js"))
-);
-app.use(
-  "/game-assets",
-  authenticateRequest,
-  requireVerified,
-  requirePaid,
-  express.static(path.join(__dirname, "protected/css"))
-);
-// /text-game needs no explicit route -- public/ is already mounted as
-// static at root, and Express serves public/text-game/index.html for
-// both /text-game and /text-game/ automatically.
 
 // ============================================================
 // API ROUTES
@@ -386,8 +380,6 @@ app.post("/api/login", loginLimiter, authLimiter, requireCsrf, async (req, res) 
   if (!validCredentials(email, password))
     return res.status(400).json({ error: "invalid credentials" });
 
-  // Checked before any password work so a locked account costs an attacker the
-  // same whether or not the address exists.
   if (isLoginLocked(email)) {
     recordAuditEvent({ eventType: "login_locked_out", ip: req.ip });
     return res.status(429).json({
@@ -442,6 +434,7 @@ app.post(
     res.json({ ok: true });
   }
 );
+
 // Me
 app.get("/api/me", authenticateRequest, (req, res) => {
   const user = db
@@ -632,7 +625,7 @@ app.post(
   }
 );
 
-// Delete account while retaining anonymized purchase records for reconciliation.
+// Delete account
 app.post("/api/delete-account", requireCsrf, authenticateRequest, generalApiLimiter, async (req, res) => {
   const userId = req.user.uid;
   const now = Date.now();
@@ -745,7 +738,7 @@ app.post("/api/access/stop", requireCsrf, authenticateRequest, generalApiLimiter
   res.json({ ok: true });
 });
 
-// Artifact and archaeological discovery
+// Discoveries
 app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (req, res) => {
   const discoveries = db.prepare(
     `SELECT discovery_id, discovery_type, category, rarity, activity,
@@ -950,53 +943,44 @@ app.post(
   }
 );
 
-// PayPal webhook
-app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
-  try {
-    const valid = await verifyPayPalWebhookSignature(req.headers, req.body);
-    if (!valid) {
-      return res.status(400).json({ error: "invalid signature" });
+// PayPal webhook (JSON body)
+app.post(
+  "/api/webhooks/paypal",
+  webhookLimiter,
+  async (req, res) => {
+    try {
+      const isValid = await verifyPayPalWebhookSignature(req.headers, req.body);
+      if (!isValid) {
+        console.warn("PayPal webhook signature invalid");
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
+
+      setImmediate(() => {
+        creditPayment(req.body).catch((err) =>
+          console.error("PayPal creditPayment error:", err.message)
+        );
+      });
+
+      res.status(200).json({ received: true });
+    } catch (err) {
+      console.error("PayPal webhook error:", err.message);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    if (req.body.event_type !== "PAYMENT.CAPTURE.COMPLETED") {
-      return res.json({ ok: true, ignored: true });
-    }
-
-    const capture = req.body.resource;
-    const orderId =
-      capture?.supplementary_data?.related_ids?.order_id;
-    const eventId = req.body?.id || capture?.id;
-    const capturedAmount = capture?.amount?.value;
-    const capturedCurrency = capture?.amount?.currency_code;
-
-    if (!orderId || !eventId || !capturedAmount || !capturedCurrency) {
-      return res.status(400).json({ error: "malformed event" });
-    }
-
-    const pending = db
-      .prepare(
-        `SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal'`
-      )
-      .get(orderId);
-
-    if (!pending) {
-      return res.json({ ok: true, unknownOrder: true });
-    }
-
-    const result = creditPayment({ pending, eventId, capturedAmount, capturedCurrency });
-    return res.json({ ok: true, ...result });
-  } catch (err) {
-    console.error("paypal webhook error", err);
-    return res.status(400).json({ error: "webhook error" });
   }
-});
+);
 
 // Save game state
 app.post("/api/save", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
-  const migrated = migrateSave(req.body);
-  const json = JSON.stringify(migrated ?? {});
-  if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
-    return res.status(413).json({ error: "save too large" });
+  const json = req.body?.state;
+  if (typeof json !== "string" || json.length > MAX_SAVE_BYTES) {
+    return res.status(400).json({ error: "invalid_save" });
+  }
+
+  let migrated;
+  try {
+    migrated = migrateSave(JSON.parse(json));
+  } catch {
+    return res.status(400).json({ error: "invalid_save" });
   }
 
   const validation = validateSave(migrated);
@@ -1042,11 +1026,6 @@ app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: "internal server error" });
 });
-
-// Cleanup expired tokens / orders
-cleanupExpired();
-app.locals.cleanupExpiredTimer = setInterval(cleanupExpired, 24 * 60 * 60 * 1000);
-app.locals.cleanupExpiredTimer.unref();
 
 // Start server when launched directly.
 if (
