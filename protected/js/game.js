@@ -21,7 +21,8 @@ const TRADE_GOODS = [
   { id: 'cheese', label: 'Cheese', buyCost: 9, sellValue: 3 },
   { id: 'jam', label: 'Jam', buyCost: 10, sellValue: 3 },
   { id: 'quilts', label: 'Quilts', buyCost: 16, sellValue: 6 },
-  { id: 'leatherGoods', label: 'Leather Goods', buyCost: 20, sellValue: 7 }
+  { id: 'leatherGoods', label: 'Leather Goods', buyCost: 20, sellValue: 7 },
+  { id: 'statues', label: 'Bronze Statues', buyCost: 26, sellValue: 9 }
 ];
 
 /* ---------------- RESOURCES ---------------- */
@@ -227,6 +228,7 @@ function tick(){
   // happiness from services
   let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
   let comfortBonus = Math.min(6, res.quilts*0.06) + Math.min(6, res.leatherGoods*0.05) +
+    Math.min(6, res.statues*0.08) +
     Math.min(8, (res.honeyCake+res.fruitCake+res.dairyCake)*0.04);
   let taxPenalty = taxRate * 400;
   let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty));
@@ -497,7 +499,7 @@ const RES_DISPLAY = [
   ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','�'],
   ['sugarcane','🎋'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
   ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['jam','🫙'],['candles','🕯️'],
-  ['quilts','🛏️'],['leatherGoods','👜'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
+  ['quilts','🛏️'],['leatherGoods','👜'],['statues','🗿'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
   ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁']
 ];
 function renderRes(){

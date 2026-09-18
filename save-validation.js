@@ -10,7 +10,7 @@ export const RESOURCE_KEYS = new Set([
   "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
   "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax",
   "sugarcane", "feathers", "hide", "leather", "butter", "cheese", "cream", "jam",
-  "candles", "quilts", "leatherGoods", "meat", "milk", "eggs", "fruit",
+  "candles", "quilts", "leatherGoods", "statues", "meat", "milk", "eggs", "fruit",
   "honeyCake", "fruitCake", "dairyCake"
 ]);
 
@@ -21,7 +21,7 @@ export const BUILDING_IDS = new Set([
   "stockage", "granary", "road", "well", "sewer", "police", "fire", "doctor", "dentist",
   "school", "bar", "temple", "statue", "scribe", "library", "market", "tradingpost", "mint",
   "taxoffice", "barracks", "orchard", "jammaker", "pigpasture", "cowpasture", "goatpasture",
-  "chickencoop", "butcher", "tanner", "leatherworker", "quiltmaker", "dairy", "candlemaker"
+  "chickencoop", "butcher", "tanner", "leatherworker", "quiltmaker", "dairy", "candlemaker", "bronzesmith"
 ]);
 
 export const TECH_BONUS_KEYS = new Set([
