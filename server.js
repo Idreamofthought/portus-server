@@ -441,7 +441,7 @@ app.post(
     res.clearCookie("auth", { path: "/" });
     res.json({ ok: true });
   }
-);
+
 
 
 
