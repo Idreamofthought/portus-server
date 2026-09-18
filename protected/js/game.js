@@ -7,6 +7,7 @@ import { SCENARIOS } from '/game-assets/scenarios.js';
 import { pickDisaster } from '/game-assets/disasters.js';
 import { RAID_TIERS, resolveRaid } from '/game-assets/army.js';
 import { GOD_MESSAGES } from '/game-assets/blessings.js';
+import { pickChoiceEvent } from '/game-assets/events.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
 import { createPortusMusic } from '/music.js';
 
@@ -40,6 +41,12 @@ let research = 0;    // banked research points, spent on techs
 let codexEntries = [];
 let military = { soldiers:0, cap:0 };
 let droughtTicksLeft = 0;
+// Seasonal protections won from choice events; runtime-only, not saved.
+let famineGuardTicks = 0;
+let fireGuardTicks = 0;
+let floodGuardTicks = 0;
+let divineFavourTicks = 0;
+let choiceEventOpen = false;
 let captainName = '';
 let eventLog = [];
 let discoveryRollInFlight = false;
@@ -236,9 +243,14 @@ function tick(){
   happiness = Math.max(0, Math.min(100, happiness));
 
   if(droughtTicksLeft>0) droughtTicksLeft--;
+  if(famineGuardTicks>0) famineGuardTicks--;
+  if(fireGuardTicks>0) fireGuardTicks--;
+  if(floodGuardTicks>0) floodGuardTicks--;
+  if(divineFavourTicks>0) divineFavourTicks--;
   maybeSendGodMessage();
   maybeRollDiscovery();
   maybeTriggerDisaster();
+  maybeTriggerChoiceEvent();
   checkScenario();
   checkQuests();
 
@@ -320,6 +332,27 @@ function drawBuildingIllustration(building, def, x, y){
     ctx.fillRect(left+width-6, top+height-6, 2, 3);
     return;
   }
+  if(building.id === 'wall'){
+    ctx.fillStyle = '#9a9186';
+    ctx.fillRect(x*TS+2, y*TS+7, TS-4, TS-14);
+    ctx.fillStyle = '#6d655c';
+    for(let bx=3; bx<TS-4; bx+=6) ctx.fillRect(x*TS+bx, y*TS+7, 4, 2);
+    return;
+  }
+  if(building.id === 'moat'){
+    ctx.fillStyle = '#3f8fa3';
+    ctx.fillRect(x*TS+2, y*TS+6, TS-4, TS-12);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fillRect(x*TS+4, y*TS+9, TS-8, 2);
+    return;
+  }
+  if(building.id === 'trap'){
+    ctx.fillStyle = '#4a3a29';
+    ctx.beginPath(); ctx.arc(x*TS+TS/2, y*TS+TS/2, 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#c9b183'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x*TS+TS/2, y*TS+TS/2, 6, 0, Math.PI*2); ctx.stroke();
+    return;
+  }
   const [wall, roof] = BUILDING_COLORS[def.cat] || ['#e3d2ad', '#76513a'];
   ctx.fillStyle = 'rgba(35,28,22,0.24)';
   ctx.fillRect(left+2, top+3, width-1, height-1);
@@ -395,6 +428,28 @@ function drawBuildingIllustration(building, def, x, y){
     ctx.fillRect(left+1, top+2, 2, 7);
     ctx.fillStyle = '#e8dcc8';
     ctx.fillRect(left+3, top+2, 4, 3);
+  } else if(building.id === 'guardtower'){
+    ctx.fillStyle = '#7a736a';
+    ctx.fillRect(left+width/2-4, top-2, 8, 9);
+    ctx.fillStyle = '#4f4942';
+    for(let bx=0; bx<8; bx+=3) ctx.fillRect(left+width/2-4+bx, top-2, 2, 2);
+  } else if(building.id === 'fort'){
+    ctx.fillStyle = '#6f6860';
+    ctx.fillRect(left-1, top+1, width+2, 7);
+    ctx.fillStyle = '#3f3a34';
+    for(let bx=0; bx<width+2; bx+=4) ctx.fillRect(left-1+bx, top+1, 2, 3);
+    ctx.fillStyle = '#b84f31';
+    ctx.fillRect(left+width/2-1, top-4, 2, 5);
+  } else if(building.id === 'armourer'){
+    ctx.fillStyle = '#8a8f99';
+    ctx.fillRect(left+1, top+3, 5, 6);
+    ctx.fillStyle = '#d8dde4';
+    ctx.fillRect(left+2, top+4, 3, 2);
+  } else if(['templegrand','templemonument'].includes(building.id)){
+    ctx.fillStyle = '#f4ecdd';
+    ctx.fillRect(left+1, top+4, 2, height-6);
+    ctx.fillRect(left+width-3, top+4, 2, height-6);
+    ctx.fillRect(left+width/2-1, top+4, 2, height-6);
   }
 }
 
@@ -1229,23 +1284,39 @@ function damageRandomBuildings(count, filterFn){
   return destroyed;
 }
 
+function totalDefense(){
+  return placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].defense||0), 0);
+}
+
+// Armed and armoured soldiers fight harder than bare levies.
+function armyStrength(){
+  const armedRatio = military.soldiers>0
+    ? Math.min(1, (res.weapons + res.armour) / (military.soldiers*2))
+    : 0;
+  return military.soldiers * (1 + armedRatio*0.5);
+}
+
 function resolveInvasion(){
   const enemyStrength = 4 + rnd(10) + Math.floor(coin/40);
-  const myStrength = military.soldiers;
+  const defense = totalDefense();
+  const myStrength = armyStrength() + defense;
   if(myStrength*techBonus.raid >= enemyStrength && myStrength>0){
-    const lost = Math.floor(myStrength*0.1*Math.random());
+    const lost = Math.floor(military.soldiers*0.1*Math.random());
     military.soldiers -= lost;
+    res.weapons = Math.max(0, res.weapons - lost);
+    res.armour = Math.max(0, res.armour - lost);
     const loot = 5+rnd(15);
     coin += loot;
-    return `⚔️ Raiders attacked but your army of ${myStrength} repelled them! Lost ${lost} soldiers, seized ${loot} coin in captured supplies.`;
+    const wallNote = defense>0 ? ` Your defences (${defense}) held firm.` : '';
+    return `⚔️ Raiders attacked but your defence of ${Math.round(myStrength)} repelled them!${wallNote} Lost ${lost} soldiers, seized ${loot} coin.`;
   } else {
-    const hit = damageRandomBuildings(1+rnd(3));
-    const goldLoss = Math.min(coin, 10+rnd(30));
+    const mitigation = defense>0 ? Math.min(0.7, defense/25) : 0;
+    const hit = damageRandomBuildings(Math.max(0, Math.round((1+rnd(3))*(1-mitigation))));
+    const goldLoss = Math.min(coin, Math.round((10+rnd(30))*(1-mitigation)));
     coin -= goldLoss;
-    const lost = military.soldiers;
     military.soldiers = Math.floor(military.soldiers*0.5);
-    happiness = Math.max(0, happiness-12);
-    return `⚔️ Invasion! Your defenses were overwhelmed — ${hit} building(s) destroyed, ${Math.floor(goldLoss)} coin looted.`;
+    happiness = Math.max(0, happiness-12*(1-mitigation));
+    return `⚔️ Invasion! Your defences were overwhelmed — ${hit} building(s) destroyed, ${Math.floor(goldLoss)} coin looted.`;
   }
 }
 
@@ -1279,13 +1350,89 @@ function triggerDisaster(disaster, ctx){
 function maybeTriggerDisaster(){
   const ctx = disasterCtx();
   const disaster = pickDisaster(ctx);
-  if(disaster) triggerDisaster(disaster, ctx);
+  if(!disaster) return;
+  // Guards won from choice events hold off the matching disaster.
+  if(disaster.id === 'flood' && floodGuardTicks > 0) return;
+  if(disaster.id === 'drought' && famineGuardTicks > 0) return;
+  if(divineFavourTicks > 0 && Math.random() < 0.5){
+    logEvent('🕯️ The gods turned aside a misfortune.');
+    return;
+  }
+  triggerDisaster(disaster, ctx);
+}
+
+/* ---------------- PLAYER CHOICE EVENTS ---------------- */
+function choiceEventCtx(){
+  return {
+    rnd, coin,
+    totalFood: totalFood(),
+    buildingCount: placedBuildings.length,
+    hasRiverBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'river')),
+    hasTemple: placedBuildings.some(b=>['temple','templegrand','templemonument'].includes(b.id)),
+    chance: (p)=> Math.random() < p,
+    nearRiver: (b)=> nearTerrainOfBuilding(b,'river'),
+    damageBuildings: (n, filterFn)=> damageRandomBuildings(n, filterFn),
+    addHappiness: (delta)=>{ happiness = Math.max(0, Math.min(100, happiness+delta)); },
+    reducePop: (n)=>{ pop.count = Math.max(1, pop.count-n); },
+    scaleFood: (mult)=> FOOD_KEYS.forEach(k=> res[k] *= mult),
+    waterlogStores: ()=>{ res.wheat *= 0.6; res.wood *= 0.8; res.clay *= 0.8; },
+    payWood: (n)=>{ res.wood = Math.max(0, res.wood-n); },
+    payStone: (n)=>{ res.stone = Math.max(0, res.stone-n); },
+    payCoin: (n)=>{ if(coin < n) return false; coin -= n; return true; },
+    stealCoin: (n)=>{ const taken = Math.min(coin, n); coin -= taken; return Math.floor(taken); },
+    addSoldiers: (n)=>{ military.cap += n; military.soldiers += n; },
+    setFamineGuard: (t)=>{ famineGuardTicks = t; },
+    setFireGuard: (t)=>{ fireGuardTicks = t; },
+    setFloodGuard: (t)=>{ floodGuardTicks = t; },
+    setDivineFavour: (t)=>{ divineFavourTicks = t; },
+  };
+}
+
+function maybeTriggerChoiceEvent(){
+  if(choiceEventOpen || tickCount < 8) return;
+  const ctx = choiceEventCtx();
+  const event = pickChoiceEvent(ctx);
+  if(event) showChoiceEvent(event);
+}
+
+function showChoiceEvent(event){
+  const overlay = document.getElementById('eventOverlay');
+  const choicesEl = document.getElementById('eventChoices');
+  if(!overlay || !choicesEl) return;
+  choiceEventOpen = true;
+  document.getElementById('eventTitle').textContent = event.title;
+  document.getElementById('eventText').textContent = event.text;
+  choicesEl.replaceChildren();
+  event.choices.forEach(choice=>{
+    const btn = document.createElement('button');
+    btn.className = 'eventChoice';
+    btn.type = 'button';
+    const label = document.createElement('b');
+    label.textContent = choice.label;
+    const detail = document.createElement('small');
+    detail.textContent = choice.detail;
+    btn.append(label, detail);
+    btn.onclick = ()=>{
+      const message = choice.resolve(choiceEventCtx());
+      overlay.classList.remove('show');
+      choiceEventOpen = false;
+      logEvent(message);
+      showToast(message);
+      playTone('click');
+      render(); renderRes();
+    };
+    choicesEl.appendChild(btn);
+  });
+  overlay.classList.add('show');
+  playTone('gather');
 }
 
 /* ---------------- ARMY UI ---------------- */
 function updateArmyPanel(){
   document.getElementById('soldierCount').textContent = military.soldiers;
   document.getElementById('soldierCap').textContent = military.cap;
+  const defenseEl = document.getElementById('defenseValue');
+  if(defenseEl) defenseEl.textContent = totalDefense();
   renderChronicle();
 }
 document.getElementById('recruitBtn').onclick = ()=>{
@@ -1307,7 +1454,8 @@ document.querySelectorAll('.actionbtn.raid').forEach(btn=>{
   btn.onclick = ()=>{
     const tier = RAID_TIERS[btn.dataset.tier];
     if(military.soldiers < tier.soldiers){ showToast('Not enough soldiers for this raid'); return; }
-    const result = resolveRaid(tier, { rnd, raidBonus: techBonus.raid });
+    const armedBonus = armyStrength() > military.soldiers ? 1.15 : 1;
+    const result = resolveRaid(tier, { rnd, raidBonus: techBonus.raid * armedBonus });
     coin += result.loot;
     military.soldiers -= result.losses;
     logEvent(result.message);

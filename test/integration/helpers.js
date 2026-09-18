@@ -1,5 +1,6 @@
 import "dotenv/config";
 import crypto from "crypto";
+import { RESOURCE_KEYS } from "../../save-validation.js";
 
 export const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8080";
 
@@ -76,11 +77,7 @@ export function signStripePayload(payloadObject, secret) {
 }
 
 export function validSaveFixture() {
-  const resourceKeys = [
-    "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
-    "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
-    "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax"
-  ];
+  const resourceKeys = [...RESOURCE_KEYS];
   return {
     v: 1,
     captain: "Captain",
