@@ -310,10 +310,46 @@ function drawBuildingIllustration(building, def, x, y){
     ctx.fillRect(left+width/2-1, top+2, 2, 5);
     ctx.fillRect(left+width/2-4, top+4, 8, 2);
   }
-  ctx.font = '11px "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(def.ic, left+width/2, top+height/2+1);
+  if(building.id === 'sawmill'){
+    ctx.fillStyle = '#6b432d';
+    ctx.fillRect(left+1, top+height-4, 6, 2);
+    ctx.fillRect(left+2, top+height-7, 6, 2);
+    ctx.strokeStyle = '#d8c08c'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(left+width-4, top+height-5, 3, 0, Math.PI*2); ctx.stroke();
+  } else if(building.id === 'hunterlodge'){
+    ctx.strokeStyle = '#f0d6a3'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left+width-5, top+5); ctx.lineTo(left+width-7, top+2); ctx.lineTo(left+width-8, top+5);
+    ctx.moveTo(left+width-5, top+5); ctx.lineTo(left+width-3, top+2); ctx.lineTo(left+width-2, top+5);
+    ctx.stroke();
+  } else if(building.id === 'beekeeper'){
+    ctx.fillStyle = '#e0b52f';
+    ctx.fillRect(left+1, top+height-6, 4, 4);
+    ctx.fillRect(left+6, top+height-5, 4, 3);
+  } else if(['workshop','blacksmith','foundry'].includes(building.id)){
+    ctx.fillStyle = '#8b5a36';
+    ctx.fillRect(left+width-6, top+1, 4, 7);
+    ctx.fillStyle = 'rgba(244,236,221,0.65)';
+    ctx.fillRect(left+width-5, top, 2, 2);
+  } else if(['stockage','granary'].includes(building.id)){
+    ctx.fillStyle = '#a87843';
+    ctx.fillRect(left+1, top+height-6, 4, 4);
+    ctx.strokeStyle = '#f1d59a'; ctx.lineWidth = 1;
+    ctx.strokeRect(left+2, top+height-5, 2, 2);
+  } else if(['market','tradingpost','mint','taxoffice'].includes(building.id)){
+    ctx.fillStyle = '#b84f31';
+    ctx.fillRect(left+1, top+5, 4, 2);
+    ctx.fillRect(left+2, top+7, 2, 2);
+  } else if(['police','fire','doctor','dentist','bar'].includes(building.id)){
+    ctx.fillStyle = '#f4ecdd';
+    ctx.fillRect(left+width-5, top+2, 2, 6);
+    ctx.fillRect(left+width-7, top+4, 6, 2);
+  } else if(building.id === 'barracks'){
+    ctx.fillStyle = '#7e3931';
+    ctx.fillRect(left+1, top+2, 2, 7);
+    ctx.fillStyle = '#e8dcc8';
+    ctx.fillRect(left+3, top+2, 4, 3);
+  }
 }
 
 function render(){
