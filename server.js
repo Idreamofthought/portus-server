@@ -442,13 +442,7 @@ app.post(
     res.json({ ok: true });
   }
 );
-app.post("/api/logout", requireCsrf, (req, res) => {
-  const payload = verifyAuthToken(req.cookies.auth, { ignoreExpiration: true });
-  if (payload) {
-    revokeSession(payload.sid);
-    recordAuditEvent({ userId: payload.uid, eventType: "logout", ip: req.ip });
-  }
->>>>>>> e9e0a9d (Update project files)
+
 
 
 // Me
