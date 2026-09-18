@@ -193,11 +193,17 @@
   }
   .actionbtn.secondary{background:#f2ece0; border-color:#c9bfa8; color:#6b5f4a;}
   .actionbtn.raid{background:#fbe9e2; border-color:var(--terracotta); color:#8a3a1c;}
-  .trade-item{padding:8px 0; border-bottom:1px solid #ece2cc;}
-  .trade-header{display:flex; justify-content:space-between; align-items:center; font-weight:600; margin-bottom:4px;}
-  .trade-header small{color:#8a7a5c; font-weight:400;}
-  .trade-actions{display:flex; flex-direction:column; gap:6px;}
-  .trade-actions .actionbtn{margin:0;}
+  .trade-legend{
+    display:grid; grid-template-columns:1fr 44px 54px 54px; gap:6px; align-items:center;
+    font-family:-apple-system,sans-serif; font-size:10px; color:#8a7a5c; text-transform:uppercase;
+    letter-spacing:0.5px; padding:4px 0; border-bottom:1px solid #ece2cc; margin-bottom:2px;
+  }
+  .trade-row{
+    display:grid; grid-template-columns:1fr 44px 54px 54px; gap:6px; align-items:center;
+    padding:6px 0; border-bottom:1px solid #ece2cc; font-size:11px; color:var(--ink);
+  }
+  .trade-row .stock{text-align:center; color:#6b5f4a;}
+  .trade-row button{margin:0; padding:5px 4px; font-size:10.5px; text-align:center;}
   #chronicle{
     font-size:10px; color:#6b5f4a; max-height:110px; overflow-y:auto; line-height:1.5;
   }
