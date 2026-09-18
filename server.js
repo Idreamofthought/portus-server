@@ -441,10 +441,7 @@ app.post(
     res.clearCookie("auth", { path: "/" });
     res.json({ ok: true });
   }
-
-
-
-
+);
 // Me
 app.get("/api/me", authenticateRequest, (req, res) => {
   const user = db
