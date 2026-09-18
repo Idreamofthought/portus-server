@@ -424,21 +424,24 @@ app.post("/api/login", loginLimiter, authLimiter, requireCsrf, async (req, res) 
 });
 
 // Logout
-app.post("/api/logout", requireCsrf, (req, res) => {
-  try {
-    const token = req.cookies.auth;
-    if (token) {
-      const payload = JSON.parse(
-        Buffer.from(token.split(".")[1], "base64url").toString()
-      );
-      revokeSession(payload.sid);
-      recordAuditEvent({ userId: payload.uid, eventType: "logout", ip: req.ip });
-    }
-  } catch {}
+app.post(
+  "/api/logout",
+  authenticateRequest,
+  requireCsrf,
+  (req, res) => {
+    revokeSession(req.sessionId);
 
-  res.clearCookie("auth", { path: "/" });
-  res.json({ ok: true });
-});
+    recordAuditEvent({
+      userId: req.user.uid,
+      eventType: "logout",
+      ip: req.ip
+    });
+
+    res.clearCookie("auth", { path: "/" });
+    res.json({ ok: true });
+  }
+);
+
 
 // Me
 app.get("/api/me", authenticateRequest, (req, res) => {
