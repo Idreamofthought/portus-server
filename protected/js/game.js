@@ -23,8 +23,42 @@ const TRADE_GOODS = [
   { id: 'jam', label: 'Jam', buyCost: 10, sellValue: 3 },
   { id: 'quilts', label: 'Quilts', buyCost: 16, sellValue: 6 },
   { id: 'leatherGoods', label: 'Leather Goods', buyCost: 20, sellValue: 7 },
-  { id: 'statues', label: 'Bronze Statues', buyCost: 26, sellValue: 9 }
+  { id: 'statues', label: 'Bronze Statues', buyCost: 26, sellValue: 9 },
+  { id: 'wine', label: 'Wine', buyCost: 14, sellValue: 5 },
+  { id: 'beer', label: 'Beer', buyCost: 9, sellValue: 3 },
+  { id: 'mead', label: 'Mead', buyCost: 13, sellValue: 4 }
 ];
+
+/* ---------------- TRADE DEMAND ---------------- */
+// buy = base*(1 + demand*X), sell = base*(1 + demand*Y). X > Y and buyCost >
+// sellValue keep the post's margin positive at every demand level.
+const DEMAND_BUY_SENSITIVITY = 0.8;
+const DEMAND_SELL_SENSITIVITY = 0.35;
+const tradeDemand = Object.fromEntries(TRADE_GOODS.map(g=>[g.id, 0.3 + Math.random()*0.4]));
+
+function clampDemand(value){ return Math.max(0, Math.min(1, value)); }
+
+function driftTradeDemand(){
+  TRADE_GOODS.forEach(good=>{
+    const wobble = (Math.random()-0.5)*0.09;
+    const meanReversion = (0.5 - tradeDemand[good.id])*0.03;
+    tradeDemand[good.id] = clampDemand(tradeDemand[good.id] + wobble + meanReversion);
+  });
+}
+
+function buyPriceOf(good){
+  return Math.max(1, Math.round(good.buyCost * (1 + tradeDemand[good.id]*DEMAND_BUY_SENSITIVITY)));
+}
+function sellPriceOf(good){
+  return Math.max(1, Math.round(good.sellValue * (1 + tradeDemand[good.id]*DEMAND_SELL_SENSITIVITY)));
+}
+function demandLabel(good){
+  const d = tradeDemand[good.id];
+  if(d < 0.25) return ['Glut', 'd-glut'];
+  if(d < 0.5) return ['Steady', 'd-steady'];
+  if(d < 0.75) return ['Wanted', 'd-wanted'];
+  return ['Scarce', 'd-scarce'];
+}
 
 /* ---------------- RESOURCES ---------------- */
 // FOOD_KEYS/GENERAL_KEYS/PRICES and the helper logic live in
@@ -236,6 +270,7 @@ function tick(){
   let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
   let comfortBonus = Math.min(6, res.quilts*0.06) + Math.min(6, res.leatherGoods*0.05) +
     Math.min(6, res.statues*0.08) +
+    Math.min(6, (res.wine+res.beer+res.mead)*0.05) +
     Math.min(8, (res.honeyCake+res.fruitCake+res.dairyCake)*0.04);
   let taxPenalty = taxRate * 400;
   let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty));
@@ -243,6 +278,7 @@ function tick(){
   happiness = Math.max(0, Math.min(100, happiness));
 
   if(droughtTicksLeft>0) droughtTicksLeft--;
+  driftTradeDemand();
   if(famineGuardTicks>0) famineGuardTicks--;
   if(fireGuardTicks>0) fireGuardTicks--;
   if(floodGuardTicks>0) floodGuardTicks--;
@@ -551,12 +587,13 @@ const RES_DISPLAY = [
   ['wood','🪵'],['stone','🪨'],['clay','🧱'],['pottery','🏺'],['tools','🔧'],
   ['goldOre','🟡'],['silverOre','⚪'],['copperOre','🟠'],['gold','💰'],['silver','🥈'],['copper','🥉'],['bronze','🟠'],
   ['wheat','🌾'],['flour','🌾➡️'],['bread','🍞'],['olives','🫒'],['oliveOil','🛢️'],
-  ['chickpeas','🌱'],['grapes','🍇'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
+  ['chickpeas','🌱'],['grapes','🍇'],['barley','🌿'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
   ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','�'],
   ['sugarcane','🎋'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
   ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['jam','🫙'],['candles','🕯️'],
   ['quilts','🛏️'],['leatherGoods','👜'],['statues','🗿'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
-  ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁']
+  ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁'],
+  ['wine','🍷'],['beer','🍺'],['mead','🍯']
 ];
 function renderRes(){
   const bar = document.getElementById('resbar');
@@ -969,24 +1006,31 @@ function renderTradePanel(){
     const row = document.createElement('div');
     row.className = 'trade-row';
     const stock = Math.floor(res[good.id] || 0);
+    const buyPrice = buyPriceOf(good);
+    const sellPrice = sellPriceOf(good);
+    const [demandText, demandClass] = demandLabel(good);
     row.innerHTML = `
-      <span class="good">${good.label}</span>
+      <span class="good">${good.label}<small class="${demandClass}">${demandText}</small></span>
       <span class="stock">${stock}</span>
-      <button class="actionbtn secondary trade-buy" data-good="${good.id}">${good.buyCost}🪙</button>
-      <button class="actionbtn trade-sell" data-good="${good.id}">+${good.sellValue}🪙</button>
+      <button class="actionbtn secondary trade-buy" data-good="${good.id}">${buyPrice}🪙</button>
+      <button class="actionbtn trade-sell" data-good="${good.id}">+${sellPrice}🪙</button>
     `;
     row.querySelector('.trade-buy').onclick = ()=>{
-      if(coin < good.buyCost){ showToast('Not enough coin'); return; }
-      coin -= good.buyCost;
+      const price = buyPriceOf(good);
+      if(coin < price){ showToast('Not enough coin'); return; }
+      coin -= price;
       addRes(good.id, 1);
-      showToast(`Bought ${good.label}`);
+      tradeDemand[good.id] = clampDemand(tradeDemand[good.id] + 0.06);
+      showToast(`Bought ${good.label} for ${price} coin`);
       renderRes();
     };
     row.querySelector('.trade-sell').onclick = ()=>{
       if((res[good.id] || 0) < 1){ showToast(`No ${good.label} to sell`); return; }
+      const price = sellPriceOf(good);
       res[good.id] -= 1;
-      coin += good.sellValue;
-      showToast(`Sold ${good.label}`);
+      coin += price;
+      tradeDemand[good.id] = clampDemand(tradeDemand[good.id] - 0.05);
+      showToast(`Sold ${good.label} for ${price} coin`);
       renderRes();
     };
     list.appendChild(row);
