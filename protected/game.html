@@ -118,7 +118,7 @@
         <div class="panelBody">
           <p class="pnote">
             Soldiers are drawn from your population and stop working other jobs while enlisted.
-            Build Barracks to raise the cap.
+            Build Barracks to raise the cap. Town defence: <b id="defenseValue">0</b>.
           </p>
           <button id="recruitBtn" class="actionbtn">➕ Recruit soldier — 4 tools</button>
           <button id="disbandBtn" class="actionbtn secondary">➖ Disband soldier</button>
@@ -269,6 +269,16 @@
       <input type="checkbox" id="bubbleDontShow"> <span id="bubbleCheckLabel"></span>
     </label>
     <button id="bubbleNextBtn">Got it</button>
+  </div>
+</div>
+
+<!-- player-choice events: a decision that changes what happens next -->
+<div id="eventOverlay" role="dialog" aria-labelledby="eventTitle">
+  <div id="eventCard">
+    <p id="eventKicker">A decision is needed</p>
+    <h2 id="eventTitle"></h2>
+    <p id="eventText"></p>
+    <div id="eventChoices"></div>
   </div>
 </div>
 

@@ -48,6 +48,8 @@ export const RESOURCE_INFO = {
   quilts:'Quilts: warm bedding crafted from feathers.',
   leatherGoods:'Leather goods: crafted wares made from leather.',
   statues:'Bronze statues: cast from copper and tin by the Bronzesmith.',
+  weapons:'Weapons: forged by the Armourer to arm your soldiers.',
+  armour:'Armour: forged by the Armourer to protect your soldiers.',
   meat:'Meat: raised on pastures and processed by the Butcher.',
   milk:'Milk: gathered from cows and goats.',
   eggs:'Eggs: gathered from chickens, used by the Baker.',

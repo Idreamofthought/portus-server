@@ -30,6 +30,10 @@ export const TECHS = [
   {id:'dairyfarming', name:'Dairy Farming', desc:'Unlocks the Dairy', cost:18, tier:3, requires:['animalhusbandry'], effects:{}},
   {id:'tanning', name:'Tanning & Weaving', desc:'Unlocks the Tanner, Leatherworker, and Quilt Maker', cost:20, tier:3, requires:['animalhusbandry'], effects:{}},
   {id:'confectionery', name:'Confectionery', desc:'Unlocks the Candlemaker and bakery cake recipes', cost:22, tier:3, requires:['orcharding'], effects:{}},
+  // Defence and monuments
+  {id:'armscrafting', name:'Arms Crafting', desc:'Unlocks the Armourer', cost:20, tier:3, requires:['metallurgy'], effects:{}},
+  {id:'castlebuilding', name:'Castle Building', desc:'Unlocks the Fort', cost:34, tier:3, requires:['fortification'], effects:{}},
+  {id:'monumentalarchitecture', name:'Monumental Architecture', desc:'Unlocks Grand and Monumental Temples', cost:30, tier:3, requires:['masonry'], effects:{}},
 ];
 
 export function techName(id){

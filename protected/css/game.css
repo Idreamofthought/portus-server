@@ -265,6 +265,27 @@
     display:none; position:fixed; inset:0; z-index:997; background:rgba(10,8,6,0.94);
     align-items:center; justify-content:center; padding:20px; font-family:-apple-system,sans-serif;
   }
+
+  #eventOverlay{
+    display:none; position:fixed; inset:0; z-index:1000; background:rgba(10,8,6,0.88);
+    align-items:center; justify-content:center; padding:18px; font-family:-apple-system,sans-serif;
+  }
+  #eventOverlay.show{display:flex;}
+  #eventCard{
+    width:min(100%,380px); padding:20px 18px; background:var(--panel);
+    border:2px solid var(--gold); border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  }
+  #eventKicker{
+    margin:0 0 4px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#8a7a5c;
+  }
+  #eventTitle{margin:0 0 8px; font:normal 20px Georgia,serif; color:var(--ink);}
+  #eventText{margin:0 0 14px; font-size:13px; line-height:1.45; color:#5a4a3a;}
+  .eventChoice{
+    display:block; width:100%; margin-bottom:8px; padding:9px 11px; text-align:left; cursor:pointer;
+    border:1px solid var(--gold); border-radius:7px; background:#fff8e8; color:#5a4a1a; font-size:13px;
+  }
+  .eventChoice b{display:block; margin-bottom:2px;}
+  .eventChoice small{color:#8a7a5c; font-size:11px;}
   #orientationCard{
     width:min(100%,320px); padding:24px 20px; text-align:center; color:var(--paper);
     border:1px solid var(--gold); background:#2b2622; box-shadow:0 8px 30px rgba(0,0,0,0.5);
