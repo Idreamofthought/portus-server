@@ -48,7 +48,7 @@
     flex:1; overflow:auto; position:relative; background:var(--sea-deep);
     touch-action:pan-x pan-y;
   }
-  canvas{display:block; image-rendering:pixelated;}
+  canvas{display:block; image-rendering:auto;}
   #minimapWrap{
     position:absolute; top:10px; left:10px; z-index:14; padding:4px;
     width:128px; background:rgba(30,25,20,0.7); border:1px solid var(--gold); border-radius:6px;

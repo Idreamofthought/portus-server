@@ -220,8 +220,97 @@ function tick(){
 /* ---------------- CANVAS RENDER ---------------- */
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-canvas.width = COLS*TS;
-canvas.height = ROWS*TS;
+let canvasScale = 1;
+let minimapDirty = true;
+
+function resizeCanvas(){
+  canvasScale = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = COLS*TS*canvasScale;
+  canvas.height = ROWS*TS*canvasScale;
+  canvas.style.width = `${COLS*TS}px`;
+  canvas.style.height = `${ROWS*TS}px`;
+  ctx.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
+  minimapDirty = true;
+  render();
+}
+
+const BUILDING_COLORS = {
+  Housing: ['#f3d9a6', '#a85d3b'],
+  Production: ['#e8c879', '#8b5a36'],
+  Mining: ['#c9c3b5', '#665f56'],
+  Infrastructure: ['#b9d0c2', '#3f766e'],
+  Knowledge: ['#d6c4df', '#684b78'],
+  Trade: ['#e0b56d', '#87502e'],
+  Military: ['#d79b8c', '#7e3931'],
+  Storage: ['#d3b88e', '#765439'],
+  Services: ['#e1b7a5', '#8a493c']
+};
+
+function drawBuildingIllustration(building, def, x, y){
+  const left = x*TS + 3;
+  const top = y*TS + 3;
+  const width = TS - 6;
+  const height = TS - 6;
+  if(building.id === 'road'){
+    ctx.fillStyle = '#76513a';
+    ctx.fillRect(x*TS+2, y*TS+9, TS-4, 6);
+    ctx.fillStyle = 'rgba(255,228,171,0.45)';
+    ctx.fillRect(x*TS+5, y*TS+11, TS-10, 2);
+    return;
+  }
+  if(building.id === 'fields'){
+    ctx.fillStyle = '#8b9f52';
+    ctx.fillRect(left, top, width, height);
+    ctx.strokeStyle = '#d6bd63';
+    ctx.lineWidth = 1;
+    for(let row=5; row<TS-3; row+=5){
+      ctx.beginPath();
+      ctx.moveTo(left+2, y*TS+row);
+      ctx.lineTo(left+width-2, y*TS+row-2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#f5e4a1';
+    ctx.fillRect(left+4, top+3, 2, 3);
+    ctx.fillRect(left+width-6, top+height-6, 2, 3);
+    return;
+  }
+  const [wall, roof] = BUILDING_COLORS[def.cat] || ['#e3d2ad', '#76513a'];
+  ctx.fillStyle = 'rgba(35,28,22,0.24)';
+  ctx.fillRect(left+2, top+3, width-1, height-1);
+  ctx.fillStyle = wall;
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(left, top+4, width, height-4, 3);
+  else ctx.rect(left, top+4, width, height-4);
+  ctx.fill();
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(left-1, top+6);
+  ctx.lineTo(left+width/2, top);
+  ctx.lineTo(left+width+1, top+6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#5c4030';
+  ctx.fillRect(left+width/2-2, top+height-6, 4, 6);
+  ctx.fillStyle = '#dff1e5';
+  ctx.fillRect(left+4, top+height-8, 3, 3);
+  ctx.fillRect(left+width-7, top+height-8, 3, 3);
+  if(['quarry','marblequarry','goldmine','silvermine','coppermine','tinmine','saltmine'].includes(building.id)){
+    ctx.fillStyle = '#5b554c';
+    ctx.beginPath();
+    ctx.moveTo(left+width-5, top+2); ctx.lineTo(left+width+1, top+9); ctx.lineTo(left+width-8, top+9);
+    ctx.closePath(); ctx.fill();
+  } else if(['docks','fisherhut','boatbuilder'].includes(building.id)){
+    ctx.strokeStyle = '#3f8fa3'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(left+2, top+height-3); ctx.lineTo(left+width-2, top+height-3); ctx.stroke();
+  } else if(building.id === 'well'){
+    ctx.fillStyle = '#3f8fa3';
+    ctx.beginPath(); ctx.arc(left+width/2, top+height/2+1, 4, 0, Math.PI*2); ctx.fill();
+  } else if(['temple','library','school','scribe'].includes(building.id)){
+    ctx.fillStyle = '#f4ecdd';
+    ctx.fillRect(left+width/2-1, top+2, 2, 5);
+    ctx.fillRect(left+width/2-4, top+4, 8, 2);
+  }
+}
 
 function render(){
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
@@ -251,20 +340,7 @@ function render(){
       ctx.scale(scale, scale);
       ctx.translate(-(x*TS+TS/2), -(y*TS+TS/2));
       const isRoad = t.building.id === 'road';
-      ctx.fillStyle=isRoad ? 'rgba(111,78,48,0.9)' : 'rgba(255,250,240,0.85)';
-      ctx.beginPath();
-      if(isRoad) ctx.fillRect(x*TS+7,y*TS+11,TS-14,8);
-      else if(ctx.roundRect) ctx.roundRect(x*TS+2,y*TS+2,TS-4,TS-4,4);
-      else ctx.rect(x*TS+2,y*TS+2,TS-4,TS-4);
-      if(!isRoad) ctx.fill();
-      ctx.font = (isRoad ? 13 : TS-10)+'px serif';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(def.ic, x*TS+TS/2, y*TS+TS/2+1);
-      if(def.isField){
-        const cropIcon = {wheat:'🌾',olives:'🫒',chickpeas:'🌱',grapes:'🍇'}[t.building.crop||'wheat'];
-        ctx.font = '9px serif';
-        ctx.fillText(cropIcon, x*TS+TS-8, y*TS+8);
-      }
+      drawBuildingIllustration(t.building, def, x, y);
       ctx.restore();
     }
   }
@@ -292,7 +368,7 @@ function render(){
       }
     }
   }
-  renderMinimap();
+  if(minimapDirty) renderMinimap();
 }
 
 function renderMinimap(){
@@ -314,6 +390,7 @@ function renderMinimap(){
       miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.max(2,tileWidth),Math.max(2,tileHeight));
     }
   }
+  minimapDirty = false;
 }
 
 /* ---------------- UI: RESOURCE BAR ---------------- */
@@ -498,8 +575,8 @@ document.getElementById('minimap').addEventListener('click', e=>{
   const relY = (e.clientY-rect.top)/rect.height;
   const wrap = document.getElementById('mapwrap');
   wrap.scrollTo({
-    left: Math.max(0, relX*canvas.width - wrap.clientWidth/2),
-    top: Math.max(0, relY*canvas.height - wrap.clientHeight/2),
+    left: Math.max(0, relX*canvas.clientWidth - wrap.clientWidth/2),
+    top: Math.max(0, relY*canvas.clientHeight - wrap.clientHeight/2),
     behavior:'smooth'
   });
 });
@@ -526,6 +603,7 @@ function demolishAt(x, y){
     });
   }
   removeBuilding(b);
+  minimapDirty = true;
   showToast(`Demolished ${def ? def.name : b.id} and refunded resources`);
   render(); renderRes();
 }
@@ -548,10 +626,17 @@ function placeAt({x,y}){
   tile.building = b;
   placedBuildings.push(b);
   buildingPops.push({x,y,startedAt:performance.now()});
-  setTimeout(()=>{
-    buildingPops = buildingPops.filter(p=>p.x!==x || p.y!==y);
+  minimapDirty = true;
+  const animatePlacement = ()=>{
     render();
-  }, 260);
+    if(performance.now() - buildingPops[buildingPops.length - 1].startedAt < 260){
+      requestAnimationFrame(animatePlacement);
+    } else {
+      buildingPops = buildingPops.filter(p=>p.x!==x || p.y!==y);
+      render();
+    }
+  };
+  requestAnimationFrame(animatePlacement);
   if(def.popCap) pop.capacity += def.popCap;
   if(def.militaryCap) military.cap += def.militaryCap;
   if(def.capBonus){
@@ -1264,6 +1349,7 @@ function applyState(s){
     grid[b.y][b.x].building = bld;
     placedBuildings.push(bld);
   });
+  minimapDirty = true;
   render(); renderRes(); renderPanel();
   showToast(`Game Loaded. Welcome back${captainName? ', '+captainName:''}`);
   playTone('click');
@@ -1306,10 +1392,11 @@ function fitCanvas(){
   // keep canvas native size; container scrolls
 }
 genMap();
+resizeCanvas();
 renderPanel();
-render();
 renderRes();
 fitCanvas();
+window.addEventListener('resize', resizeCanvas, {passive:true});
 
 refreshFromServer();
 
@@ -1350,6 +1437,7 @@ refreshFromServer();
       grid[y][x].building = b;
       placedBuildings.push(b);
     });
+    minimapDirty = true;
     render(); renderRes();
   }
 
