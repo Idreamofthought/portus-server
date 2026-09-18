@@ -485,6 +485,18 @@ function render(){
       ctx.restore();
     }
   }
+  // Eligible-tile shading sits under the cursor layers so it can't wash them out.
+  if(selectedBuild && selectedBuild !== 'demolish'){
+    const selectedDef = BLD_BY_ID[selectedBuild];
+    if(selectedDef){
+      for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+        if(grid[y][x].building) continue;
+        if(!selectedDef.valid(x,y)) continue;
+        ctx.fillStyle = 'rgba(120,200,120,0.18)';
+        ctx.fillRect(x*TS,y*TS,TS,TS);
+      }
+    }
+  }
   if(hoverTile && inBounds(hoverTile.x, hoverTile.y)){
     const {x,y} = hoverTile;
     ctx.fillStyle = selectedBuild ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)';
@@ -505,17 +517,6 @@ function render(){
       if(def){
         const ok = inBounds(x,y) && !grid[y][x].building && def.valid(x,y) && canAfford(def.cost);
         ctx.fillStyle = ok ? 'rgba(120,200,120,0.45)' : 'rgba(220,80,60,0.45)';
-        ctx.fillRect(x*TS,y*TS,TS,TS);
-      }
-    }
-  }
-  if(selectedBuild && selectedBuild !== 'demolish'){
-    const selectedDef = BLD_BY_ID[selectedBuild];
-    if(selectedDef){
-      for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
-        if(grid[y][x].building) continue;
-        const valid = selectedDef.valid(x,y);
-        ctx.fillStyle = valid ? 'rgba(120,200,120,0.12)' : 'rgba(220,80,60,0.05)';
         ctx.fillRect(x*TS,y*TS,TS,TS);
       }
     }
