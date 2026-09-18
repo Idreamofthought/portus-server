@@ -5,7 +5,8 @@ const state = {
   timer: null,
   step: 0,
   active: false,
-  voices: new Set()
+  voices: new Set(),
+  controls: new Set()
 };
 
 function ensureAudio(){
@@ -48,9 +49,12 @@ function scheduleBar(){
 export function createPortusMusic(button, playingLabel = 'Pause Portus music'){
   if(!button) return;
   const updateLabel = () => {
-    button.textContent = state.active ? playingLabel : 'Play Portus music';
-    button.setAttribute('aria-pressed', String(state.active));
+    state.controls.forEach(control => {
+      control.textContent = state.active ? playingLabel : 'Play Portus music';
+      control.setAttribute('aria-pressed', String(state.active));
+    });
   };
+  state.controls.add(button);
   button.onclick = async () => {
     if(!ensureAudio()) return;
     if(state.active){
