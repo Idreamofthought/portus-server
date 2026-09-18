@@ -252,10 +252,26 @@ function drawBuildingIllustration(building, def, x, y){
   const width = TS - 6;
   const height = TS - 6;
   if(building.id === 'road'){
+    const roadAt = (roadX, roadY) => inBounds(roadX, roadY) && grid[roadY][roadX].building?.id === 'road';
+    const connectsNorth = roadAt(x, y-1);
+    const connectsSouth = roadAt(x, y+1);
+    const connectsWest = roadAt(x-1, y);
+    const connectsEast = roadAt(x+1, y);
+    const roadWidth = 6;
     ctx.fillStyle = '#76513a';
-    ctx.fillRect(x*TS+2, y*TS+9, TS-4, 6);
+    if(connectsNorth || connectsSouth){
+      ctx.fillRect(x*TS+9, y*TS+2, 6, TS-4);
+    }
+    if(connectsWest || connectsEast || !(connectsNorth || connectsSouth)){
+      ctx.fillRect(x*TS+2, y*TS+9, TS-4, roadWidth);
+    }
     ctx.fillStyle = 'rgba(255,228,171,0.45)';
-    ctx.fillRect(x*TS+5, y*TS+11, TS-10, 2);
+    if(connectsWest || connectsEast || !(connectsNorth || connectsSouth)){
+      ctx.fillRect(x*TS+5, y*TS+11, TS-10, 2);
+    }
+    if(connectsNorth || connectsSouth){
+      ctx.fillRect(x*TS+11, y*TS+5, 2, TS-10);
+    }
     return;
   }
   if(building.id === 'fields'){
@@ -404,6 +420,17 @@ function render(){
       if(def){
         const ok = inBounds(x,y) && !grid[y][x].building && def.valid(x,y) && canAfford(def.cost);
         ctx.fillStyle = ok ? 'rgba(120,200,120,0.45)' : 'rgba(220,80,60,0.45)';
+        ctx.fillRect(x*TS,y*TS,TS,TS);
+      }
+    }
+  }
+  if(selectedBuild && selectedBuild !== 'demolish'){
+    const selectedDef = BLD_BY_ID[selectedBuild];
+    if(selectedDef){
+      for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+        if(grid[y][x].building) continue;
+        const valid = selectedDef.valid(x,y);
+        ctx.fillStyle = valid ? 'rgba(120,200,120,0.12)' : 'rgba(220,80,60,0.05)';
         ctx.fillRect(x*TS,y*TS,TS,TS);
       }
     }
