@@ -584,7 +584,24 @@ function tileFromEvent(e){
   const y = Math.floor((clientY-rect.top)/TS);
   return {x,y};
 }
-canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); render(); });
+function updateBuildingTooltip(e){
+  const tooltip = document.getElementById('buildingTooltip');
+  const tile = tileFromEvent(e);
+  const building = inBounds(tile.x, tile.y) && grid[tile.y][tile.x].building;
+  if(!tooltip || !building){
+    if(tooltip) tooltip.classList.remove('show');
+    return;
+  }
+  const def = BLD_BY_ID[building.id];
+  tooltip.textContent = `${def ? def.ic : ''} ${def ? def.name : building.id}`.trim();
+  tooltip.classList.add('show');
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  tooltip.style.left = `${Math.min(clientX+12, window.innerWidth-tooltip.offsetWidth-8)}px`;
+  tooltip.style.top = `${Math.min(clientY+12, window.innerHeight-tooltip.offsetHeight-8)}px`;
+}
+canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); updateBuildingTooltip(e); render(); });
+canvas.addEventListener('mouseleave', ()=> document.getElementById('buildingTooltip').classList.remove('show'));
 canvas.addEventListener('click', e=> placeAt(tileFromEvent(e)));
 let touchStartX = 0;
 let touchStartY = 0;
@@ -596,6 +613,7 @@ canvas.addEventListener('touchstart', e=>{
   touchStartY = touch.clientY;
   touchMoved = false;
   hoverTile = tileFromEvent(e);
+  updateBuildingTooltip(e);
   render();
 }, {passive:true});
 canvas.addEventListener('touchmove', e=>{
@@ -1590,6 +1608,7 @@ document.getElementById('creditsCloseBtn').onclick = ()=>{
   playTone('click');
 };
 createPortusMusic(document.getElementById('musicBtn'));
+createPortusMusic(document.getElementById('musicToggle'));
 titleOverlay.style.display = 'flex';
 
 setTimeout(()=>{

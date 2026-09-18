@@ -42,6 +42,12 @@
     background:#241f19; color:#c9bfa8; font-family:-apple-system,sans-serif; flex-shrink:0;
     overflow-x:auto; white-space:nowrap;
   }
+  .musicToggle{
+    flex:0 0 auto; margin-left:auto; padding:3px 8px; border:1px solid #6a5c46;
+    border-radius:10px; background:#3a3128; color:#c9bfa8; font:11px -apple-system,sans-serif;
+    cursor:pointer;
+  }
+  .musicToggle[aria-pressed="true"]{border-color:var(--gold); color:var(--gold);}
 
   #main{flex:1; display:flex; overflow:hidden; min-height:0;}
   #mapwrap{
@@ -67,6 +73,13 @@
     transition:opacity 0.3s; z-index:20; border:1px solid var(--gold); white-space:nowrap;
   }
   #toast.show{opacity:1;}
+  #buildingTooltip{
+    position:fixed; z-index:30; display:none; pointer-events:none; max-width:220px;
+    padding:5px 8px; border:1px solid var(--gold); border-radius:5px;
+    background:rgba(30,25,20,0.94); color:var(--paper); font:12px/1.2 -apple-system,sans-serif;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4); white-space:nowrap;
+  }
+  #buildingTooltip.show{display:block;}
 
   #panel{
     width:210px; flex-shrink:0; background:var(--panel); border-left:2px solid var(--line);
