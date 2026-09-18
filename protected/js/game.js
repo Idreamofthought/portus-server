@@ -310,6 +310,10 @@ function drawBuildingIllustration(building, def, x, y){
     ctx.fillRect(left+width/2-1, top+2, 2, 5);
     ctx.fillRect(left+width/2-4, top+4, 8, 2);
   }
+  ctx.font = '11px "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(def.ic, left+width/2, top+height/2+1);
 }
 
 function render(){
