@@ -425,7 +425,6 @@ app.post("/api/login", loginLimiter, authLimiter, requireCsrf, async (req, res) 
 });
 
 // Logout
-<<<<<<< HEAD
 app.post(
   "/api/logout",
   authenticateRequest,
@@ -443,7 +442,6 @@ app.post(
     res.json({ ok: true });
   }
 );
-=======
 app.post("/api/logout", requireCsrf, (req, res) => {
   const payload = verifyAuthToken(req.cookies.auth, { ignoreExpiration: true });
   if (payload) {
