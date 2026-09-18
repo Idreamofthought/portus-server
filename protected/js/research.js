@@ -27,6 +27,7 @@ export const TECHS = [
   // Animal, orchard, and craft chains
   {id:'animalhusbandry', name:'Animal Husbandry', desc:'Unlocks pastures and the Butcher', cost:16, tier:2, requires:[], effects:{}},
   {id:'orcharding', name:'Orcharding', desc:'Unlocks Orchards and the Jam Maker', cost:14, tier:2, requires:['irrigation'], effects:{}},
+  {id:'brewing', name:'Brewing & Viticulture', desc:'Unlocks the Winery, Brewery, and Meadery', cost:18, tier:2, requires:['irrigation'], effects:{}},
   {id:'dairyfarming', name:'Dairy Farming', desc:'Unlocks the Dairy', cost:18, tier:3, requires:['animalhusbandry'], effects:{}},
   {id:'tanning', name:'Tanning & Weaving', desc:'Unlocks the Tanner, Leatherworker, and Quilt Maker', cost:20, tier:3, requires:['animalhusbandry'], effects:{}},
   {id:'confectionery', name:'Confectionery', desc:'Unlocks the Candlemaker and bakery cake recipes', cost:22, tier:3, requires:['orcharding'], effects:{}},

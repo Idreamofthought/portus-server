@@ -203,6 +203,12 @@
     padding:6px 0; border-bottom:1px solid #ece2cc; font-size:11px; color:var(--ink);
   }
   .trade-row .stock{text-align:center; color:#6b5f4a;}
+  .trade-row .good{display:flex; flex-direction:column; line-height:1.2;}
+  .trade-row .good small{font-size:9px; text-transform:uppercase; letter-spacing:0.4px;}
+  .trade-row .d-glut{color:#7a9c5c;}
+  .trade-row .d-steady{color:#8a7a5c;}
+  .trade-row .d-wanted{color:#b07a2a;}
+  .trade-row .d-scarce{color:#b8452c;}
   .trade-row button{margin:0; padding:5px 4px; font-size:10.5px; text-align:center;}
   #chronicle{
     font-size:10px; color:#6b5f4a; max-height:110px; overflow-y:auto; line-height:1.5;

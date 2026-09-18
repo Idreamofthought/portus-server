@@ -7,11 +7,11 @@ export { SAVE_KEYS };
 
 export const RESOURCE_KEYS = new Set([
   "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
-  "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
+  "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "barley", "fish",
   "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax",
   "sugarcane", "feathers", "hide", "leather", "butter", "cheese", "cream", "jam",
   "candles", "quilts", "leatherGoods", "statues", "weapons", "armour", "meat", "milk", "eggs", "fruit",
-  "honeyCake", "fruitCake", "dairyCake"
+  "honeyCake", "fruitCake", "dairyCake", "wine", "beer", "mead"
 ]);
 
 export const BUILDING_IDS = new Set([
@@ -22,7 +22,8 @@ export const BUILDING_IDS = new Set([
   "school", "bar", "temple", "statue", "scribe", "library", "market", "tradingpost", "mint",
   "taxoffice", "barracks", "orchard", "jammaker", "pigpasture", "cowpasture", "goatpasture",
   "chickencoop", "butcher", "tanner", "leatherworker", "quiltmaker", "dairy", "candlemaker", "bronzesmith",
-  "templegrand", "templemonument", "armourer", "wall", "guardtower", "moat", "trap", "fort"
+  "templegrand", "templemonument", "armourer", "wall", "guardtower", "moat", "trap", "fort",
+  "winemaker", "brewery", "meadery"
 ]);
 
 export const TECH_BONUS_KEYS = new Set([
