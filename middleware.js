@@ -56,17 +56,25 @@ export function requirePaid(req, res, next) {
 }
 
 export const jsonRateLimitHandler = (_req, res) => res.status(429).json({ error: "Too many requests — please wait a bit and try again." });
-export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 50, handler: jsonRateLimitHandler });
+
+// Limits stay strict by default; the override exists so the integration suite
+// (all traffic from one address) and future ops tuning don't need code changes.
+function limitFromEnv(name, fallback) {
+  const configured = Number(process.env[name]);
+  return Number.isFinite(configured) && configured > 0 ? configured : fallback;
+}
+
+export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: limitFromEnv("AUTH_RATE_LIMIT_MAX", 50), handler: jsonRateLimitHandler });
 // Counts only failed logins, so shared/NAT addresses aren't penalised for normal
 // traffic. The per-account lockout in security.js is the precise control; this is
 // the backstop against one host spraying many accounts.
 export const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 100,
+  max: limitFromEnv("LOGIN_RATE_LIMIT_MAX", 100),
   skipSuccessfulRequests: true,
   handler: jsonRateLimitHandler
 });
-export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, handler: jsonRateLimitHandler });
-export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 50, handler: jsonRateLimitHandler });
-export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, handler: jsonRateLimitHandler });
-export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: 500, handler: jsonRateLimitHandler });
+export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: limitFromEnv("PASSWORD_RESET_RATE_LIMIT_MAX", 20), handler: jsonRateLimitHandler });
+export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: limitFromEnv("CHECKOUT_RATE_LIMIT_MAX", 50), handler: jsonRateLimitHandler });
+export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: limitFromEnv("WEBHOOK_RATE_LIMIT_MAX", 100), handler: jsonRateLimitHandler });
+export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: limitFromEnv("GENERAL_API_RATE_LIMIT_MAX", 500), handler: jsonRateLimitHandler });

@@ -14,7 +14,20 @@ export default async function globalSetup() {
     // Ignore if no process is running.
   }
 
-  const env = { ...process.env, NODE_ENV: "test", PORT: "8080", JWT_SECRET: "test-secret", DATABASE_PATH: path.join(rootDir, "portus2.db") };
+  // Every request in the suite comes from one address, so IP limits are raised
+  // to keep them from throttling unrelated tests. Account-level lockout, which
+  // login-lockout.spec.js exercises, is unaffected.
+  const env = {
+    ...process.env,
+    NODE_ENV: "test",
+    PORT: "8080",
+    JWT_SECRET: "test-secret",
+    DATABASE_PATH: path.join(rootDir, "portus2.db"),
+    AUTH_RATE_LIMIT_MAX: "5000",
+    LOGIN_RATE_LIMIT_MAX: "5000",
+    CHECKOUT_RATE_LIMIT_MAX: "5000",
+    GENERAL_API_RATE_LIMIT_MAX: "5000"
+  };
   const child = spawn(process.execPath, ["server.js"], {
     cwd: rootDir,
     env,
