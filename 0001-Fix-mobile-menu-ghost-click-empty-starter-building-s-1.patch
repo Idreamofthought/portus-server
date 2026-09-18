@@ -1,0 +1,65 @@
+From 330d0e712d9a67993f0c1afb1504209608e75a7d Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Fri, 18 Sep 2026 18:59:20 +0000
+Subject: [PATCH] Fix mobile menu ghost-click, empty starter building sets,
+ stale bubble copy
+
+---
+ protected/js/game.js | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/protected/js/game.js b/protected/js/game.js
+index 973eef3..c2f3d86 100644
+--- a/protected/js/game.js
++++ b/protected/js/game.js
+@@ -756,7 +756,12 @@ function updateBuildingTooltip(e){
+ }
+ canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); updateBuildingTooltip(e); render(); });
+ canvas.addEventListener('mouseleave', ()=> document.getElementById('buildingTooltip').classList.remove('show'));
++let lastTouchActionTime = 0;
+ canvas.addEventListener('click', e=>{
++  // Ignore the synthetic "ghost click" the browser fires ~300ms after a
++  // real touch tap already handled by touchend — otherwise every tap on
++  // mobile double-fires (place-then-toggle, or open-then-close a panel).
++  if(Date.now() - lastTouchActionTime < 500) return;
+   const tile = tileFromEvent(e);
+   if(!selectedBuild){
+     if(inBounds(tile.x, tile.y) && grid[tile.y][tile.x].building?.id === 'tradingpost'){
+@@ -789,7 +794,15 @@ canvas.addEventListener('touchmove', e=>{
+   }
+ }, {passive:true});
+ canvas.addEventListener('touchend', e=>{
+-  if(!touchMoved && hoverTile) placeAt(hoverTile);
++  lastTouchActionTime = Date.now();
++  if(touchMoved) return;
++  if(!hoverTile) return;
++  if(selectedBuild){
++    placeAt(hoverTile);
++  } else if(inBounds(hoverTile.x, hoverTile.y) && grid[hoverTile.y][hoverTile.x].building?.id === 'tradingpost'){
++    openPanel('tradePanel');
++    playTone('click');
++  }
+ }, {passive:true});
+ document.getElementById('minimap').addEventListener('click', e=>{
+   const rect = e.currentTarget.getBoundingClientRect();
+@@ -1749,7 +1762,7 @@ refreshFromServer();
+   };
+ 
+   /* starting difficulty: seed a few buildings depending on the chosen level */
+-  const STARTER_SETS = { 1:[], 2:[], 3:[] };
++  const STARTER_SETS = { 1:['house','fields','sawmill'], 2:['house'], 3:[] };
+   function seedStarterBuildings(level){
+     const starters = STARTER_SETS[level] || [];
+     if(!starters.length) return;
+@@ -1810,7 +1823,7 @@ refreshFromServer();
+     {
+       id:'sawmill-first',
+       title:'Getting started',
+-      html:'Building a <b>Sawmill</b> is the essential first step, followed by a <b>Stone Quarry</b> — without them your production chain stalls and the game will block further progress.',
++      html:'Building a <b>Woodcutter</b> is the essential first step, followed by a <b>Quarry</b> — without them your production chain stalls and the game will block further progress.',
+       checkLabel:"I've read this — don't show again",
+       require:false
+     },
+-- 
+2.43.0
+
