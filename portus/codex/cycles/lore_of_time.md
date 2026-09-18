@@ -1,3 +1,16 @@
+# Lore of Time
+
+The Broken Calendar Stone was once part of a larger ring. Its surviving marks
+do not count days in equal steps. They count returns: the first rain after
+planting, the first shadow on the western cairn, and the night the river rises
+without rain.
+
+The Sky-Readers and River People disagreed about what the missing pieces meant.
+Both were right about one thing: time in Portus is measured by what comes back
+changed.
+
+**Recovered lesson:** prediction is not control. It is a way to meet a season
+with less surprise.
 ---
 title: The Lore of Time
 category: cycles

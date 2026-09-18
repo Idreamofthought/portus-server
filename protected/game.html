@@ -193,6 +193,7 @@
     </div>
 
     <div id="panel">
+      <div id="firstActionGuide" aria-live="polite">Portus. A town by the sea. Your people await your guidance.</div>
       <div id="buildingList"></div>
       <div id="buildPreview">
         <div id="buildPreviewTitle">No building selected</div>
@@ -210,6 +211,26 @@
     <a href="/terms.html" style="color:#d4a017;">Terms</a> ·
     <a href="/privacy.html" style="color:#d4a017;">Privacy</a>
   </footer>
+</div>
+
+<div id="titleOverlay" role="dialog" aria-labelledby="titleHeading">
+  <div id="titleCard">
+    <p class="titleKicker">A settlement remembered into existence</p>
+    <h2 id="titleHeading">Portus</h2>
+    <p>A town by the sea. Your people await your guidance.</p>
+    <button id="newGameBtn" class="titleButton">New Game</button>
+    <button id="continueBtn" class="titleButton secondary">Continue</button>
+    <button id="titleCodexBtn" class="titleButton secondary">Codex</button>
+    <button id="musicBtn" class="titleButton secondary" type="button">Play Portus music</button>
+    <button id="creditsBtn" class="titleButton secondary">Credits</button>
+    <div id="creditsPanel" hidden>
+      <strong>Portus</strong><br>
+      Created by idreamofthought.org<br>
+      Built with HTML, CSS, JavaScript, and Web Audio<br>
+      Version 2.0
+      <button id="creditsCloseBtn" class="titleButton secondary">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- gameplay is designed around the wider map-and-tools landscape layout -->

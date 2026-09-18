@@ -5,14 +5,14 @@
 
 export const TECHS = [
   // Tier 1 — Foundations (no prerequisites)
-  {id:'irrigation', name:'Irrigation', desc:'+25% field yield', cost:8, tier:1, requires:[], effects:{techBonus:{field:1.25}}},
-  {id:'masonry', name:'Masonry', desc:'+25% quarry output', cost:8, tier:1, requires:[], effects:{techBonus:{quarry:1.25}}},
+  {id:'woodcraft', name:'Improved Tools', desc:'+10% woodcutter output', cost:8, tier:1, requires:[], effects:{techBonus:{wood:1.1}}},
+  {id:'masonry', name:'Stoneworking', desc:'+25% quarry output', cost:8, tier:1, requires:[], effects:{techBonus:{quarry:1.25}}},
+  {id:'irrigation', name:'Agriculture', desc:'+25% field yield', cost:8, tier:1, requires:[], effects:{techBonus:{field:1.25}}},
+  {id:'metallurgy', name:'Basic Metallurgy', desc:'+25% foundry refining', cost:10, tier:1, requires:[], effects:{techBonus:{foundry:1.25}}},
   {id:'seafaring', name:'Seafaring', desc:'+25% fish catch', cost:10, tier:1, requires:[], effects:{techBonus:{fish:1.25}}},
-  {id:'woodcraft', name:'Woodcraft', desc:'+25% woodcutter output', cost:8, tier:1, requires:[], effects:{techBonus:{wood:1.25}}},
   {id:'claycraft', name:'Claycraft', desc:'+25% claypit output', cost:8, tier:1, requires:[], effects:{techBonus:{clay:1.25}}},
   {id:'scholarship', name:'Scholarship', desc:'+25% research from Libraries', cost:10, tier:1, requires:[], effects:{techBonus:{research:1.25}}},
   // Tier 2 — requires one Tier 1 tech
-  {id:'metallurgy', name:'Metallurgy', desc:'+25% foundry refining', cost:16, tier:2, requires:['masonry'], effects:{techBonus:{foundry:1.25}}},
   {id:'navigation', name:'Navigation', desc:'+20% trade income', cost:16, tier:2, requires:['seafaring'], effects:{techBonus:{trade:1.2}}},
   {id:'croprotation', name:'Crop Rotation', desc:'+80 food storage capacity', cost:18, tier:2, requires:['irrigation'], effects:{cap:{food:80}}},
   {id:'carpentry', name:'Carpentry', desc:'+60 general storage capacity', cost:18, tier:2, requires:['woodcraft'], effects:{cap:{general:60}}},

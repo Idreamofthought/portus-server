@@ -55,6 +55,7 @@ a { color: inherit; }
 }
 
 .poem-music { margin: 16px auto 20px; max-width: 420px; }
+.portus-music-control { display: block; margin: 0 auto 10px; }
 .poem-music audio { width: 100%; filter: saturate(0.95) brightness(1.08); }
 .poem-controls { display: flex; justify-content: center; margin-top: 8px; }
 .poem-mute-toggle { appearance: none; border: 1px solid rgba(166,83,55,.55); background: rgba(166,83,55,.08); color: var(--ink); padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }

@@ -25,6 +25,13 @@ export const ARCHAEOLOGICAL_FINDS = Object.freeze([
   { id: "first-navigators-map", title: "First Navigator's Map", fragments: 7, codexEntry: "sky/first-navigators-map" }
 ]);
 
+export const FOUNDATION_CODEX_ENTRIES = Object.freeze([
+  "history/portus",
+  "peoples/town",
+  "sea/gifts",
+  "archive/old-archive"
+]);
+
 export const RARITY_WEIGHTS = Object.freeze([
   { id: "common", weight: 55 },
   { id: "uncommon", weight: 28 },

@@ -13,6 +13,7 @@ import {
   ACTIVITY_DISCOVERY_CHANCES,
   ARCHAEOLOGICAL_FINDS,
   ARTIFACTS,
+  FOUNDATION_CODEX_ENTRIES,
   RARITY_WEIGHTS
 } from "./data/discovery_catalog.js";
 
@@ -131,7 +132,8 @@ function rollRarity() {
 
 const CODEX_ENTRY_IDS = new Set([
   ...ARTIFACTS.map((item) => item.codexEntry),
-  ...ARCHAEOLOGICAL_FINDS.map((item) => item.codexEntry)
+  ...ARCHAEOLOGICAL_FINDS.map((item) => item.codexEntry),
+  ...FOUNDATION_CODEX_ENTRIES
 ]);
 
 function readCodexEntry(entryId) {
@@ -713,12 +715,16 @@ app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (
      WHERE user_id=? ORDER BY unlocked_at DESC`
   ).all(req.user.uid);
 
-  const codexEntries = codexUnlocks
+  const foundationEntries = FOUNDATION_CODEX_ENTRIES
+    .map((entryId) => readCodexEntry(entryId))
+    .filter(Boolean)
+    .map((entry) => ({ ...entry, source: "foundation" }));
+  const codexEntries = [...foundationEntries, ...codexUnlocks
     .map((unlock) => {
       const entry = readCodexEntry(unlock.entry_id);
       return entry ? { ...entry, unlockedAt: unlock.unlocked_at, source: unlock.source } : null;
     })
-    .filter(Boolean);
+    .filter(Boolean)];
 
   res.json({ discoveries, codexUnlocks, codexEntries });
 });

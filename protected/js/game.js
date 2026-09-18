@@ -8,6 +8,7 @@ import { pickDisaster } from '/game-assets/disasters.js';
 import { RAID_TIERS, resolveRaid } from '/game-assets/army.js';
 import { GOD_MESSAGES } from '/game-assets/blessings.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
+import { createPortusMusic } from '/music.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
@@ -40,6 +41,27 @@ let taxRate = 0;      // coin per citizen per tick
 let scenarioId = null;
 let techHappinessBonus = 0;
 let questsCompleted = new Set();
+let buildingPops = [];
+let previousResourceValues = {};
+
+const audioState = { context: null };
+function playTone(kind){
+  try{
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContext) return;
+    audioState.context ||= new AudioContext();
+    const oscillator = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    const settings = {click:[440,0.035], build:[220,0.12], gather:[660,0.08]}[kind] || [440,0.05];
+    oscillator.frequency.value = settings[0];
+    oscillator.type = kind === 'build' ? 'triangle' : 'sine';
+    gain.gain.setValueAtTime(0.045, audioState.context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioState.context.currentTime + settings[1]);
+    oscillator.connect(gain).connect(audioState.context.destination);
+    oscillator.start();
+    oscillator.stop(audioState.context.currentTime + settings[1]);
+  } catch(e){ /* Audio is enhancement only. */ }
+}
 
 /* ---- Research / Tech tree ---- */
 // Tech definitions live in protected/js/research.js; techBonus/cap/military/
@@ -222,6 +244,12 @@ function render(){
 
     if(t.building){
       const def = BLD_BY_ID[t.building.id];
+      const pop = buildingPops.find(p=>p.x===x && p.y===y);
+      const scale = pop ? Math.min(1, (performance.now()-pop.startedAt)/240) : 1;
+      ctx.save();
+      ctx.translate(x*TS+TS/2, y*TS+TS/2);
+      ctx.scale(scale, scale);
+      ctx.translate(-(x*TS+TS/2), -(y*TS+TS/2));
       const isRoad = t.building.id === 'road';
       ctx.fillStyle=isRoad ? 'rgba(111,78,48,0.9)' : 'rgba(255,250,240,0.85)';
       ctx.beginPath();
@@ -237,7 +265,17 @@ function render(){
         ctx.font = '9px serif';
         ctx.fillText(cropIcon, x*TS+TS-8, y*TS+8);
       }
+      ctx.restore();
     }
+  }
+  if(hoverTile && inBounds(hoverTile.x, hoverTile.y)){
+    const {x,y} = hoverTile;
+    ctx.fillStyle = selectedBuild ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)';
+    ctx.fillRect(x*TS,y*TS,TS,TS);
+    ctx.strokeStyle = 'rgba(255,244,190,0.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x*TS+1,y*TS+1,TS-2,TS-2);
+    ctx.lineWidth = 1;
   }
   if(selectedBuild && hoverTile){
     const {x,y} = hoverTile;
@@ -298,6 +336,12 @@ function renderRes(){
     if(v<0.05 && !['wood','stone'].includes(k)) return;
     const d=document.createElement('div');
     d.className='res';
+    if(v > (previousResourceValues[k] ?? v)){
+      d.classList.add('resourceUp');
+      playTone('gather');
+      setTimeout(()=>d.classList.remove('resourceUp'), 550);
+    }
+    previousResourceValues[k] = v;
     d.title = RESOURCE_INFO[k] || k;
     d.setAttribute('aria-label', `${RESOURCE_INFO[k] || k}: ${Math.floor(v)}`);
     d.textContent = `${ic} ${Math.floor(v)}`;
@@ -352,17 +396,19 @@ function renderPanel(){
     list.appendChild(label);
     BUILDINGS.filter(b=>b.cat===cat).forEach(b=>{
       const btn=document.createElement('button');
-      btn.className='bldbtn'; btn.dataset.id=b.id;
+      const locked = b.requiresTech && !unlockedTechs.has(b.requiresTech);
+      btn.className='bldbtn'+(locked?' locked':''); btn.dataset.id=b.id;
       const costStr = Object.entries(b.cost).map(([k,v])=>`${v} ${k}`).join(', ');
       const desc = b.desc || '';
+      const unlockNote = locked ? `Requires ${techName(b.requiresTech)}` : '';
       btn.innerHTML =
         `<span class="ic" aria-label="${b.name} icon">${b.ic}</span>
          <span class="info">
            ${b.name}
-           <div class="cost">${costStr}</div>
+           <div class="cost">${unlockNote || costStr}</div>
          </span>`;
       if(desc) btn.title = desc;
-      btn.onclick = ()=> selectBuild(b.id);
+      btn.onclick = ()=> locked ? showToast(`Research ${techName(b.requiresTech)} first`) : selectBuild(b.id);
       list.appendChild(btn);
     });
   });
@@ -401,6 +447,7 @@ function selectBuild(id){
   else if(selectedBuild) legend.textContent = `Tap the map to place ${BLD_BY_ID[selectedBuild].name}`;
   else legend.textContent = 'Tap a building, then tap the map to place it';
   render();
+  if(id) playTone('click');
 }
 document.getElementById('cancelBtn').onclick = ()=> selectBuild(null);
 document.querySelectorAll('#cropbar button').forEach(b=>{
@@ -500,6 +547,11 @@ function placeAt({x,y}){
   if(def.isField) b.crop = selectedCrop;
   tile.building = b;
   placedBuildings.push(b);
+  buildingPops.push({x,y,startedAt:performance.now()});
+  setTimeout(()=>{
+    buildingPops = buildingPops.filter(p=>p.x!==x || p.y!==y);
+    render();
+  }, 260);
   if(def.popCap) pop.capacity += def.popCap;
   if(def.militaryCap) military.cap += def.militaryCap;
   if(def.capBonus){
@@ -507,12 +559,20 @@ function placeAt({x,y}){
     if(def.capBonus.food) cap.food += def.capBonus.food;
   }
   showToast(`Built ${def.name}`);
+  playTone('build');
+  const guide = document.getElementById('firstActionGuide');
+  if(def.id === 'house' && guide){
+    guide.textContent = 'Your first home is placed. Now gather wood and shape the town.';
+    guide.classList.add('complete');
+    document.querySelectorAll('.bldbtn').forEach(btn=>btn.classList.remove('guided'));
+  }
   render(); renderRes();
 }
 
 /* ---------------- MENU PANELS ---------------- */
 document.querySelectorAll('.menuBtn').forEach(btn=>{
   btn.onclick = ()=>{
+    playTone('click');
     const panelId = btn.dataset.panel;
     const panel = document.getElementById(panelId);
     const isOpen = panel.classList.contains('open');
@@ -566,6 +626,7 @@ function renderResearchPanel(){
           }
           unlockedTechs.add(t.id);
           applyTechEffects(t);
+          renderPanel();
           renderRes();
         };
       }
@@ -1204,7 +1265,8 @@ function applyState(s){
     placedBuildings.push(bld);
   });
   render(); renderRes(); renderPanel();
-  showToast(`Welcome back${captainName? ', '+captainName:''} — city loaded`);
+  showToast(`Game Loaded. Welcome back${captainName? ', '+captainName:''}`);
+  playTone('click');
   logEvent('📜 City loaded from a save code.');
 }
 
@@ -1212,7 +1274,8 @@ document.getElementById('captainInput').oninput = e=> captainName = e.target.val
 document.getElementById('genSaveBtn').onclick = ()=>{
   const code = encodeState(getState());
   document.getElementById('saveOut').value = code;
-  showToast('Save code generated — copy it now');
+  showToast('Game Saved. Save code generated — copy it now');
+  playTone('click');
 };
 document.getElementById('loadBtn').onclick = ()=>{
   const code = document.getElementById('loadIn').value;
@@ -1224,7 +1287,8 @@ document.getElementById('cloudSaveBtn').onclick = async ()=>{
   if(!currentUser){ showToast('Log in first to save to your account'); return; }
   try{
     await api('/api/save', {method:'POST', body: JSON.stringify(getState())});
-    showToast('City saved to your account');
+    showToast('Game Saved.');
+    playTone('click');
   } catch(e){ showToast(e.message); }
 };
 document.getElementById('cloudLoadBtn').onclick = async ()=>{
@@ -1233,6 +1297,7 @@ document.getElementById('cloudLoadBtn').onclick = async ()=>{
     const {state} = await api('/api/save');
     if(!state){ showToast('No cloud save found yet'); return; }
     applyState(state);
+    showToast('Game Loaded.');
   } catch(e){ showToast(e.message); }
 };
 
@@ -1261,7 +1326,7 @@ refreshFromServer();
   };
 
   /* starting difficulty: seed a few buildings depending on the chosen level */
-  const STARTER_SETS = { 1:['house','fields','sawmill'], 2:['house'], 3:[] };
+  const STARTER_SETS = { 1:[], 2:[], 3:[] };
   function seedStarterBuildings(level){
     const starters = STARTER_SETS[level] || [];
     if(!starters.length) return;
@@ -1376,3 +1441,34 @@ refreshFromServer();
     showLevelSelect();
   }
 })();
+
+const titleOverlay = document.getElementById('titleOverlay');
+const closeTitle = ()=>{
+  titleOverlay.style.display = 'none';
+  playTone('click');
+};
+document.getElementById('newGameBtn').onclick = closeTitle;
+document.getElementById('continueBtn').onclick = closeTitle;
+document.getElementById('titleCodexBtn').onclick = ()=>{
+  closeTitle();
+  document.querySelector('[data-panel="codexPanel"]').click();
+};
+document.getElementById('creditsBtn').onclick = ()=>{
+  document.getElementById('creditsPanel').hidden = false;
+  playTone('click');
+};
+document.getElementById('creditsCloseBtn').onclick = ()=>{
+  document.getElementById('creditsPanel').hidden = true;
+  playTone('click');
+};
+createPortusMusic(document.getElementById('musicBtn'));
+titleOverlay.style.display = 'flex';
+
+setTimeout(()=>{
+  const houseButton = document.querySelector('.bldbtn[data-id="house"]');
+  const guide = document.getElementById('firstActionGuide');
+  if(houseButton && guide && !placedBuildings.some(b=>b.id==='house')){
+    houseButton.classList.add('guided');
+    guide.textContent = 'Portus. A town by the sea. Your people await your guidance. Select House, then choose a tile. Place your first home.';
+  }
+}, 500);
