@@ -16,7 +16,12 @@ const TRADE_GOODS = [
   { id: 'tin', label: 'Tin', buyCost: 10, sellValue: 3 },
   { id: 'bronze', label: 'Bronze', buyCost: 15, sellValue: 5 },
   { id: 'honey', label: 'Honey', buyCost: 8, sellValue: 3 },
-  { id: 'wax', label: 'Wax', buyCost: 9, sellValue: 3 }
+  { id: 'wax', label: 'Wax', buyCost: 9, sellValue: 3 },
+  { id: 'candles', label: 'Candles', buyCost: 11, sellValue: 4 },
+  { id: 'cheese', label: 'Cheese', buyCost: 9, sellValue: 3 },
+  { id: 'jam', label: 'Jam', buyCost: 10, sellValue: 3 },
+  { id: 'quilts', label: 'Quilts', buyCost: 16, sellValue: 6 },
+  { id: 'leatherGoods', label: 'Leather Goods', buyCost: 20, sellValue: 7 }
 ];
 
 /* ---------------- RESOURCES ---------------- */
@@ -145,6 +150,27 @@ function tick(){
       if(amt>0){ res.silver -= amt; res.copper -= amt; tradeIncome += amt*6*techBonus.trade; }
       return;
     }
+    if(def.special==='dairy'){
+      const amt = Math.min(1.2*laborRatio, res.milk);
+      if(amt>0){
+        res.milk -= amt;
+        addRes('butter', amt*0.4*roadBoost);
+        addRes('cheese', amt*0.4*roadBoost);
+        addRes('cream', amt*0.2*roadBoost);
+      }
+      return;
+    }
+    if(def.special==='bakery'){
+      const breadAmt = Math.min(1.5*laborRatio, res.flour);
+      if(breadAmt>0){ res.flour -= breadAmt; addRes('bread', breadAmt*0.85*roadBoost); }
+      const honeyCakeAmt = Math.min(0.6*laborRatio, res.flour, res.honey);
+      if(honeyCakeAmt>0){ res.flour -= honeyCakeAmt; res.honey -= honeyCakeAmt; addRes('honeyCake', honeyCakeAmt*0.8*roadBoost); }
+      const fruitCakeAmt = Math.min(0.6*laborRatio, res.flour, res.jam);
+      if(fruitCakeAmt>0){ res.flour -= fruitCakeAmt; res.jam -= fruitCakeAmt; addRes('fruitCake', fruitCakeAmt*0.8*roadBoost); }
+      const dairyCakeAmt = Math.min(0.6*laborRatio, res.flour, res.cheese);
+      if(dairyCakeAmt>0){ res.flour -= dairyCakeAmt; res.cheese -= dairyCakeAmt; addRes('dairyCake', dairyCakeAmt*0.8*roadBoost); }
+      return;
+    }
     if(def.special==='market'){
       GENERAL_KEYS.concat(FOOD_KEYS).forEach(k=>{
         let buffer = FOOD_KEYS.includes(k) ? 30 : 20;
@@ -200,8 +226,10 @@ function tick(){
 
   // happiness from services
   let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
+  let comfortBonus = Math.min(6, res.quilts*0.06) + Math.min(6, res.leatherGoods*0.05) +
+    Math.min(8, (res.honeyCake+res.fruitCake+res.dairyCake)*0.04);
   let taxPenalty = taxRate * 400;
-  let target = Math.min(100, Math.max(0, 40 + bonus + techHappinessBonus - taxPenalty));
+  let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty));
   happiness += (target-happiness)*0.02;
   happiness = Math.max(0, Math.min(100, happiness));
 
@@ -466,7 +494,11 @@ const RES_DISPLAY = [
   ['goldOre','🟡'],['silverOre','⚪'],['copperOre','🟠'],['gold','💰'],['silver','🥈'],['copper','🥉'],['bronze','🟠'],
   ['wheat','🌾'],['flour','🌾➡️'],['bread','🍞'],['olives','🫒'],['oliveOil','🛢️'],
   ['chickpeas','🌱'],['grapes','🍇'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
-  ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','🕯️']
+  ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','�'],
+  ['sugarcane','🎋'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
+  ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['jam','🫙'],['candles','🕯️'],
+  ['quilts','🛏️'],['leatherGoods','👜'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
+  ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁']
 ];
 function renderRes(){
   const bar = document.getElementById('resbar');

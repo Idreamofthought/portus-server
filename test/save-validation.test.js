@@ -1,12 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSave } from "../save-validation.js";
+import { validateSave, RESOURCE_KEYS } from "../save-validation.js";
 
-const resourceKeys = [
-  "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
-  "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
-  "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax"
-];
+const resourceKeys = [...RESOURCE_KEYS];
 
 function validSave() {
   return {
