@@ -58,6 +58,33 @@ function validateNumberMap(value, keys, { min = 0, max = MAX_NUMBER } = {}) {
   return exactKeys(value, keys) && Object.values(value).every((entry) => finiteNumber(entry, { min, max }));
 }
 
+// Saves written before a resource or bonus existed are missing those keys, which
+// turns later arithmetic into NaN. Only absent keys are filled, so values that
+// are present but invalid still fail validation.
+export function migrateSave(state) {
+  if (!isPlainObject(state)) return state;
+  const migrated = { ...state };
+
+  if (isPlainObject(state.res)) {
+    const res = { ...state.res };
+    for (const key of RESOURCE_KEYS) {
+      if (!Object.hasOwn(res, key)) res[key] = 0;
+    }
+    migrated.res = res;
+  }
+
+  // techBonus is multiplicative, so a missing bonus must default to 1, not 0.
+  if (isPlainObject(state.techBonus)) {
+    const techBonus = { ...state.techBonus };
+    for (const key of TECH_BONUS_KEYS) {
+      if (!Object.hasOwn(techBonus, key)) techBonus[key] = 1;
+    }
+    migrated.techBonus = techBonus;
+  }
+
+  return migrated;
+}
+
 function validateGrid(grid) {
   if (!Array.isArray(grid) || grid.length !== ROWS) return false;
   return grid.every((row) => Array.isArray(row) && row.length === COLS && row.every((tile) => {

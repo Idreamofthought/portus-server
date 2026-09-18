@@ -1661,7 +1661,11 @@ function decodeState(code){
 }
 function applyState(s){
   if(!s || s.v!==1 || !s.grid || !s.buildings){ showToast('That save code looks invalid'); return; }
-  res = s.res; cap = s.cap; pop = s.pop; happiness = s.happiness; boats = s.boats;
+  // Saves predating a resource omit its key entirely; zero-fill so the arithmetic
+  // below can't turn into NaN.
+  const zeroedResources = Object.fromEntries([...FOOD_KEYS, ...GENERAL_KEYS].map(k=>[k,0]));
+  res = { ...zeroedResources, ...s.res };
+  cap = s.cap; pop = s.pop; happiness = s.happiness; boats = s.boats;
   coin = s.coin; research = s.research; droughtTicksLeft = s.droughtTicksLeft||0;
   unlockedTechs = new Set(s.unlockedTechs||[]);
   Object.assign(techBonus, s.techBonus||{});

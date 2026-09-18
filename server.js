@@ -66,7 +66,7 @@ import {
   verifyPayPalWebhookSignature,
   creditPayment
 } from "./payments.js";
-import { validateSave } from "./save-validation.js";
+import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -991,12 +991,13 @@ app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
 
 // Save game state
 app.post("/api/save", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
-  const json = JSON.stringify(req.body ?? {});
+  const migrated = migrateSave(req.body);
+  const json = JSON.stringify(migrated ?? {});
   if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
   }
 
-  const validation = validateSave(req.body);
+  const validation = validateSave(migrated);
   if (!validation.ok) {
     return res.status(400).json({ error: validation.error || "invalid_save" });
   }
@@ -1026,7 +1027,7 @@ app.get("/api/save", authenticateRequest, (req, res) => {
 
   let state = null;
   try {
-    state = row ? JSON.parse(row.state) : null;
+    state = row ? migrateSave(JSON.parse(row.state)) : null;
   } catch {
     state = null;
   }

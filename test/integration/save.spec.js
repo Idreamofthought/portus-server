@@ -34,6 +34,23 @@ describe("save / load", () => {
     expect(loadRes.body.state.coin).toBe(42);
   });
 
+  test("a pre-expansion save is migrated rather than rejected", async () => {
+    const session = await loggedInSession("save-legacy", cleanupEmails);
+    const legacy = validSaveFixture();
+    // Simulate a save written before the economy expansion added these keys.
+    for (const key of ["wine", "beer", "mead", "barley", "statues"]) {
+      delete legacy.res[key];
+    }
+
+    const saveRes = await session.postCsrf("/api/save", legacy);
+    expect(saveRes.status).toBe(200);
+
+    const loadRes = await session.request("GET", "/api/save");
+    expect(loadRes.status).toBe(200);
+    expect(loadRes.body.state.res.wine).toBe(0);
+    expect(loadRes.body.state.res.barley).toBe(0);
+  });
+
   test("save missing required keys is rejected as invalid_save", async () => {
     const session = await loggedInSession("save-missing", cleanupEmails);
     const res = await session.postCsrf("/api/save", { resources: {} });
