@@ -3,6 +3,7 @@ import paypal from "@paypal/checkout-server-sdk";
 import Stripe from "stripe";
 import { db } from "./database2.js";
 import { PRODUCTS, getProduct } from "./products.js";
+import { recordAuditEvent } from "./security.js";
 
 const PAYPAL_API_BASE = process.env.NODE_ENV === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -172,6 +173,18 @@ export function creditPayment({ pending, eventId, capturedAmount, capturedCurren
     credited = true;
   });
   tx();
+  if (credited) {
+    recordAuditEvent({
+      userId: pending.user_id,
+      eventType: "payment_credited",
+      metadata: {
+        provider: pending.provider,
+        productId: pending.product_id,
+        minutes: pending.minutes,
+        eventId
+      }
+    });
+  }
   return { credited };
 }
 

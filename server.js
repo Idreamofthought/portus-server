@@ -36,11 +36,20 @@ import {
   requirePaid,
   hasFreeAccess,
   authLimiter,
+  loginLimiter,
   passwordResetLimiter,
   checkoutLimiter,
   webhookLimiter,
   generalApiLimiter
 } from "./middleware.js";
+
+import {
+  recordAuditEvent,
+  recordFailedLogin,
+  clearFailedLogins,
+  isLoginLocked,
+  requireAdmin
+} from "./security.js";
 
 import { PRODUCTS } from "./products.js";
 import {
@@ -369,12 +378,21 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
 });
 
 // Login
-app.post("/api/login", authLimiter, requireCsrf, async (req, res) => {
+app.post("/api/login", loginLimiter, authLimiter, requireCsrf, async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = req.body.password;
 
   if (!validCredentials(email, password))
     return res.status(400).json({ error: "invalid credentials" });
+
+  // Checked before any password work so a locked account costs an attacker the
+  // same whether or not the address exists.
+  if (isLoginLocked(email)) {
+    recordAuditEvent({ eventType: "login_locked_out", ip: req.ip });
+    return res.status(429).json({
+      error: "Too many failed attempts — please wait before trying again."
+    });
+  }
 
   const user = db
     .prepare(`SELECT id,password_hash,email_verified FROM users WHERE email=?`)
@@ -384,15 +402,24 @@ app.post("/api/login", authLimiter, requireCsrf, async (req, res) => {
     "$2a$12$C6UzMDM.H6dfI/f/IKco.aH0uP.tX3XLE5X8y5X8y5X8y5X8y5X8y";
   const ok = await verifyPassword(password, user?.password_hash || dummy);
 
-  if (!user || !ok)
+  if (!user || !ok) {
+    recordFailedLogin(email, req.ip);
+    recordAuditEvent({
+      userId: user ? user.id : null,
+      eventType: "login_failed",
+      ip: req.ip
+    });
     return res.status(400).json({ error: "invalid credentials" });
+  }
 
   if (!user.email_verified)
     return res
       .status(403)
       .json({ error: "please verify your email before logging in" });
 
+  clearFailedLogins(email);
   issueAuthCookie(res, user.id);
+  recordAuditEvent({ userId: user.id, eventType: "login_succeeded", ip: req.ip });
   res.json({ ok: true });
 });
 
@@ -405,6 +432,7 @@ app.post("/api/logout", requireCsrf, (req, res) => {
         Buffer.from(token.split(".")[1], "base64url").toString()
       );
       revokeSession(payload.sid);
+      recordAuditEvent({ userId: payload.uid, eventType: "logout", ip: req.ip });
     }
   } catch {}
 
@@ -550,6 +578,12 @@ app.post("/api/reset-password", passwordResetLimiter, async (req, res) => {
   });
 
   tx();
+  recordAuditEvent({
+    userId: row.user_id,
+    eventType: "password_reset_completed",
+    ip: req.ip,
+    metadata: { sessionsRevoked: true }
+  });
   res.json({ ok: true });
 });
 
@@ -584,6 +618,12 @@ app.post(
     );
 
     revokeAllSessions(req.user.uid);
+    recordAuditEvent({
+      userId: req.user.uid,
+      eventType: "password_changed",
+      ip: req.ip,
+      metadata: { sessionsRevoked: true }
+    });
     res.clearCookie("auth", { path: "/" });
 
     res.json({ ok: true });
