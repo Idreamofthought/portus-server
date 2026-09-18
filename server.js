@@ -1049,6 +1049,9 @@ app.locals.cleanupExpiredTimer = setInterval(cleanupExpired, 24 * 60 * 60 * 1000
 app.locals.cleanupExpiredTimer.unref();
 
 // Start server when launched directly.
-if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])
+) {
   startServer(PORT);
 }
