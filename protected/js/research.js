@@ -24,6 +24,12 @@ export const TECHS = [
   {id:'granaryscience', name:'Granary Science', desc:'+120 food storage, +15% field yield', cost:30, tier:3, requires:['croprotation'], effects:{cap:{food:120}, techBonus:{field:1.15}}},
   {id:'siegecraft', name:'Siege Craft', desc:'+20% raid strength, +4 military capacity', cost:28, tier:3, requires:['fortification'], effects:{techBonus:{raid:1.2}, military:{cap:4}}},
   {id:'greatlibrary', name:'Great Library', desc:'+30% research, +10 happiness', cost:32, tier:3, requires:['philosophy'], effects:{techBonus:{research:1.3}, techHappinessBonus:10}},
+  // Animal, orchard, and craft chains
+  {id:'animalhusbandry', name:'Animal Husbandry', desc:'Unlocks pastures and the Butcher', cost:16, tier:2, requires:[], effects:{}},
+  {id:'orcharding', name:'Orcharding', desc:'Unlocks Orchards and the Jam Maker', cost:14, tier:2, requires:['irrigation'], effects:{}},
+  {id:'dairyfarming', name:'Dairy Farming', desc:'Unlocks the Dairy', cost:18, tier:3, requires:['animalhusbandry'], effects:{}},
+  {id:'tanning', name:'Tanning & Weaving', desc:'Unlocks the Tanner, Leatherworker, and Quilt Maker', cost:20, tier:3, requires:['animalhusbandry'], effects:{}},
+  {id:'confectionery', name:'Confectionery', desc:'Unlocks the Candlemaker and bakery cake recipes', cost:22, tier:3, requires:['orcharding'], effects:{}},
 ];
 
 export function techName(id){
