@@ -756,7 +756,12 @@ function updateBuildingTooltip(e){
 }
 canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); updateBuildingTooltip(e); render(); });
 canvas.addEventListener('mouseleave', ()=> document.getElementById('buildingTooltip').classList.remove('show'));
+let lastTouchActionTime = 0;
 canvas.addEventListener('click', e=>{
+  // Ignore the synthetic "ghost click" the browser fires ~300-500ms after a
+  // real touch tap already handled by touchend below — otherwise mobile
+  // taps double-fire (place twice, or open-then-close the trade panel).
+  if(Date.now() - lastTouchActionTime < 500) return;
   const tile = tileFromEvent(e);
   if(!selectedBuild){
     if(inBounds(tile.x, tile.y) && grid[tile.y][tile.x].building?.id === 'tradingpost'){
@@ -789,7 +794,14 @@ canvas.addEventListener('touchmove', e=>{
   }
 }, {passive:true});
 canvas.addEventListener('touchend', e=>{
-  if(!touchMoved && hoverTile) placeAt(hoverTile);
+  lastTouchActionTime = Date.now();
+  if(touchMoved || !hoverTile) return;
+  if(selectedBuild){
+    placeAt(hoverTile);
+  } else if(inBounds(hoverTile.x, hoverTile.y) && grid[hoverTile.y][hoverTile.x].building?.id === 'tradingpost'){
+    openPanel('tradePanel');
+    playTone('click');
+  }
 }, {passive:true});
 document.getElementById('minimap').addEventListener('click', e=>{
   const rect = e.currentTarget.getBoundingClientRect();
@@ -1749,7 +1761,7 @@ refreshFromServer();
   };
 
   /* starting difficulty: seed a few buildings depending on the chosen level */
-  const STARTER_SETS = { 1:[], 2:[], 3:[] };
+  const STARTER_SETS = { 1:['house','fields','sawmill'], 2:['house'], 3:[] };
   function seedStarterBuildings(level){
     const starters = STARTER_SETS[level] || [];
     if(!starters.length) return;
@@ -1810,7 +1822,7 @@ refreshFromServer();
     {
       id:'sawmill-first',
       title:'Getting started',
-      html:'Building a <b>Sawmill</b> is the essential first step, followed by a <b>Stone Quarry</b> — without them your production chain stalls and the game will block further progress.',
+      html:'Building a <b>Woodcutter</b> is the essential first step, followed by a <b>Quarry</b> — without them your production chain stalls and the game will block further progress.',
       checkLabel:"I've read this — don't show again",
       require:false
     },
