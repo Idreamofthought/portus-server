@@ -193,6 +193,9 @@
   }
   .actionbtn.secondary{background:#f2ece0; border-color:#c9bfa8; color:#6b5f4a;}
   .actionbtn.raid{background:#fbe9e2; border-color:var(--terracotta); color:#8a3a1c;}
+  .actionbtn.active{background:#dff0d8; border-color:#7a9c5c; color:#3a5a2a; font-weight:600;}
+  .actionbtn:disabled{opacity:0.5; cursor:default;}
+  .recipe-stock{font-size:10px; color:#8a7a5c; font-weight:normal;}
   .trade-legend{
     display:grid; grid-template-columns:1fr 44px 54px 54px; gap:6px; align-items:center;
     font-family:-apple-system,sans-serif; font-size:10px; color:#8a7a5c; text-transform:uppercase;

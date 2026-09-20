@@ -63,7 +63,12 @@ export const BUILDINGS = [
    desc:'Needs wheat (from a Field) — produces flour'},
  {id:'baker', name:"Baker", ic:'🍞', cat:'Production', cost:{wood:25,stone:10}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), special:'bakery',
-   desc:'Needs flour (from a Mill) — bakes bread, and cakes if honey, jam, or cheese are in stock'},
+   recipes:[
+     {id:'honeyCake', name:'Honey Cake', ic:'🍯', needs:'honey'},
+     {id:'fruitCake', name:'Fruit Cake', ic:'🍎', needs:'jam'},
+     {id:'dairyCake', name:'Dairy Cake', ic:'🧀', needs:'cheese'}
+   ],
+   desc:'Needs flour (from a Mill) — always bakes bread first; tap to choose which cake to bake with any flour left over'},
  {id:'oliveoilmill', name:"Olive Press", ic:'🛢️', cat:'Production', cost:{wood:30,stone:15}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{olives:2}, produce:{oliveOil:1.4},
    desc:'Needs olives (from a Field planted with olives) — produces olive oil'},
@@ -108,7 +113,12 @@ export const BUILDINGS = [
    desc:'Needs feathers (from Chicken Coops) — produces quilts and pillows'},
  {id:'dairy', name:"Dairy", ic:'🥛', cat:'Production', cost:{wood:30,stone:15}, workers:2, requiresTech:'dairyfarming',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), special:'dairy',
-   desc:'Needs milk (from pastures) — churns butter, cheese, and cream'},
+   recipes:[
+     {id:'butter', name:'Butter', ic:'🧈'},
+     {id:'cheese', name:'Cheese', ic:'🧀'},
+     {id:'cream', name:'Cream', ic:'🥛'}
+   ],
+   desc:'Needs milk (from pastures) — tap to choose butter, cheese, or cream'},
  {id:'candlemaker', name:"Candlemaker", ic:'🕯️', cat:'Production', cost:{wood:20,stone:10}, workers:2, requiresTech:'confectionery',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{wax:1}, produce:{candles:1.2},
    desc:'Needs wax (from Beekeepers) — produces candles for Temples and trade'},
