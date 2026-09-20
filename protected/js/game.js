@@ -196,7 +196,7 @@ function tick(){
       // Player picks a single product from the recipe panel (defaults to the
       // first option so an unconfigured Dairy still produces something).
       const chosen = b.recipe || (def.recipes && def.recipes[0].id) || 'cheese';
-      const yieldMult = {butter:0.4, cheese:0.4, cream:0.35}[chosen] ?? 0.4;
+      const yieldMult = {butter:0.4, cheese:0.4, cream:0.35, yoghurt:0.45}[chosen] ?? 0.4;
       const amt = Math.min(1.2*laborRatio, res.milk);
       if(amt>0){ res.milk -= amt; addRes(chosen, amt*yieldMult*roadBoost); }
       return;
@@ -597,7 +597,7 @@ const RES_DISPLAY = [
   ['chickpeas','🌱'],['grapes','🍇'],['barley','🌿'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
   ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','�'],
   ['sugarcane','🎋'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
-  ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['jam','🫙'],['candles','🕯️'],
+  ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['yoghurt','🥣'],['jam','🫙'],['candles','🕯️'],
   ['quilts','🛏️'],['leatherGoods','👜'],['statues','🗿'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
   ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁'],
   ['wine','🍷'],['beer','🍺'],['mead','🍯']

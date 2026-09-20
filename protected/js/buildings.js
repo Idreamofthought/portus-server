@@ -116,9 +116,10 @@ export const BUILDINGS = [
    recipes:[
      {id:'butter', name:'Butter', ic:'🧈'},
      {id:'cheese', name:'Cheese', ic:'🧀'},
-     {id:'cream', name:'Cream', ic:'🥛'}
+     {id:'cream', name:'Cream', ic:'🍶'},
+     {id:'yoghurt', name:'Yoghurt', ic:'🥣'}
    ],
-   desc:'Needs milk (from pastures) — tap to choose butter, cheese, or cream'},
+   desc:'Needs milk (from pastures) — tap to choose butter, cheese, cream, or yoghurt'},
  {id:'candlemaker', name:"Candlemaker", ic:'🕯️', cat:'Production', cost:{wood:20,stone:10}, workers:2, requiresTech:'confectionery',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{wax:1}, produce:{candles:1.2},
    desc:'Needs wax (from Beekeepers) — produces candles for Temples and trade'},

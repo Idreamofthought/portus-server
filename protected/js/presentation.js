@@ -44,6 +44,7 @@ export const RESOURCE_INFO = {
   butter:'Butter: churned from milk at the Dairy.',
   cheese:'Cheese: churned from milk, prized for cakes and trade.',
   cream:'Cream: churned from milk at the Dairy.',
+  yoghurt:'Yoghurt: churned from milk at the Dairy.',
   jam:'Jam: preserved fruit and sugarcane, used by the Baker.',
   candles:'Candles: rendered from wax, burned in Temples and traded.',
   quilts:'Quilts: warm bedding crafted from feathers.',
