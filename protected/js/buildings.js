@@ -15,7 +15,7 @@ export const BUILDINGS = [
    produce:{fish:1.6}},
  {id:'fields', name:"Field", ic:'🌾', cat:'Production', cost:{wood:10}, workers:2, requiresTech:'irrigation',
    valid:(x,y)=>grid[y][x].terrain==='grass', isField:true},
- {id:'quarry', name:"Quarry", ic:'⛏️', cat:'Production', cost:{wood:30}, workers:2, requiresTech:'masonry',
+ {id:'quarry', name:"Quarry", ic:'⛏️', cat:'Production', cost:{wood:30}, workers:2,
    valid:(x,y)=>grid[y][x].terrain==='mountain', produce:{stone:2.2}},
  {id:'marblequarry', name:"Marble Quarry", ic:'🪨', cat:'Mining', cost:{wood:35,stone:25}, workers:3,
    valid:(x,y)=>grid[y][x].deposit==='marble', produce:{marble:1.8}, desc:'Extracts marble from mountain seams'},
