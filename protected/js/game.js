@@ -193,24 +193,31 @@ function tick(){
       return;
     }
     if(def.special==='dairy'){
+      // Player picks a single product from the recipe panel (defaults to the
+      // first option so an unconfigured Dairy still produces something).
+      const chosen = b.recipe || (def.recipes && def.recipes[0].id) || 'cheese';
+      const yieldMult = {butter:0.4, cheese:0.4, cream:0.35}[chosen] ?? 0.4;
       const amt = Math.min(1.2*laborRatio, res.milk);
-      if(amt>0){
-        res.milk -= amt;
-        addRes('butter', amt*0.4*roadBoost);
-        addRes('cheese', amt*0.4*roadBoost);
-        addRes('cream', amt*0.2*roadBoost);
-      }
+      if(amt>0){ res.milk -= amt; addRes(chosen, amt*yieldMult*roadBoost); }
       return;
     }
     if(def.special==='bakery'){
+      // Bread is always baked first from available flour.
       const breadAmt = Math.min(1.5*laborRatio, res.flour);
       if(breadAmt>0){ res.flour -= breadAmt; addRes('bread', breadAmt*0.85*roadBoost); }
-      const honeyCakeAmt = Math.min(0.6*laborRatio, res.flour, res.honey);
-      if(honeyCakeAmt>0){ res.flour -= honeyCakeAmt; res.honey -= honeyCakeAmt; addRes('honeyCake', honeyCakeAmt*0.8*roadBoost); }
-      const fruitCakeAmt = Math.min(0.6*laborRatio, res.flour, res.jam);
-      if(fruitCakeAmt>0){ res.flour -= fruitCakeAmt; res.jam -= fruitCakeAmt; addRes('fruitCake', fruitCakeAmt*0.8*roadBoost); }
-      const dairyCakeAmt = Math.min(0.6*laborRatio, res.flour, res.cheese);
-      if(dairyCakeAmt>0){ res.flour -= dairyCakeAmt; res.cheese -= dairyCakeAmt; addRes('dairyCake', dairyCakeAmt*0.8*roadBoost); }
+      // Any flour left over goes toward the single cake recipe the player
+      // picked from the recipe panel (defaults to the first cake so an
+      // unconfigured Baker still uses surplus flour instead of wasting it).
+      const chosenCake = b.recipe || (def.recipes && def.recipes[0].id);
+      const recipe = def.recipes && def.recipes.find(r=>r.id===chosenCake);
+      if(recipe){
+        const cakeAmt = Math.min(0.6*laborRatio, res.flour, res[recipe.needs]);
+        if(cakeAmt>0){
+          res.flour -= cakeAmt;
+          res[recipe.needs] -= cakeAmt;
+          addRes(recipe.id, cakeAmt*0.8*roadBoost);
+        }
+      }
       return;
     }
     if(def.special==='market'){
@@ -747,7 +754,13 @@ function updateBuildingTooltip(e){
     return;
   }
   const def = BLD_BY_ID[building.id];
-  tooltip.textContent = `${def ? def.ic : ''} ${def ? def.name : building.id}`.trim();
+  let label = `${def ? def.ic : ''} ${def ? def.name : building.id}`.trim();
+  if(def && def.recipes){
+    const activeId = building.recipe || def.recipes[0].id;
+    const recipe = def.recipes.find(r=>r.id===activeId);
+    if(recipe) label += ` — making ${recipe.name} (tap to change)`;
+  }
+  tooltip.textContent = label;
   tooltip.classList.add('show');
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -764,10 +777,7 @@ canvas.addEventListener('click', e=>{
   if(Date.now() - lastTouchActionTime < 500) return;
   const tile = tileFromEvent(e);
   if(!selectedBuild){
-    if(inBounds(tile.x, tile.y) && grid[tile.y][tile.x].building?.id === 'tradingpost'){
-      openPanel('tradePanel');
-      playTone('click');
-    }
+    handleBuildingTap(tile);
     return;
   }
   placeAt(tile);
@@ -798,11 +808,27 @@ canvas.addEventListener('touchend', e=>{
   if(touchMoved || !hoverTile) return;
   if(selectedBuild){
     placeAt(hoverTile);
-  } else if(inBounds(hoverTile.x, hoverTile.y) && grid[hoverTile.y][hoverTile.x].building?.id === 'tradingpost'){
-    openPanel('tradePanel');
-    playTone('click');
+  } else {
+    handleBuildingTap(hoverTile);
   }
 }, {passive:true});
+
+// Tapping a placed building with no build tool selected opens whatever panel
+// applies to it: the Trading Post's trade panel, or a recipe picker for any
+// building with a `recipes` list (currently the Baker and the Dairy).
+function handleBuildingTap(tile){
+  if(!inBounds(tile.x, tile.y)) return;
+  const building = grid[tile.y][tile.x].building;
+  if(!building) return;
+  const def = BLD_BY_ID[building.id];
+  if(building.id === 'tradingpost'){
+    openPanel('tradePanel');
+    playTone('click');
+  } else if(def && def.recipes){
+    openRecipePanel(building);
+    playTone('click');
+  }
+}
 document.getElementById('minimap').addEventListener('click', e=>{
   const rect = e.currentTarget.getBoundingClientRect();
   const relX = (e.clientX-rect.left)/rect.width;
@@ -901,6 +927,49 @@ function openPanel(panelId){
   const btn = document.querySelector(`.menuBtn[data-panel="${panelId}"]`);
   if(btn) btn.classList.add('active');
   if(panelId === 'tradePanel') renderTradePanel();
+}
+
+// Which placed building instance the open recipePanel is currently editing.
+let recipePanelBuilding = null;
+function openRecipePanel(building){
+  recipePanelBuilding = building;
+  closeAllPanels();
+  document.getElementById('recipePanel').classList.add('open');
+  renderRecipePanel();
+}
+function renderRecipePanel(){
+  const b = recipePanelBuilding;
+  const list = document.getElementById('recipeList');
+  const title = document.getElementById('recipePanelTitle');
+  if(!b || !list) return;
+  const def = BLD_BY_ID[b.id];
+  if(!def || !def.recipes){ closeAllPanels(); return; }
+  title.textContent = `${def.ic} ${def.name}`;
+  list.replaceChildren();
+  if(def.id === 'baker'){
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Bread is always baked first. Pick which cake to bake with any flour left over.';
+    list.appendChild(note);
+  } else {
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Pick which product to churn from incoming milk.';
+    list.appendChild(note);
+  }
+  const activeId = b.recipe || def.recipes[0].id;
+  def.recipes.forEach(r=>{
+    const btn = document.createElement('button');
+    btn.className = 'actionbtn' + (r.id===activeId ? ' active' : '');
+    const stockNote = r.needs ? `<span class="recipe-stock"> — needs ${Math.floor(res[r.needs]||0)} ${r.needs} in stock</span>` : '';
+    btn.innerHTML = `${r.ic||''} ${r.name}${stockNote}`;
+    btn.onclick = ()=>{
+      b.recipe = r.id;
+      showToast(`${def.name} will now make ${r.name}`);
+      renderRecipePanel();
+    };
+    list.appendChild(btn);
+  });
 }
 document.querySelectorAll('.menuBtn').forEach(btn=>{
   btn.onclick = ()=>{
@@ -1661,7 +1730,7 @@ function getState(){
     droughtTicksLeft,
     taxRate, scenarioId, scenarioState,
     grid: grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit}))),
-    buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined})),
+    buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
   };
 }
 function encodeState(s){
@@ -1694,6 +1763,7 @@ function applyState(s){
   s.buildings.forEach(b=>{
     const bld = {id:b.id, x:b.x, y:b.y};
     if(b.crop) bld.crop = b.crop;
+    if(b.recipe) bld.recipe = b.recipe;
     grid[b.y][b.x].building = bld;
     placedBuildings.push(bld);
   });
