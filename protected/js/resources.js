@@ -42,6 +42,17 @@ export function addResTo(res, cap, key, amt){
   }
 }
 
+export function missingInputsFrom(res, consume, scale = 1){
+  if(!consume) return [];
+  return Object.entries(consume)
+    .map(([key, amount]) => ({
+      key,
+      required: amount * scale,
+      available: Number(res[key] || 0)
+    }))
+    .filter(({ required, available }) => available < required);
+}
+
 export function canAffordFrom(res, cost){
   return Object.entries(cost).every(([k,v]) => (res[k]||0) >= v);
 }
