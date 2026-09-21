@@ -1,7 +1,7 @@
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
 import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
-import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoodOf, addResTo, canAffordFrom, payFrom } from '/game-assets/resources.js';
+import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom } from '/game-assets/resources.js';
 import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
 import { pickDisaster } from '/game-assets/disasters.js';
@@ -602,6 +602,13 @@ const RES_DISPLAY = [
   ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁'],
   ['wine','🍷'],['beer','🍺'],['mead','🍯']
 ];
+const RESOURCE_GROUPS = [
+  { label:'Food', keys:['wheat','flour','bread','olives','oliveOil','chickpeas','grapes','barley','fish','deer','meat','milk','eggs','fruit','honeyCake','fruitCake','dairyCake'] },
+  { label:'Raw', keys:['wood','stone','clay','goldOre','silverOre','copperOre','marble','tin','salt','honey','wax','sugarcane','feathers','hide'] },
+  { label:'Crafted', keys:['pottery','tools','gold','silver','copper','bronze','scrolls','leather','butter','cheese','cream','yoghurt','jam','candles','quilts','leatherGoods','statues','weapons','armour','wine','beer','mead'] }
+];
+const RES_ICON_BY_KEY = new Map(RES_DISPLAY);
+
 function renderRes(){
   const bar = document.getElementById('resbar');
   bar.replaceChildren();
@@ -609,22 +616,35 @@ function renderRes(){
   coinPill.className='res coin';
   coinPill.textContent = `🪙 ${Math.floor(coin)}`;
   bar.appendChild(coinPill);
-  RES_DISPLAY.forEach(([k,ic])=>{
-    const v = res[k];
-    if(v<0.05 && !['wood','stone'].includes(k)) return;
-    const d=document.createElement('div');
-    d.className='res';
-    if(v > (previousResourceValues[k] ?? v)){
-      d.classList.add('resourceUp');
-      playTone('gather');
-      setTimeout(()=>d.classList.remove('resourceUp'), 550);
-    }
-    previousResourceValues[k] = v;
-    d.title = RESOURCE_INFO[k] || k;
-    d.setAttribute('aria-label', `${RESOURCE_INFO[k] || k}: ${Math.floor(v)}`);
-    d.textContent = `${ic} ${Math.floor(v)}`;
-    d.onclick = ()=> showToast(RESOURCE_INFO[k] || k);
-    bar.appendChild(d);
+
+  RESOURCE_GROUPS.forEach(group=>{
+    const visibleKeys = group.keys.filter(k => res[k] >= 0.05 || ['wood','stone'].includes(k));
+    if(!visibleKeys.length) return;
+    const section = document.createElement('section');
+    section.className = 'resgroup';
+    section.setAttribute('aria-label', `${group.label} resources`);
+    const label = document.createElement('span');
+    label.className = 'resgroup-label';
+    label.textContent = group.label;
+    section.appendChild(label);
+    visibleKeys.forEach(k=>{
+      const v = res[k];
+      const d=document.createElement('button');
+      d.type='button';
+      d.className='res';
+      if(v > (previousResourceValues[k] ?? v)){
+        d.classList.add('resourceUp');
+        playTone('gather');
+        setTimeout(()=>d.classList.remove('resourceUp'), 550);
+      }
+      previousResourceValues[k] = v;
+      d.title = RESOURCE_INFO[k] || k;
+      d.setAttribute('aria-label', `${RESOURCE_INFO[k] || k}: ${Math.floor(v)}`);
+      d.textContent = `${RES_ICON_BY_KEY.get(k) || '•'} ${Math.floor(v)}`;
+      d.onclick = ()=> showToast(RESOURCE_INFO[k] || k);
+      section.appendChild(d);
+    });
+    bar.appendChild(section);
   });
   document.getElementById('popline').textContent = `👥 Population ${pop.count}/${pop.capacity}`;
   document.getElementById('timeline').textContent =
@@ -745,6 +765,49 @@ function tileFromEvent(e){
   const y = Math.floor((clientY-rect.top)/TS);
   return {x,y};
 }
+function currentLaborRatio(){
+  const needed = totalWorkersNeeded();
+  const civilianPop = Math.max(0, pop.count - military.soldiers);
+  return needed > 0 ? Math.min(1, civilianPop / needed) : 1;
+}
+
+function formatResourceAmount(value){
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function buildingProductionStatus(building){
+  const def = BLD_BY_ID[building.id];
+  if(!def) return '';
+  const laborRatio = currentLaborRatio();
+  if(def.workers && laborRatio <= 0) return 'Paused — no available workers';
+
+  if(def.special === 'dairy'){
+    const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
+    return res.milk > 0
+      ? `Producing ${recipe?.name || 'dairy goods'}`
+      : 'Paused — needs milk (available 0)';
+  }
+
+  if(def.special === 'bakery'){
+    const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
+    if(res.flour <= 0) return 'Paused — needs flour (available 0)';
+    if(recipe?.needs && (res[recipe.needs] || 0) <= 0){
+      return `Baking bread — ${recipe.name} needs ${recipe.needs} (available 0)`;
+    }
+    return recipe ? `Baking bread and ${recipe.name}` : 'Baking bread';
+  }
+
+  const missing = missingInputsFrom(res, def.consume, laborRatio);
+  if(missing.length){
+    const detail = missing
+      .map(item=>`${formatResourceAmount(item.required)} ${item.key} (available ${formatResourceAmount(item.available)})`)
+      .join(', ');
+    return `Paused — needs ${detail}`;
+  }
+  if(def.produce) return 'Producing';
+  return '';
+}
+
 function updateBuildingTooltip(e){
   const tooltip = document.getElementById('buildingTooltip');
   const tile = tileFromEvent(e);
@@ -760,6 +823,8 @@ function updateBuildingTooltip(e){
     const recipe = def.recipes.find(r=>r.id===activeId);
     if(recipe) label += ` — making ${recipe.name} (tap to change)`;
   }
+  const status = buildingProductionStatus(building);
+  if(status) label += `\n${status}`;
   tooltip.textContent = label;
   tooltip.classList.add('show');
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -826,6 +891,10 @@ function handleBuildingTap(tile){
     playTone('click');
   } else if(def && def.recipes){
     openRecipePanel(building);
+    playTone('click');
+  } else if(def){
+    const status = buildingProductionStatus(building);
+    showToast(status ? `${def.name}: ${status}` : def.name);
     playTone('click');
   }
 }
@@ -961,7 +1030,7 @@ function renderRecipePanel(){
   def.recipes.forEach(r=>{
     const btn = document.createElement('button');
     btn.className = 'actionbtn' + (r.id===activeId ? ' active' : '');
-    const stockNote = r.needs ? `<span class="recipe-stock"> — needs ${Math.floor(res[r.needs]||0)} ${r.needs} in stock</span>` : '';
+    const stockNote = r.needs ? `<span class="recipe-stock"> — needs ${r.needs}; available ${Math.floor(res[r.needs]||0)}</span>` : '';
     btn.innerHTML = `${r.ic||''} ${r.name}${stockNote}`;
     btn.onclick = ()=>{
       b.recipe = r.id;
