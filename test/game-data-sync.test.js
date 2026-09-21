@@ -33,12 +33,9 @@ function splitTopLevel(str) {
   return parts;
 }
 
-test("protected/js/buildings.js ids match save-validation BUILDING_IDS", () => {
-  const buildingsJsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/js/buildings.js");
-  const buildingsJs = fs.readFileSync(buildingsJsPath, "utf8");
-  const buildingsMatch = buildingsJs.match(/export const BUILDINGS = \[([\s\S]*?)\n\];/);
-  assert.ok(buildingsMatch, "expected a BUILDINGS array in protected/js/buildings.js");
-  const ids = [...buildingsMatch[1].matchAll(/\{id:'([a-zA-Z0-9]+)'/g)].map((m) => m[1]);
+test("protected/js/buildings.js ids match save-validation BUILDING_IDS", async () => {
+  const { BUILDINGS } = await import("../protected/js/buildings.js");
+  const ids = BUILDINGS.map((building) => building.id);
   assert.ok(ids.length > 0, "expected at least one building id");
   assert.deepEqual(new Set(ids), BUILDING_IDS);
 });

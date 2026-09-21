@@ -972,8 +972,11 @@ app.post(
 // Save game state
 app.post("/api/save", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
   const json = req.body?.state;
-  if (typeof json !== "string" || json.length > MAX_SAVE_BYTES) {
+  if (typeof json !== "string") {
     return res.status(400).json({ error: "invalid_save" });
+  }
+  if (json.length > MAX_SAVE_BYTES) {
+    return res.status(413).json({ error: "save too large" });
   }
 
   let migrated;
