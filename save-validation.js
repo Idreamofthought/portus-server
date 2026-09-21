@@ -10,7 +10,7 @@ export const RESOURCE_KEYS = new Set([
   "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "barley", "fish",
   "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax",
   "sugarcane", "feathers", "hide", "leather", "butter", "cheese", "cream", "jam",
-  "candles", "quilts", "leatherGoods", "statues", "weapons", "armour", "meat", "milk", "eggs", "fruit",
+  "candles", "quilts", "leatherGoods", "statues", "weapons", "armour", "meat", "milk", "eggs", "fruit", "yoghurt",
   "honeyCake", "fruitCake", "dairyCake", "wine", "beer", "mead"
 ]);
 
