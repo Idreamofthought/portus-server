@@ -26,6 +26,10 @@ export const BUILDING_IDS = new Set([
   "winemaker", "brewery", "meadery"
 ]);
 
+const RECIPE_IDS = new Set([
+  "honeyCake", "fruitCake", "dairyCake", "butter", "cheese", "cream", "yoghurt"
+]);
+
 export const TECH_BONUS_KEYS = new Set([
   "field", "quarry", "fish", "foundry", "trade", "wood", "clay", "raid", "research"
 ]);
@@ -100,12 +104,13 @@ function validateBuildings(buildings, grid) {
   return buildings.every((building) => {
     if (!isPlainObject(building)) return false;
     const keys = Object.keys(building);
-    if (!keys.every((key) => ["id", "x", "y", "crop"].includes(key))) return false;
+    if (!keys.every((key) => ["id", "x", "y", "crop", "recipe"].includes(key))) return false;
     if (!["id", "x", "y"].every((key) => Object.hasOwn(building, key))) return false;
     if (!BUILDING_IDS.has(building.id) || !Number.isInteger(building.x) || !Number.isInteger(building.y)) return false;
     if (building.x < 0 || building.x >= COLS || building.y < 0 || building.y >= ROWS) return false;
     if (building.crop !== undefined && typeof building.crop !== "string") return false;
     if (building.crop !== undefined && building.crop.length > 32) return false;
+    if (building.recipe !== undefined && !RECIPE_IDS.has(building.recipe)) return false;
     if (grid[building.y][building.x].terrain === "sea") return false;
     const position = `${building.x},${building.y}`;
     if (occupied.has(position)) return false;
