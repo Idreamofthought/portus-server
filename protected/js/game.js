@@ -237,7 +237,7 @@ function tick(){
       return;
     }
     if(def.consume){
-      let ok = Object.entries(def.consume).every(([k,v])=>res[k] >= v*laborRatio*0.4);
+      const ok = Object.entries(def.consume).every(([k,v])=>res[k] >= v*laborRatio);
       if(!ok) return;
       Object.entries(def.consume).forEach(([k,v])=> res[k]=Math.max(0,res[k]-v*laborRatio));
     }
@@ -1790,7 +1790,11 @@ document.getElementById('loadBtn').onclick = ()=>{
 document.getElementById('cloudSaveBtn').onclick = async ()=>{
   if(!currentUser){ showToast('Log in first to save to your account'); return; }
   try{
-    await api('/api/save', {method:'POST', body: JSON.stringify(getState())});
+    const state = getState();
+    await api('/api/save', {
+      method:'POST',
+      body: JSON.stringify({ state: JSON.stringify(state), captain: state.captain })
+    });
     showToast('Game Saved.');
     playTone('click');
   } catch(e){ showToast(e.message); }
