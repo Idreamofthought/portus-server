@@ -6,6 +6,12 @@
 export const FOOD_KEYS = ['wheat','olives','chickpeas','grapes','barley','fish','deer','bread','meat','milk','eggs','fruit','honeyCake','fruitCake','dairyCake'];
 export const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt','marble','tin','bronze','honey','wax','sugarcane','feathers','hide','leather','butter','cheese','cream','yoghurt','jam','candles','quilts','leatherGoods','statues','weapons','armour','wine','beer','mead'];
 
+export const RESOURCE_GROUPS = [
+  { label:'Food', keys:['wheat','flour','bread','olives','oliveOil','chickpeas','grapes','barley','fish','deer','meat','milk','eggs','fruit','honeyCake','fruitCake','dairyCake'] },
+  { label:'Raw', keys:['wood','stone','clay','goldOre','silverOre','copperOre','marble','tin','salt','honey','wax','sugarcane','feathers','hide'] },
+  { label:'Crafted', keys:['pottery','tools','gold','silver','copper','bronze','scrolls','leather','butter','cheese','cream','yoghurt','jam','candles','quilts','leatherGoods','statues','weapons','armour','wine','beer','mead'] }
+];
+
 export const PRICES = {
   wood:0.4, stone:0.5, clay:0.4, pottery:1.4, tools:2, scrolls:1.8,
   goldOre:3, silverOre:2, copperOre:1.4, gold:8, silver:5, copper:3,
