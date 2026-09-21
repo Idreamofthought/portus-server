@@ -1,7 +1,7 @@
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
 import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
-import { FOOD_KEYS, GENERAL_KEYS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom } from '/game-assets/resources.js';
+import { FOOD_KEYS, GENERAL_KEYS, RESOURCE_GROUPS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom } from '/game-assets/resources.js';
 import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
 import { pickDisaster } from '/game-assets/disasters.js';
@@ -601,11 +601,6 @@ const RES_DISPLAY = [
   ['quilts','🛏️'],['leatherGoods','👜'],['statues','🗿'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
   ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁'],
   ['wine','🍷'],['beer','🍺'],['mead','🍯']
-];
-const RESOURCE_GROUPS = [
-  { label:'Food', keys:['wheat','flour','bread','olives','oliveOil','chickpeas','grapes','barley','fish','deer','meat','milk','eggs','fruit','honeyCake','fruitCake','dairyCake'] },
-  { label:'Raw', keys:['wood','stone','clay','goldOre','silverOre','copperOre','marble','tin','salt','honey','wax','sugarcane','feathers','hide'] },
-  { label:'Crafted', keys:['pottery','tools','gold','silver','copper','bronze','scrolls','leather','butter','cheese','cream','yoghurt','jam','candles','quilts','leatherGoods','statues','weapons','armour','wine','beer','mead'] }
 ];
 const RES_ICON_BY_KEY = new Map(RES_DISPLAY);
 
