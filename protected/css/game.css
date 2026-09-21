@@ -36,6 +36,16 @@
   .res.coin{border-color:var(--gold); color:var(--gold);}
   .res.resourceUp{animation:resourceFlash 0.55s ease-out;}
   .res[title]{cursor:help;}
+  .resgroup{
+    flex:0 0 auto; display:flex; align-items:center; gap:2px; padding-left:6px;
+    border-left:1px solid #6a5c46;
+  }
+  .resgroup-label{
+    color:#c9bfa8; font:600 9px/1 -apple-system,sans-serif; letter-spacing:0.5px;
+    text-transform:uppercase; padding:0 3px; white-space:nowrap;
+  }
+  .resgroup .res{appearance:none; cursor:pointer;}
+  .resgroup:first-of-type{border-left:0;padding-left:0;}
 
   #statusbar{
     display:flex; align-items:center; gap:8px; padding:4px 10px; font-size:11px;
@@ -78,7 +88,7 @@
     position:fixed; z-index:30; display:none; pointer-events:none; max-width:220px;
     padding:5px 8px; border:1px solid var(--gold); border-radius:5px;
     background:rgba(30,25,20,0.94); color:var(--paper); font:12px/1.2 -apple-system,sans-serif;
-    box-shadow:0 2px 8px rgba(0,0,0,0.4); white-space:nowrap;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4); white-space:pre-line;
   }
   #buildingTooltip.show{display:block;}
 
