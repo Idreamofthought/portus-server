@@ -93,3 +93,16 @@ test("migration tolerates malformed input without throwing", () => {
   assert.equal(migrateSave("nope"), "nope");
   assert.deepEqual(migrateSave({}), {});
 });
+
+
+test("configured building recipes survive save validation", () => {
+  const save = migrateSave(legacySave());
+  save.buildings = [{ id: "baker", x: 1, y: 1, recipe: "honeyCake" }];
+  assert.deepEqual(validateSave(save), { ok: true });
+});
+
+test("unknown building recipes are rejected", () => {
+  const save = migrateSave(legacySave());
+  save.buildings = [{ id: "baker", x: 1, y: 1, recipe: "freeResources" }];
+  assert.deepEqual(validateSave(save), { ok: false, error: "invalid_save" });
+});
