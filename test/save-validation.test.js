@@ -21,6 +21,8 @@ function validSave() {
     questsCompleted: [],
     military: { soldiers: 0, cap: 0 },
     droughtTicksLeft: 0,
+    tickCount: 0,
+    civicMilestones: [],
     taxRate: 0,
     scenarioId: null,
     scenarioState: { disastersSurvived: 0, failed: false },
