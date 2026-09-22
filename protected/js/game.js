@@ -1188,6 +1188,11 @@ let tickInterval = null;
 let sessionInterval = null;
 let currentUser = null; // {email, captainName}
 let hasFreeAccess = false;
+let hasPermanentAccess = false;
+
+function hasUnlimitedAccess(){
+  return hasFreeAccess || hasPermanentAccess;
+}
 
 let csrfPromise = null;
 async function getCsrf(){
@@ -1215,7 +1220,7 @@ function showPayBox(){
   document.getElementById('whoami').textContent = `Signed in as ${currentUser.email}`;
   const payCardBtn = document.getElementById('payCardBtn');
   const payPaypalBtn = document.getElementById('payPaypalBtn');
-  if(hasFreeAccess){
+  if(hasUnlimitedAccess()){
     document.getElementById('verifyBanner').style.display = 'none';
     payCardBtn.style.display = 'none';
     payPaypalBtn.style.display = 'none';
@@ -1242,13 +1247,14 @@ async function refreshFromServer(){
     }
     const s = await api('/api/access');
     hasFreeAccess = !!s.freeAccess;
+    hasPermanentAccess = !!s.permanentAccess;
     showPayBox();
     if(s.canPlay){
       const discoveries = await api('/api/discoveries');
       codexEntries = discoveries.codexEntries || [];
       renderCodexPanel();
     }
-    if(hasFreeAccess){
+    if(hasUnlimitedAccess()){
       accessExpiresAt = Infinity;
       startPlaying();
       return;
@@ -1257,7 +1263,8 @@ async function refreshFromServer(){
     if(s.canPlay){
       const heartbeat = await api('/api/access/heartbeat',{method:'POST'});
       hasFreeAccess = !!heartbeat.freeAccess;
-      if(hasFreeAccess){
+      hasPermanentAccess = !!heartbeat.permanentAccess;
+      if(hasUnlimitedAccess()){
         accessExpiresAt = Infinity;
         startPlaying();
         return;
@@ -1281,7 +1288,7 @@ function startPlaying(){
   checkSession();
 }
 function pausePlaying(){
-  if(hasFreeAccess){
+  if(hasUnlimitedAccess()){
     document.getElementById('paywall').style.display = 'none';
     document.getElementById('timeline').textContent = '';
     return;
@@ -1300,7 +1307,8 @@ async function heartbeatAccess(){
   try{
     const a=await api('/api/access/heartbeat',{method:'POST'});
     hasFreeAccess = !!a.freeAccess;
-    if(hasFreeAccess){
+    hasPermanentAccess = !!a.permanentAccess;
+    if(hasUnlimitedAccess()){
       accessExpiresAt = Infinity;
       document.getElementById('timeline').textContent = '';
       return;
@@ -1312,7 +1320,7 @@ async function heartbeatAccess(){
 }
 
 function checkSession(){
-  if(hasFreeAccess){
+  if(hasUnlimitedAccess()){
     document.getElementById('timeline').textContent = '';
     return;
   }
@@ -1346,7 +1354,7 @@ document.getElementById('loginBtn').onclick = async ()=>{
 document.getElementById('logoutBtn').onclick = async ()=>{
   await api('/api/access/stop', {method:'POST'}).catch(()=>{});
   await api('/api/logout', {method:'POST'});
-  currentUser = null; accessExpiresAt = 0; hasFreeAccess = false;
+  currentUser = null; accessExpiresAt = 0; hasFreeAccess = false; hasPermanentAccess = false;
   pausePlaying();
 };
 document.getElementById('payCardBtn').onclick = async ()=>{

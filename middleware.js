@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { db } from "./database2.js";
 import freeAccess from "./data/free_access.json" with { type: "json" };
 import { ROUTES } from "./routes-config.js";
+import { hasPermanentAccess } from "./entitlements.js";
 
 const freeAccessEmails = new Set(
   [
@@ -45,7 +46,7 @@ export function requireVerified(req, res, next) {
 }
 
 export function requirePaid(req, res, next) {
-  if (hasFreeAccess(req.user.uid)) return next();
+  if (hasFreeAccess(req.user.uid) || hasPermanentAccess(req.user.uid)) return next();
 
   const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(req.user.uid);
   if (!row || row.remaining_seconds <= 0) {

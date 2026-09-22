@@ -35,6 +35,25 @@ Portus is not designed as a race for expansion. It is a slower, stranger form
 of strategy: a place to explore, endure, and learn what a landscape asks of the
 people who inhabit it.
 
+### Browser now, Steam next
+
+Portus remains fully playable in a web browser. The browser release is the
+primary launch build and the place where onboarding, progression, saves and
+player retention will be tested first.
+
+A desktop edition for Steam is the preferred future platform expansion. It
+will reuse the same game rules, data, lore and save format rather than becoming
+a separate fork. Steam packaging, ownership verification and store pricing
+will live at the platform boundary; they will not be embedded in the gameplay
+simulation. A smartphone edition is not currently planned because the map and
+panel-heavy interface are better suited to a larger screen.
+
+The current 24x24 pixel-art direction will be retained for the browser launch.
+Before a Steam release, presentation work will focus on crisp desktop scaling,
+readable panels, stronger terrain and building silhouettes, fullscreen and
+resolution options, sound controls, accessibility, and polished store assets.
+A wholesale graphical rebuild is not a prerequisite for validating the game.
+
 ### Explore the project
 
 - [I Dream of Thought](https://www.idreamofthought.org/) - the writing and creative archive
@@ -43,6 +62,7 @@ people who inhabit it.
 - [Writing archive](https://www.idreamofthought.org/writing/index.html) - poetry, fiction, philosophy, dreams, and ideas
 - [Portus lore](lore/README.md) - worldbuilding, Codex, myths, events, and narrative sources
 - [Portus documentation](docs/README.md) - systems, worldbuilding, artifacts, and developer guides
+- [Steam-first platform plan](STEAM.md) - browser launch gates, shared-core boundaries, and the future desktop release
 
 ## What this repository contains
 
@@ -93,6 +113,7 @@ The game client and server currently expose these systems:
 - Stripe and PayPal checkout
 - PayPal capture webhook with signature verification and duplicate protection
 - Time-based access system and protected `/game` route
+- Platform-neutral permanent ownership for a future Steam edition
 
 ## Project Structure
 
@@ -102,23 +123,21 @@ The game client and server currently expose these systems:
 ```text
 .
 ├── server.js, auth.js, middleware.js, email.js, resend.js
-├── payments.js, products.js, database2.js
+├── payments.js, products.js, database2.js, entitlements.js
 ├── public/                         served frontend and game client
 │   ├── *.html                      auth, payment, legal, and entry pages
 │   ├── *.js                        page-specific client modules
 │   ├── shared.css                  shared auth and account styles
 │   ├── images/                     optimized site images
 │   └── sounds/                     canonical sound assets
-├── protected/                      server-routed game pages
+├── protected/                      authenticated browser game
 │   ├── game.html
-│   ├── codex.html
-│   ├── lore.html
-│   └── prologue.html
+│   ├── js/                         gameplay and presentation modules
+│   └── css/                        game interface styles
 ├── homepage/                       public site and writing tree
-├── css/                            shared homepage and protected-page styles
-├── lore/                           index for Portus worldbuilding sources
-├── routes/                         authenticated player-state APIs
-├── models/                         persistence helpers
+│   └── portus/                     public Portus landing pages
+├── portus/                         canonical worldbuilding sources
+├── lore/                           worldbuilding index and migration target
 ├── migrations/                     explicit SQLite migrations
 ├── jest.config.js                  Jest integration-test configuration
 ├── test/                            unit, sandbox, and integration tests
@@ -130,6 +149,11 @@ The game client and server currently expose these systems:
 
 See [lore/README.md](lore/README.md) for the Portus content map and
 [ROADMAP.md](ROADMAP.md) for planned work.
+
+The authenticated API currently remains in `server.js`; `routes/` and `models/`
+are planned boundaries, not current directories. Platform-neutral ownership is
+implemented in `entitlements.js`, allowing a future Steam purchase to unlock
+the same browser-compatible game without putting store logic into gameplay.
 
 ### Lore Structure
 
@@ -165,7 +189,9 @@ Start the server:
 npm start
 ```
 
-The server runs at `http://localhost:8080`. The game is available at `http://localhost:8080/portus/`.
+The server runs at `http://localhost:8080`. The public Portus page is available
+at `http://localhost:8080/portus/`; authenticated play begins at
+`http://localhost:8080/game`.
 
 For local development, set `NODE_ENV=development` and use an HTTP `SITE_URL`, such as `http://localhost:8080`.
 
@@ -210,8 +236,9 @@ Portus is deployed on Railway. The server exposes:
 ```text
 /                    homepage
 /public              public assets
-/portus              game client, served from /public
-/protected/game      paid game mode
+/portus              public Portus landing page
+/game                authenticated browser game
+/game-assets         authenticated game JavaScript and CSS
 ```
 
 Railway checks the `/health` endpoint and runs one replica in the configured
@@ -222,11 +249,23 @@ are present in the service variables and that the `EMAIL_FROM` domain is
 verified in Resend. See the [Railway deployment checklist](docs/RAILWAY-DEPLOYMENT-CHECKLIST.md)
 for the complete release checks.
 
-The Portus client is mounted with:
+The public landing page and protected game are routed separately. Game assets
+are served only after authentication, email verification and an access check.
 
-```js
-app.use("/portus", express.static(path.join(__dirname, "public")));
-```
+## Platform strategy
+
+The browser game will be soft-launched to a small tester group before Steam
+packaging begins. Evidence from tutorial completion, first saves, session
+length and return play will guide later gameplay and presentation investment.
+
+Access is expressed as a platform-neutral `portus_full_game` entitlement. A
+future Steam integration must verify ownership server-side before granting that
+entitlement; the client must never be trusted to declare a purchase. Existing
+web timed passes and free tester access continue to work alongside permanent
+ownership.
+
+See [STEAM.md](STEAM.md) for release gates, proposed repository boundaries and
+the decisions deliberately deferred until the browser beta produces evidence.
 
 ## PayPal Webhook
 
