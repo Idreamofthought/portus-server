@@ -68,6 +68,7 @@ import {
 } from "./payments.js";
 import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
+import { TREE_LEAVES, TREE_BRANCHES } from "./tree-leaf-catalog.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -234,6 +235,83 @@ app.get(["/portus", "/portus/"], (_req, res) =>
 app.get(["/tree", "/tree/", "/tree/index.html"], (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/tree/index.html"))
 );
+
+const treeLeafBySourceUrl = new Map(
+  TREE_LEAVES.map((leaf) => [`/${leaf.source}`, leaf])
+);
+const treeLeafByAddress = new Map(
+  TREE_LEAVES.map((leaf) => [`${leaf.branch}/${leaf.slug}`, leaf])
+);
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function treeLeafUrl(leaf) {
+  return `/tree/leaves/${leaf.branch}/${encodeURIComponent(leaf.slug)}.html`;
+}
+
+// The old writing URLs remain useful as catalogue references, but the work now
+// lives at a leaf address inside the Great Tree.
+app.get("/writing/:archive/:slug.html", (req, res, next) => {
+  const leaf = treeLeafBySourceUrl.get(req.path);
+  if (!leaf) return next();
+  res.redirect(301, treeLeafUrl(leaf));
+});
+
+app.get("/tree/leaves/:branch/:slug.html", (req, res, next) => {
+  const leaf = treeLeafByAddress.get(`${req.params.branch}/${req.params.slug}`);
+  if (!leaf) return next();
+
+  const sourcePath = path.join(__dirname, "public", leaf.source);
+  let html;
+  try {
+    html = fs.readFileSync(sourcePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return next();
+    return next(error);
+  }
+
+  const canonical = `<link rel="canonical" href="${SITE_URL}${treeLeafUrl(leaf)}">`;
+  if (/<link rel="canonical"[^>]*>/i.test(html)) {
+    html = html.replace(/<link rel="canonical"[^>]*>/i, canonical);
+  } else {
+    html = html.replace("</head>", `  ${canonical}\n</head>`);
+  }
+  html = html.replaceAll('href="/#branches"', 'href="/tree/"');
+  res.type("html").send(html);
+});
+
+app.get("/tree/leaves/:branch/", (req, res, next) => {
+  const branchTitle = TREE_BRANCHES[req.params.branch];
+  if (!branchTitle) return next();
+
+  const leaves = TREE_LEAVES.filter((leaf) => leaf.branch === req.params.branch);
+  const cards = leaves.map((leaf) => `
+    <article>
+      <p class="leaf-number">${escapeHtml(leaf.category)}</p>
+      <h2><a href="${treeLeafUrl(leaf)}">${escapeHtml(leaf.title)}</a></h2>
+    </article>`).join("");
+
+  res.type("html").send(`<!doctype html>
+<html lang="en"><head>
+<link rel="stylesheet" href="/nav.css"><link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(branchTitle)} Leaves | The Great Tree</title>
+<meta name="description" content="${leaves.length} leaves growing on the ${escapeHtml(branchTitle)} branch of I Dream of Thought.">
+<link rel="canonical" href="${SITE_URL}/tree/leaves/${encodeURIComponent(req.params.branch)}/">
+<link rel="stylesheet" href="/tree/css/tree.css"></head><body>
+<nav class="idot-topnav" aria-label="Site navigation"><a class="idot-brand" href="/">I Dream of Thought</a><a href="/tree/">Tree</a><a href="/writing/index.html">Catalogue</a><a href="/what-is">About</a><a href="/contact">Contact</a><a class="idot-play" href="/game">Play Portus</a></nav>
+<main class="tree-page"><a class="site-link" href="/tree/branches/${encodeURIComponent(req.params.branch)}.html">← ${escapeHtml(branchTitle)} branch</a>
+<header class="tree-header"><p class="eyebrow">${leaves.length} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>
+<section class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section>
+<footer><a href="/tree/">The Great Tree</a><a href="/writing/index.html">Catalogue</a></footer></main></body></html>`);
+});
 
 app.use(express.static(path.join(__dirname, "homepage")));
 app.use(express.static(path.join(__dirname, "public")));
