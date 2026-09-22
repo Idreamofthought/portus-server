@@ -1,7 +1,7 @@
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
 import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
-import { FOOD_KEYS, GENERAL_KEYS, RESOURCE_GROUPS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom } from '/game-assets/resources.js';
+import { FOOD_KEYS, GENERAL_KEYS, RESOURCE_GROUPS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom, maintenanceBill } from '/game-assets/resources.js';
 import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
 import { pickDisaster } from '/game-assets/disasters.js';
@@ -16,10 +16,14 @@ const TRADE_GOODS = [
   { id: 'marble', label: 'Marble', buyCost: 12, sellValue: 4 },
   { id: 'tin', label: 'Tin', buyCost: 10, sellValue: 3 },
   { id: 'bronze', label: 'Bronze', buyCost: 15, sellValue: 5 },
+  { id: 'copper', label: 'Copper', buyCost: 9, sellValue: 3 },
+  { id: 'salt', label: 'Salt', buyCost: 6, sellValue: 2 },
   { id: 'honey', label: 'Honey', buyCost: 8, sellValue: 3 },
   { id: 'wax', label: 'Wax', buyCost: 9, sellValue: 3 },
   { id: 'candles', label: 'Candles', buyCost: 11, sellValue: 4 },
   { id: 'cheese', label: 'Cheese', buyCost: 9, sellValue: 3 },
+  { id: 'butter', label: 'Butter', buyCost: 7, sellValue: 2 },
+  { id: 'sugar', label: 'Sugar', buyCost: 7, sellValue: 2 },
   { id: 'jam', label: 'Jam', buyCost: 10, sellValue: 3 },
   { id: 'quilts', label: 'Quilts', buyCost: 16, sellValue: 6 },
   { id: 'leatherGoods', label: 'Leather Goods', buyCost: 20, sellValue: 7 },
@@ -90,6 +94,31 @@ let techHappinessBonus = 0;
 let questsCompleted = new Set();
 let buildingPops = [];
 let previousResourceValues = {};
+let civicMilestones = new Set();
+
+const CIVIC_MESSAGES = {
+  bar:'🍺 Citizens celebrate as the first bar opens.',
+  sewer:'♻️ Citizens thank the gods as sewers begin cleaning the town.',
+  dentist:'🦷 Citizens sigh with relief as the first dentist opens.',
+  sugarhouse:'🧁 The first Sugar House opens; cane can finally become sugar.',
+  floodbarrier:'🌊 Workers raise the first flood defences along the water.',
+  school:'🏫 Children gather as the first school opens.',
+  doctor:'⚕️ The town welcomes its first doctor.',
+  market:'🛒 Traders crowd into the town’s first market.',
+  temple:'⛩️ The first temple bells sound across Portus.'
+};
+
+function payCivicMaintenance(){
+  if(tickCount === 0 || tickCount % 120 !== 0) return;
+  const {roofs:roofCost, floodWorks:floodCost, services:serviceCost, total:due} = maintenanceBill(placedBuildings);
+  if(due <= 0) return;
+  const paid = Math.min(coin, due);
+  coin -= paid;
+  if(paid < due) happiness = Math.max(0, happiness - Math.min(10, (due-paid)*0.5));
+  const shortfall = paid < due ? `; ${Math.ceil(due-paid)} coin deferred` : '';
+  logEvent(`🔨 Civic maintenance: ${roofCost} roofs, ${floodCost} flood works, ${serviceCost} services — ${Math.floor(paid)} coin paid${shortfall}.`);
+  showToast(`Maintenance cost: ${Math.floor(paid)} coin${shortfall}`);
+}
 
 const audioState = { context: null };
 function playTone(kind){
@@ -197,8 +226,15 @@ function tick(){
       // first option so an unconfigured Dairy still produces something).
       const chosen = b.recipe || (def.recipes && def.recipes[0].id) || 'cheese';
       const yieldMult = {butter:0.4, cheese:0.4, cream:0.35, yoghurt:0.45}[chosen] ?? 0.4;
-      const amt = Math.min(1.2*laborRatio, res.milk);
-      if(amt>0){ res.milk -= amt; addRes(chosen, amt*yieldMult*roadBoost); }
+      const recipe = def.recipes.find(r=>r.id===chosen);
+      const extraInputs = recipe?.inputs || {};
+      const extrasReady = Object.entries(extraInputs).every(([key,amount])=>res[key] >= amount*laborRatio);
+      const amt = extrasReady ? Math.min(1.2*laborRatio, res.milk) : 0;
+      if(amt>0){
+        res.milk -= amt;
+        Object.entries(extraInputs).forEach(([key,amount])=>res[key]-=amount*laborRatio);
+        addRes(chosen, amt*yieldMult*roadBoost);
+      }
       return;
     }
     if(def.special==='bakery'){
@@ -211,10 +247,12 @@ function tick(){
       const chosenCake = b.recipe || (def.recipes && def.recipes[0].id);
       const recipe = def.recipes && def.recipes.find(r=>r.id===chosenCake);
       if(recipe){
-        const cakeAmt = Math.min(0.6*laborRatio, res.flour, res[recipe.needs]);
+        const inputs = recipe.inputs || (recipe.needs ? {[recipe.needs]:1} : {});
+        const inputLimit = Object.entries(inputs).reduce((limit,[key,amount])=>Math.min(limit, (res[key]||0)/amount), Infinity);
+        const cakeAmt = Math.min(0.6*laborRatio, res.flour, inputLimit);
         if(cakeAmt>0){
           res.flour -= cakeAmt;
-          res[recipe.needs] -= cakeAmt;
+          Object.entries(inputs).forEach(([key,amount])=>res[key]-=cakeAmt*amount);
           addRes(recipe.id, cakeAmt*0.8*roadBoost);
         }
       }
@@ -254,6 +292,7 @@ function tick(){
   });
 
   coin += tradeIncome;
+  payCivicMaintenance();
 
   // docks bonus from boats
   let dockCount = placedBuildings.filter(b=>b.id==='docks').length;
@@ -275,12 +314,15 @@ function tick(){
 
   // happiness from services
   let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
+  const sweetStock = res.honeyCake+res.fruitCake+res.dairyCake+res.jam;
+  const hasDentist = placedBuildings.some(b=>b.id==='dentist');
+  const dentalPenalty = Math.min(7, sweetStock*0.018) * (hasDentist ? 0.2 : 1);
   let comfortBonus = Math.min(6, res.quilts*0.06) + Math.min(6, res.leatherGoods*0.05) +
     Math.min(6, res.statues*0.08) +
     Math.min(6, (res.wine+res.beer+res.mead)*0.05) +
     Math.min(8, (res.honeyCake+res.fruitCake+res.dairyCake)*0.04);
   let taxPenalty = taxRate * 400;
-  let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty));
+  let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty - dentalPenalty));
   happiness += (target-happiness)*0.02;
   happiness = Math.max(0, Math.min(100, happiness));
 
@@ -691,7 +733,8 @@ function renderPanel(){
       const btn=document.createElement('button');
       const locked = b.requiresTech && !unlockedTechs.has(b.requiresTech);
       btn.className='bldbtn'+(locked?' locked':''); btn.dataset.id=b.id;
-      const costStr = Object.entries(b.cost).map(([k,v])=>`${v} ${k}`).join(', ');
+      const resourceCost = Object.entries(b.cost).map(([k,v])=>`${v} ${k}`).join(', ');
+      const costStr = resourceCost + (b.coinCost ? `, ${b.coinCost} coin` : '');
       const desc = b.desc || '';
       const unlockNote = locked ? `Requires ${techName(b.requiresTech)}` : '';
       btn.innerHTML =
@@ -723,7 +766,8 @@ function updateBuildPreview(id){
   }
   const def = BLD_BY_ID[id];
   titleEl.textContent = `${def.ic} ${def.name}`;
-  const costStr = Object.entries(def.cost).map(([k,v])=>`${v} ${k}`).join(', ');
+  const resourceCost = Object.entries(def.cost).map(([k,v])=>`${v} ${k}`).join(', ');
+  const costStr = resourceCost + (def.coinCost ? `, ${def.coinCost} coin` : '');
   const extra = def.desc ? ` — ${def.desc}` : '';
   bodyEl.textContent = `Cost: ${costStr}${extra}`;
 }
@@ -778,6 +822,8 @@ function buildingProductionStatus(building){
 
   if(def.special === 'dairy'){
     const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
+    const missingExtras = missingInputsFrom(res, recipe?.inputs, laborRatio);
+    if(missingExtras.length) return `Paused — ${recipe.name} needs ${missingExtras.map(x=>x.key).join(', ')}`;
     return res.milk > 0
       ? `Producing ${recipe?.name || 'dairy goods'}`
       : 'Paused — needs milk (available 0)';
@@ -786,8 +832,9 @@ function buildingProductionStatus(building){
   if(def.special === 'bakery'){
     const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
     if(res.flour <= 0) return 'Paused — needs flour (available 0)';
-    if(recipe?.needs && (res[recipe.needs] || 0) <= 0){
-      return `Baking bread — ${recipe.name} needs ${recipe.needs} (available 0)`;
+    const missingRecipeInputs = missingInputsFrom(res, recipe?.inputs, laborRatio);
+    if(missingRecipeInputs.length){
+      return `Baking bread — ${recipe.name} needs ${missingRecipeInputs.map(x=>x.key).join(', ')}`;
     }
     return recipe ? `Baking bread and ${recipe.name}` : 'Baking bread';
   }
@@ -944,7 +991,9 @@ function placeAt({x,y}){
   if(tile.building){ showToast('Tile already occupied'); return; }
   if(!def.valid(x,y)){ showToast(`Can't place ${def.name} here`); return; }
   if(!canAfford(def.cost)){ showToast('Not enough resources'); return; }
+  if((def.coinCost||0) > coin){ showToast(`Not enough coin — ${def.name} needs ${def.coinCost}`); return; }
   pay(def.cost);
+  coin -= def.coinCost||0;
   const b = {id:def.id, x, y};
   if(def.isField) b.crop = selectedCrop;
   tile.building = b;
@@ -967,7 +1016,13 @@ function placeAt({x,y}){
     if(def.capBonus.general) cap.general += def.capBonus.general;
     if(def.capBonus.food) cap.food += def.capBonus.food;
   }
-  showToast(`Built ${def.name}`);
+  let buildMessage = `Built ${def.name}`;
+  if(CIVIC_MESSAGES[def.id] && !civicMilestones.has(def.id)){
+    civicMilestones.add(def.id);
+    buildMessage = CIVIC_MESSAGES[def.id];
+    logEvent(buildMessage);
+  }
+  showToast(buildMessage);
   playTone('build');
   const guide = document.getElementById('firstActionGuide');
   if(def.id === 'house' && guide){
@@ -991,6 +1046,32 @@ function openPanel(panelId){
   const btn = document.querySelector(`.menuBtn[data-panel="${panelId}"]`);
   if(btn) btn.classList.add('active');
   if(panelId === 'tradePanel') renderTradePanel();
+  if(panelId === 'productionPanel') renderProductionGuide();
+}
+
+function renderProductionGuide(){
+  const guide = document.getElementById('productionGuide');
+  if(!guide) return;
+  guide.replaceChildren();
+  const intro = document.createElement('p');
+  intro.className = 'pnote';
+  intro.textContent = 'Every active chain, from its inputs to its output. Tap buildings on the map to see live shortages.';
+  guide.appendChild(intro);
+  BUILDINGS.filter(def=>def.produce || def.special==='bakery' || def.special==='dairy' || def.special==='foundry').forEach(def=>{
+    const row = document.createElement('div');
+    row.className = 'tech';
+    let chain = '';
+    if(def.special==='bakery') chain = 'flour + recipe ingredients → bread + selected cake';
+    else if(def.special==='dairy') chain = 'milk (+ salt for cheese) → selected dairy product';
+    else if(def.special==='foundry') chain = 'metal ore → refined metal; copper + tin → bronze';
+    else {
+      const inputs = Object.keys(def.consume||{}).join(' + ') || 'workers / terrain';
+      const outputs = Object.keys(def.produce||{}).join(' + ');
+      chain = `${inputs} → ${outputs}`;
+    }
+    row.innerHTML = `<b>${def.ic} ${def.name}</b><div class="pnote">${chain}</div>`;
+    guide.appendChild(row);
+  });
 }
 
 // Which placed building instance the open recipePanel is currently editing.
@@ -1025,7 +1106,9 @@ function renderRecipePanel(){
   def.recipes.forEach(r=>{
     const btn = document.createElement('button');
     btn.className = 'actionbtn' + (r.id===activeId ? ' active' : '');
-    const stockNote = r.needs ? `<span class="recipe-stock"> — needs ${r.needs}; available ${Math.floor(res[r.needs]||0)}</span>` : '';
+    const inputs = r.inputs || (r.needs ? {[r.needs]:1} : {});
+    const inputText = Object.entries(inputs).map(([key,amount])=>`${amount} ${key} (${Math.floor(res[key]||0)} available)`).join(', ');
+    const stockNote = inputText ? `<span class="recipe-stock"> — needs ${inputText}</span>` : '';
     btn.innerHTML = `${r.ic||''} ${r.name}${stockNote}`;
     btn.onclick = ()=>{
       b.recipe = r.id;
@@ -1520,11 +1603,12 @@ function disasterCtx(){
     hasCoastalBuild: placedBuildings.some(b=>['docks','fisherhut','boatbuilder'].includes(b.id)),
     hasRiverBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'river')),
     hasFields: placedBuildings.some(b=>BLD_BY_ID[b.id].isField),
-    droughtTicksLeft, coin,
+    droughtTicksLeft, coin, ageTicks:tickCount,
+    floodRelief: placedBuildings.some(b=>b.id==='floodbarrier') ? 0.3 : 1,
     addHappiness: (delta)=>{ happiness = Math.max(0, happiness+delta); },
     reducePop: (n)=>{ pop.count = Math.max(1, pop.count-n); },
     reduceBoats: (n)=>{ boats = Math.max(0, boats-n); },
-    waterlogStores: ()=>{ res.wheat *= 0.6; res.wood *= 0.8; res.clay *= 0.8; },
+    waterlogStores: (relief=1)=>{ res.wheat *= 1-0.4*relief; res.wood *= 1-0.2*relief; res.clay *= 1-0.2*relief; },
     startDrought: (ticks)=>{ droughtTicksLeft = ticks; },
   };
 }
@@ -1791,7 +1875,7 @@ function getState(){
     techBonus, techHappinessBonus,
     questsCompleted: Array.from(questsCompleted),
     military,
-    droughtTicksLeft,
+    droughtTicksLeft, tickCount, civicMilestones:Array.from(civicMilestones),
     taxRate, scenarioId, scenarioState,
     grid: grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit}))),
     buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
@@ -1812,6 +1896,8 @@ function applyState(s){
   res = { ...zeroedResources, ...s.res };
   cap = s.cap; pop = s.pop; happiness = s.happiness; boats = s.boats;
   coin = s.coin; research = s.research; droughtTicksLeft = s.droughtTicksLeft||0;
+  tickCount = s.tickCount||0;
+  civicMilestones = new Set(s.civicMilestones||[]);
   unlockedTechs = new Set(s.unlockedTechs||[]);
   Object.assign(techBonus, s.techBonus||{});
   techHappinessBonus = s.techHappinessBonus || 0;
