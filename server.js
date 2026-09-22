@@ -292,11 +292,14 @@ app.get("/tree/leaves/:branch/", (req, res, next) => {
   if (!branchTitle) return next();
 
   const leaves = TREE_LEAVES.filter((leaf) => leaf.branch === req.params.branch);
-  const cards = leaves.map((leaf) => `
+  let cards = leaves.map((leaf) => `
     <article>
       <p class="leaf-number">${escapeHtml(leaf.category)}</p>
       <h2><a href="${treeLeafUrl(leaf)}">${escapeHtml(leaf.title)}</a></h2>
     </article>`).join("");
+  if (req.params.branch === "health") {
+    cards = `<article><p class="leaf-number">Health · Transplant and recovery</p><h2><a href="/tree/leaves/health/the-borrowed-kidney.html">The Borrowed Kidney</a></h2></article>${cards}`;
+  }
 
   res.type("html").send(`<!doctype html>
 <html lang="en"><head>
