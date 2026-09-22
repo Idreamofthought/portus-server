@@ -332,13 +332,14 @@ app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
   if (!branchTitle) return next();
 
   const leaves = leavesForBranch(req.params.branch);
+  const displayCount = leaves.length + (req.params.branch === "health" ? 1 : 0);
   let cards = leaves.map((leaf) => `
     <article class="leaf-card" data-title="${escapeHtml(leaf.title.toLocaleLowerCase())}">
       <p class="leaf-number">${escapeHtml(leaf.category)}${leaf.branch !== req.params.branch ? " · Cross-pollinated" : ""}</p>
       <h2><a href="${treeLeafUrl(leaf)}">${escapeHtml(leaf.title)}</a></h2>
     </article>`).join("");
   if (req.params.branch === "health") {
-    cards = `<article><p class="leaf-number">Health · Transplant and recovery</p><h2><a href="/tree/leaves/health/the-borrowed-kidney.html">The Borrowed Kidney</a></h2></article>${cards}`;
+    cards = `<article class="leaf-card" data-title="the borrowed kidney"><p class="leaf-number">Health · Transplant and recovery</p><h2><a href="/tree/leaves/health/the-borrowed-kidney.html">The Borrowed Kidney</a></h2></article>${cards}`;
   }
 
   res.type("html").send(`<!doctype html>
@@ -346,12 +347,14 @@ app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
 <link rel="stylesheet" href="/nav.css"><link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(branchTitle)} Leaves | The Great Tree</title>
-<meta name="description" content="${leaves.length} leaves growing on the ${escapeHtml(branchTitle)} branch of I Dream of Thought.">
+<meta name="description" content="${displayCount} leaves growing on the ${escapeHtml(branchTitle)} branch of I Dream of Thought.">
 <link rel="canonical" href="${SITE_URL}/tree/leaves/${encodeURIComponent(req.params.branch)}/">
 <link rel="stylesheet" href="/tree/css/tree.css"></head><body>
 <nav class="idot-topnav" aria-label="Site navigation"><a class="idot-brand" href="/">I Dream of Thought</a><a href="/tree/">Tree</a><a href="/writing/index.html">Catalogue</a><a href="/what-is">About</a><a href="/contact">Contact</a><a class="idot-play" href="/game">Play Portus</a></nav>
 <main class="tree-page"><a class="site-link" href="/tree/branches/${encodeURIComponent(req.params.branch)}.html">← ${escapeHtml(branchTitle)} branch</a>
-<header class="tree-header"><p class="eyebrow">${leaves.length} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>\n<section class="leaf-tools" aria-label="Find a leaf"><label for="leaf-search">Search this branch</label><input id="leaf-search" type="search" placeholder="Type a title or word"><label for="leaf-sort">Sort</label><select id="leaf-sort"><option value="az">A–Z</option><option value="za">Z–A</option></select><output id="leaf-count">${leaves.length} leaves</output></section>\n<section id="leaf-list" class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section><p id="leaf-empty" class="leaf-empty" hidden>No leaves match that search.</p>
+<header class="tree-header"><p class="eyebrow">${displayCount} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>
+<section class="leaf-tools" aria-label="Find a leaf"><label for="leaf-search">Search this branch</label><input id="leaf-search" type="search" placeholder="Type a title or word"><label for="leaf-sort">Sort</label><select id="leaf-sort"><option value="az">A–Z</option><option value="za">Z–A</option></select><output id="leaf-count">${displayCount} leaves</output></section>
+<section id="leaf-list" class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section><p id="leaf-empty" class="leaf-empty" hidden>No leaves match that search.</p>
 <footer><a href="/tree/">The Great Tree</a><a href="/writing/">Catalogue</a></footer></main><script src="/tree/js/leaves.js" defer></script></body></html>`);
 });
 
