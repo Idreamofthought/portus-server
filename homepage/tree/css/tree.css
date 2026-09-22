@@ -121,3 +121,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 2
 .leaf-pagination { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(200,200,255,.2); }
 .leaf-pagination a:last-child { text-align: right; }
 @media (max-width:760px) { .leaf-tools { grid-template-columns: 1fr; }.leaf-tools output { justify-self: start; }.leaf-pagination { grid-template-columns: 1fr; }.leaf-pagination a:last-child { text-align:left; } }
+
+.branch-growing { opacity: .62; border-style: dashed; box-shadow: none; cursor: default; }
+.branch-growing:hover { transform: none; background: rgba(255,255,255,.06); box-shadow: none; }
+.branch-growing small { margin-top: 10px; color: var(--muted); font-size: .76rem; }
