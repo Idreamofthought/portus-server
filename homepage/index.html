@@ -28,6 +28,13 @@
         }
         </script>
             <script defer data-domain="idreamofthought.org" src="https://plausible.io/js/script.js"></script>
+  <script>
+    // Legacy navigation compatibility: old site pages link to /#branches.
+    // Send those links to the actual Great Tree instead of looping on the homepage.
+    if (window.location.hash === '#branches') {
+      window.location.replace('/tree/');
+    }
+  </script>
 </head>
 
 <body>
