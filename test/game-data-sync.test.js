@@ -69,9 +69,12 @@ test("trade and production resources/buildings are defined and tracked in valida
   assert.ok(RESOURCE_KEYS.has("tin"));
   assert.ok(RESOURCE_KEYS.has("honey"));
   assert.ok(RESOURCE_KEYS.has("wax"));
+  assert.ok(RESOURCE_KEYS.has("sugar"));
   assert.ok(BUILDING_IDS.has("tinmine"));
   assert.ok(BUILDING_IDS.has("marblequarry"));
   assert.ok(BUILDING_IDS.has("beekeeper"));
+  assert.ok(BUILDING_IDS.has("sugarhouse"));
+  assert.ok(BUILDING_IDS.has("floodbarrier"));
 });
 
 test("protected/js/presentation.js covers every resource/terrain/deposit key", async () => {
