@@ -84,6 +84,7 @@
         <button class="menuBtn" data-panel="goalsPanel">🎯 Goals</button>
         <button class="menuBtn" data-panel="taxPanel">💰 Taxes</button>
         <button class="menuBtn" data-panel="tradePanel">🪙 Trade</button>
+        <button class="menuBtn" data-panel="productionPanel">⚙️ Production</button>
         <button class="menuBtn" data-panel="savePanel">💾 Save</button>
       </div>
 
@@ -179,6 +180,23 @@
           <button class="closeP">✕</button>
         </div>
         <div id="recipeList" class="panelBody"></div>
+      </div>
+
+      <div id="productionPanel" class="sidepanel">
+        <div class="panelHead">
+          <span>Production Guide</span>
+          <button class="closeP">✕</button>
+        </div>
+        <div class="panelBody production-guide">
+          <p class="pnote">Arrows show the building needed at each step. Direct foods are eaten automatically by citizens.</p>
+          <section><h3>🍞 Bread &amp; cakes</h3><p>Wheat → <b>Mill</b> → Flour → <b>Baker</b> → Bread</p><p>Sugarcane → <b>Sugar Mill</b> → Sugar</p><p>Fruit + Sugar → <b>Jam Maker</b> → Jam</p><p>Flour + Sugar + Honey, Jam or Butter → <b>Baker</b> → Cake</p></section>
+          <section><h3>🥛 Dairy</h3><p>Cows/Goats → Milk → <b>Dairy</b> → Butter, Cream or Yoghurt</p><p>Milk + Salt → <b>Dairy</b> → Cheese</p></section>
+          <section><h3>🥩 Preserved meat</h3><p>Deer + Salt → <b>Butcher</b> → Meat</p></section>
+          <section><h3>⚒️ Metals</h3><p>Metal ore → <b>Foundry</b> → Gold, Silver or Copper</p><p>Copper + Tin → <b>Foundry</b> → Bronze</p><p>Copper + Wood → <b>Blacksmith</b> → Tools</p><p>Silver + Copper → <b>Mint</b> → Coin</p></section>
+          <section><h3>🏺 Crafts</h3><p>Clay → <b>Potter</b> → Pottery → <b>Scribe</b> → Scrolls</p><p>Hide → <b>Tanner</b> → Leather → <b>Leatherworker</b> → Leather goods</p><p>Wax → <b>Candlemaker</b> → Candles → Temples</p></section>
+          <section><h3>🍷 Drinks</h3><p>Grapes → <b>Winery</b> → Wine</p><p>Barley → <b>Brewery</b> → Beer</p><p>Honey → <b>Meadery</b> → Mead</p></section>
+          <section><h3>🍽️ Eaten directly</h3><p>Chickpeas, fish, eggs, fruit, meat, milk, dairy goods, jam and baked foods feed citizens automatically.</p></section>
+        </div>
       </div>
 
       <div id="savePanel" class="sidepanel">
