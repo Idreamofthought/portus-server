@@ -1,7 +1,7 @@
 const SAVE_KEYS = new Set([
   "v", "captain", "res", "cap", "pop", "happiness", "boats", "coin", "research",
   "unlockedTechs", "techBonus", "techHappinessBonus", "questsCompleted", "military",
-  "droughtTicksLeft", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
+  "droughtTicksLeft", "tickCount", "civicMilestones", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
 ]);
 export { SAVE_KEYS };
 
@@ -9,7 +9,7 @@ export const RESOURCE_KEYS = new Set([
   "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
   "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "barley", "fish",
   "deer", "bread", "scrolls", "flour", "oliveOil", "salt", "marble", "tin", "bronze", "honey", "wax",
-  "sugarcane", "feathers", "hide", "leather", "butter", "cheese", "cream", "jam",
+  "sugarcane", "sugar", "feathers", "hide", "leather", "butter", "cheese", "cream", "jam",
   "candles", "quilts", "leatherGoods", "statues", "weapons", "armour", "meat", "milk", "eggs", "fruit", "yoghurt",
   "honeyCake", "fruitCake", "dairyCake", "wine", "beer", "mead"
 ]);
@@ -20,10 +20,10 @@ export const BUILDING_IDS = new Set([
   "goldmine", "silvermine", "coppermine", "tinmine", "saltmine", "mill", "baker", "oliveoilmill",
   "stockage", "granary", "road", "well", "sewer", "police", "fire", "doctor", "dentist",
   "school", "bar", "temple", "statue", "scribe", "library", "market", "tradingpost", "mint",
-  "taxoffice", "barracks", "orchard", "jammaker", "pigpasture", "cowpasture", "goatpasture",
+  "taxoffice", "barracks", "orchard", "sugarhouse", "jammaker", "pigpasture", "cowpasture", "goatpasture",
   "chickencoop", "butcher", "tanner", "leatherworker", "quiltmaker", "dairy", "candlemaker", "bronzesmith",
   "templegrand", "templemonument", "armourer", "wall", "guardtower", "moat", "trap", "fort",
-  "winemaker", "brewery", "meadery"
+  "winemaker", "brewery", "meadery", "floodbarrier"
 ]);
 
 const RECIPE_IDS = new Set([
@@ -68,6 +68,8 @@ function validateNumberMap(value, keys, { min = 0, max = MAX_NUMBER } = {}) {
 export function migrateSave(state) {
   if (!isPlainObject(state)) return state;
   const migrated = { ...state };
+  if (state.v === 1 && !Object.hasOwn(migrated, "tickCount")) migrated.tickCount = 0;
+  if (state.v === 1 && !Object.hasOwn(migrated, "civicMilestones")) migrated.civicMilestones = [];
 
   if (isPlainObject(state.res)) {
     const res = { ...state.res };
@@ -131,7 +133,8 @@ export function validateSave(value) {
   if (!finiteNumber(value.techHappinessBonus, { min: -MAX_FAVOUR, max: MAX_FAVOUR })) return invalid();
   if (!Array.isArray(value.questsCompleted) || !value.questsCompleted.every((id) => typeof id === "string" && id.length <= 64)) return invalid();
   if (!exactKeys(value.military, new Set(["soldiers", "cap"])) || !finiteNumber(value.military.soldiers, { min: 0 }) || !finiteNumber(value.military.cap, { min: 0 })) return invalid();
-  if (!finiteNumber(value.droughtTicksLeft, { min: 0 }) || !finiteNumber(value.taxRate, { min: 0, max: MAX_NUMBER })) return invalid();
+  if (!finiteNumber(value.droughtTicksLeft, { min: 0 }) || !finiteNumber(value.tickCount, { min: 0 }) || !finiteNumber(value.taxRate, { min: 0, max: MAX_NUMBER })) return invalid();
+  if (!Array.isArray(value.civicMilestones) || !value.civicMilestones.every((id) => typeof id === "string" && id.length <= 64)) return invalid();
   if (value.scenarioId !== null && typeof value.scenarioId !== "string") return invalid();
   if (!isPlainObject(value.scenarioState) || !Object.hasOwn(value.scenarioState, "disastersSurvived")) return invalid();
   if (Object.keys(value.scenarioState).some((key) => !["disastersSurvived", "completed", "failed"].includes(key))) return invalid();
