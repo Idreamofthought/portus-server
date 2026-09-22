@@ -13,6 +13,12 @@ import { createPortusMusic } from '/music.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
+  { id: 'wood', label: 'Wood', buyCost: 4, sellValue: 1 },
+  { id: 'stone', label: 'Stone', buyCost: 5, sellValue: 1 },
+  { id: 'clay', label: 'Clay', buyCost: 4, sellValue: 1 },
+  { id: 'tools', label: 'Tools', buyCost: 12, sellValue: 3 },
+  { id: 'wheat', label: 'Wheat', buyCost: 5, sellValue: 1 },
+  { id: 'copperOre', label: 'Copper Ore', buyCost: 7, sellValue: 2 },
   { id: 'marble', label: 'Marble', buyCost: 12, sellValue: 4 },
   { id: 'tin', label: 'Tin', buyCost: 10, sellValue: 3 },
   { id: 'bronze', label: 'Bronze', buyCost: 15, sellValue: 5 },
@@ -189,12 +195,20 @@ function tick(){
       return;
     }
     if(def.special==='foundry'){
-      const pairs=[['goldOre','gold'],['silverOre','silver'],['copperOre','copper']];
+      const selected = b.recipe || 'foundryAuto';
+      const pairs = selected === 'foundryAuto'
+        ? [['goldOre','gold'],['silverOre','silver'],['copperOre','copper']]
+        : selected === 'foundryGold' ? [['goldOre','gold']]
+        : selected === 'foundrySilver' ? [['silverOre','silver']]
+        : selected === 'foundryCopper' ? [['copperOre','copper']]
+        : [];
       for(const [ore,bar] of pairs){
         let amt = Math.min(1*laborRatio, res[ore]);
         if(amt>0){ res[ore]-=amt; addRes(bar, amt*0.8*techBonus.foundry*roadBoost); }
       }
-      const bronzeAmt = Math.min(1*laborRatio, res.tin, res.copper);
+      const bronzeAmt = ['foundryAuto','foundryBronze'].includes(selected)
+        ? Math.min(1*laborRatio, res.tin, res.copper)
+        : 0;
       if(bronzeAmt > 0){
         res.tin -= bronzeAmt;
         res.copper -= bronzeAmt;
@@ -1095,6 +1109,11 @@ function renderRecipePanel(){
     const note = document.createElement('p');
     note.className = 'pnote';
     note.textContent = 'Bread is always baked first. Pick which cake to bake with any flour left over.';
+    list.appendChild(note);
+  } else if(def.id === 'foundry'){
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Choose a metal to protect scarce copper, or use Automatic for mixed output.';
     list.appendChild(note);
   } else {
     const note = document.createElement('p');

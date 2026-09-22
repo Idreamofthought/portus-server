@@ -27,7 +27,8 @@ export const BUILDING_IDS = new Set([
 ]);
 
 const RECIPE_IDS = new Set([
-  "honeyCake", "fruitCake", "dairyCake", "butter", "cheese", "cream", "yoghurt"
+  "honeyCake", "fruitCake", "dairyCake", "butter", "cheese", "cream", "yoghurt",
+  "foundryAuto", "foundryCopper", "foundrySilver", "foundryGold", "foundryBronze"
 ]);
 
 export const TECH_BONUS_KEYS = new Set([
