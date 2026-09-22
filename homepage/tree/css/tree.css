@@ -125,3 +125,6 @@ footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 2
 .branch-growing { opacity: .62; border-style: dashed; box-shadow: none; cursor: default; }
 .branch-growing:hover { transform: none; background: rgba(255,255,255,.06); box-shadow: none; }
 .branch-growing small { margin-top: 10px; color: var(--muted); font-size: .76rem; }
+
+.branch-dead { border-color: rgba(166,126,82,.55); background: linear-gradient(145deg,rgba(92,62,38,.42),rgba(33,27,22,.7)); }
+.branch-dead span,.branch-dead small { color: #c7a77d; }
