@@ -232,7 +232,7 @@ app.get(["/portus", "/portus/"], (_req, res) =>
 );
 
 app.get(["/tree", "/tree/", "/tree/index.html"], (_req, res) =>
-  res.redirect(301, "/#branches")
+  res.sendFile(path.join(__dirname, "homepage/tree/index.html"))
 );
 
 app.use(express.static(path.join(__dirname, "homepage")));
