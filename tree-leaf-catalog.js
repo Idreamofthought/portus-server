@@ -93,6 +93,34 @@ export const TREE_LEAVES = [
     "source": "writing/opinions/twitter-trolling-and-forthright-females.html"
   },
   {
+    "title": "Wine Walks",
+    "branch": "cooking-wine",
+    "category": "Food & Wine",
+    "slug": "wine-walks",
+    "source": "writing/cooking-wine/wine-walks.html"
+  },
+  {
+    "title": "New Novel Planning",
+    "branch": "dead-leaves",
+    "category": "Dead leaf",
+    "slug": "new-novel-planning",
+    "source": "writing/dead-leaves/new-novel-planning.html"
+  },
+  {
+    "title": "The Archipelago Saga: Volume I",
+    "branch": "dead-leaves",
+    "category": "Dead leaf",
+    "slug": "the-archipelago-saga-volume-i",
+    "source": "writing/dead-leaves/the-archipelago-saga-volume-i.html"
+  },
+  {
+    "title": "Perspectives",
+    "branch": "french",
+    "category": "French poetry",
+    "slug": "perspectives",
+    "source": "writing/french/perspectives.html"
+  },
+  {
     "title": "A Disability",
     "branch": "health",
     "category": "Health",
@@ -1283,6 +1311,13 @@ export const TREE_LEAVES = [
     "source": "writing/opinions/summer-thoughts.html"
   },
   {
+    "title": "The Memory of Fire",
+    "branch": "prose",
+    "category": "Prose",
+    "slug": "the-memory-of-fire",
+    "source": "writing/prose/the-memory-of-fire.html"
+  },
+  {
     "title": "The year so far.",
     "branch": "prose",
     "category": "Personal",
@@ -1302,6 +1337,13 @@ export const TREE_LEAVES = [
     "category": "Personal",
     "slug": "welcome-to-my-blog-bienvenue-bord",
     "source": "writing/opinions/welcome-to-my-blog-bienvenue-bord.html"
+  },
+  {
+    "title": "Depth and Times",
+    "branch": "psychology",
+    "category": "Psychology",
+    "slug": "depth-and-times",
+    "source": "writing/psychology/depth-and-times.html"
   },
   {
     "title": "All the trees turn brown",
@@ -1793,7 +1835,11 @@ export const TREE_BRANCHES = {
   "prose": "Personal",
   "health": "Health",
   "bird-nests": "Bird Nests",
-  "fungi": "Fungi"
+  "fungi": "Fungi",
+  "dead-leaves": "Dead Leaves",
+  "cooking-wine": "Cooking & Wine",
+  "psychology": "Psychology",
+  "french": "French"
 };
 
 // Additional places where a leaf grows without duplicating its canonical text.
@@ -1831,5 +1877,8 @@ export const TREE_CROSS_BRANCHES = {
   ],
   "science/all-the-trees-turn-brown": [
     "fungi"
+  ],
+  "french/perspectives": [
+    "poems"
   ]
 };
