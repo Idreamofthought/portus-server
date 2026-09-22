@@ -37,6 +37,10 @@
 5. Open the site publicly with the homepage banner and announcement below.
 6. Continue daily checks for the first week: signup success, verification delivery, error rates, database persistence, and payment webhooks.
 
+The browser version remains the primary launch build and will continue after a
+Steam edition exists. Follow `STEAM.md` only after the soft launch produces
+enough onboarding, first-save, and return-play evidence to justify packaging.
+
 ## Public launch announcement
 
 **Portus is live.**

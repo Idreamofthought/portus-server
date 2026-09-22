@@ -114,11 +114,18 @@ Body:
 
 ### `GET /api/access`
 
-Returns remaining paid play time and whether the account can play.
+Returns whether the account can play. Timed web access includes
+`remainingSeconds` and `accessExpiresAt`; permanent platform ownership includes
+`permanentAccess: true` and an `accessProvider` such as `steam`.
 
 ### `POST /api/access/heartbeat`
 
 Keeps an active game session alive and consumes server-authoritative play time.
+Permanent entitlements are acknowledged without decrementing time.
+
+Steam ownership is not accepted directly from the client. A future Steamworks
+verification service must verify ownership server-side before granting the
+platform-neutral `portus_full_game` entitlement.
 
 ### `POST /api/access/stop`
 

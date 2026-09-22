@@ -2,6 +2,8 @@
 
 ## Near term
 
+- Soft-launch the browser game before beginning Steam packaging; use completion,
+  first-save and return-play evidence to decide when the desktop prototype is ready.
 - Expand the player-facing Codex with the remaining artifact, disaster, geology, ritual, and sky entries.
 - Add focused tests for payment webhooks, entitlement checks, and Codex allowlisting.
 - Run the provider sandbox checks in `API.md`: Stripe Checkout plus webhook replay, then PayPal order, capture, and webhook replay. Keep provider credentials out of the repository.
@@ -36,5 +38,7 @@
 
 ## Long term
 
-- Evaluate separating the public site, Portus application, and lore source into independent repositories only if their release and deployment needs diverge.
+- Build a Steam desktop prototype from the shared game core after the browser
+  beta release gates in `STEAM.md` have been met.
+- Evaluate separating the public site, Portus application, and lore source into independent repositories only if their release and deployment needs diverge. Do not fork the gameplay source for Steam.
 - Preserve stable URLs and a single documented source of truth before attempting any repository split.

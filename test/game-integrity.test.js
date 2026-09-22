@@ -11,6 +11,12 @@ test("cloud saves use the server request contract", () => {
   );
 });
 
+test("permanent store entitlements bypass the timed web paywall", () => {
+  assert.match(gameSource, /hasPermanentAccess\s*=\s*!!s\.permanentAccess/);
+  assert.match(gameSource, /hasFreeAccess\s*\|\|\s*hasPermanentAccess/);
+  assert.match(gameSource, /hasPermanentAccess\s*=\s*!!a\.permanentAccess/);
+});
+
 test("generic production requires the full labour-adjusted input", () => {
   assert.match(
     gameSource,

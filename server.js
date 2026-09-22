@@ -68,6 +68,7 @@ import {
 } from "./payments.js";
 import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
+import { getActiveEntitlement } from "./entitlements.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -665,6 +666,17 @@ app.get("/api/access", authenticateRequest, (req, res) => {
     });
   }
 
+  const entitlement = getActiveEntitlement(req.user.uid);
+  if (entitlement) {
+    return res.json({
+      remainingSeconds: null,
+      canPlay: true,
+      permanentAccess: true,
+      accessProvider: entitlement.provider,
+      accessExpiresAt: null
+    });
+  }
+
   const row = db
     .prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`)
     .get(req.user.uid);
@@ -685,6 +697,17 @@ app.post("/api/access/heartbeat", requireCsrf, authenticateRequest, generalApiLi
       remainingSeconds: null,
       canPlay: true,
       freeAccess: true,
+      accessExpiresAt: null
+    });
+  }
+
+  const entitlement = getActiveEntitlement(req.user.uid);
+  if (entitlement) {
+    return res.json({
+      remainingSeconds: null,
+      canPlay: true,
+      permanentAccess: true,
+      accessProvider: entitlement.provider,
       accessExpiresAt: null
     });
   }

@@ -80,6 +80,20 @@ CREATE TABLE IF NOT EXISTS time_tracking (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Platform-neutral ownership. Steam, web purchases, promotions and manual
+-- grants all unlock the same game; platform SDK details stay outside gameplay.
+CREATE TABLE IF NOT EXISTS entitlements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  entitlement TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  external_id TEXT,
+  granted_at INTEGER NOT NULL,
+  revoked_at INTEGER,
+  UNIQUE(user_id, entitlement, provider),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS saves (
   user_id INTEGER PRIMARY KEY,
   state TEXT NOT NULL,
@@ -163,6 +177,7 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS sessions_expires_at ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS purchases_user_id ON purchases(user_id);
+CREATE INDEX IF NOT EXISTS entitlements_user_active ON entitlements(user_id, entitlement, revoked_at);
 CREATE INDEX IF NOT EXISTS processed_payment_events_created_at ON processed_payment_events(created_at);
 CREATE INDEX IF NOT EXISTS pending_orders_created_at ON pending_orders(created_at);
 CREATE INDEX IF NOT EXISTS audit_events_user_created ON audit_events(user_id, created_at);
