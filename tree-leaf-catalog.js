@@ -1778,6 +1778,34 @@ export const TREE_LEAVES = [
     "category": "Teaching & Education",
     "slug": "thoughts-on-the-students-i-teach",
     "source": "writing/opinions/thoughts-on-the-students-i-teach.html"
+  },
+  {
+    "title": "What We Carry Forward",
+    "branch": "history-memory",
+    "category": "History & Memory",
+    "slug": "what-we-carry-forward",
+    "source": "writing/reflections/what-we-carry-forward.html"
+  },
+  {
+    "title": "Belonging, Exclusion and the Institutions Between Us",
+    "branch": "sociology",
+    "category": "Sociology",
+    "slug": "belonging-exclusion-and-the-institutions-between-us",
+    "source": "writing/reflections/belonging-exclusion-and-the-institutions-between-us.html"
+  },
+  {
+    "title": "Nerves Tuned to Failure",
+    "branch": "psychology",
+    "category": "Psychology",
+    "slug": "nerves-tuned-to-failure",
+    "source": "writing/reflections/nerves-tuned-to-failure.html"
+  },
+  {
+    "title": "The Long Light",
+    "branch": "love",
+    "category": "Love",
+    "slug": "the-long-light",
+    "source": "writing/reflections/the-long-light.html"
   }
 ];
 
@@ -1792,12 +1820,24 @@ export const TREE_BRANCHES = {
   "teaching-education": "Teaching & Education",
   "prose": "Personal",
   "health": "Health",
+  "love": "Love",
+  "psychology": "Psychology",
+  "sociology": "Sociology",
   "bird-nests": "Bird Nests",
   "fungi": "Fungi"
 };
 
 // Additional places where a leaf grows without duplicating its canonical text.
 export const TREE_CROSS_BRANCHES = {
+  "sociology/belonging-exclusion-and-the-institutions-between-us": [
+    "politics"
+  ],
+  "psychology/nerves-tuned-to-failure": [
+    "philosophy-ideas"
+  ],
+  "love/the-long-light": [
+    "prose"
+  ],
   "poems/sandmartins-linger": [
     "bird-nests",
     "science"
