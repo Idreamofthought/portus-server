@@ -4,13 +4,17 @@
 // game.html, so this module stays free of game-state coupling.
 
 export const DISASTER_TYPES = [
-  {id:'earthquake', eligible:()=>true, chance:()=>0.0012,
+  {id:'earthquake', eligible:(ctx)=>ctx.tickCount>=240, chance:()=>0.0012,
     resolve:(ctx)=>{
-      const hit = ctx.damageRandomBuildings(1+ctx.rnd(2));
-      ctx.addHappiness(-8*ctx.sewerRelief);
-      return `🌍 Earthquake! ${hit} building(s) collapsed.`;
+      const roll = ctx.rnd(100);
+      const severity = roll < 65 ? {name:'Tremor', damage:1, fear:3}
+        : roll < 92 ? {name:'Earthquake', damage:2, fear:8}
+        : {name:'Major earthquake', damage:4, fear:14};
+      const hit = ctx.damageRandomBuildings(severity.damage);
+      ctx.addHappiness(-severity.fear*ctx.sewerRelief);
+      return `🌍 ${severity.name}! ${hit} building(s) collapsed.`;
     }},
-  {id:'volcano', eligible:(ctx)=>ctx.hasMountainBuild, chance:()=>0.0006,
+  {id:'volcano', eligible:(ctx)=>ctx.tickCount>=600 && ctx.hasMountainBuild, chance:()=>0.0006,
     resolve:(ctx)=>{
       const hit = ctx.damageRandomBuildings(2+ctx.rnd(2), b=>ctx.nearTerrainOfBuilding(b,'mountain'));
       const popLoss = ctx.rnd(2);

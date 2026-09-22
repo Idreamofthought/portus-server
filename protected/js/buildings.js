@@ -37,7 +37,13 @@ export const BUILDINGS = [
    desc:'Needs copper (from a Foundry) — produces tools'},
  {id:'foundry', name:"Foundry", ic:'🔥', cat:'Production', cost:{stone:50,wood:20}, workers:3,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain),
-   special:'foundry', desc:'Refines ore from mines into gold, silver and copper'},
+   special:'foundry', recipes:[
+     {id:'foundryAuto', name:'Automatic', ic:'⚙️'},
+     {id:'foundryCopper', name:'Copper', ic:'🟠'},
+     {id:'foundrySilver', name:'Silver', ic:'⚪'},
+     {id:'foundryGold', name:'Gold', ic:'🟡'},
+     {id:'foundryBronze', name:'Bronze', ic:'🧲'}
+   ], desc:'Refines ore from mines — tap to choose which metal takes priority'},
  {id:'bronzesmith', name:"Bronzesmith", ic:'🗿', cat:'Production', cost:{wood:35,stone:25}, workers:3, requiresTech:'metallurgy',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{copper:1,tin:1}, produce:{statues:0.7},
    desc:'Needs copper and tin — casts bronze statues for trade and civic pride'},
@@ -66,7 +72,7 @@ export const BUILDINGS = [
    recipes:[
      {id:'honeyCake', name:'Honey Cake', ic:'🍯', needs:'honey'},
      {id:'fruitCake', name:'Fruit Cake', ic:'🍎', needs:'jam'},
-     {id:'dairyCake', name:'Dairy Cake', ic:'🧀', needs:'cheese'}
+     {id:'dairyCake', name:'Butter Cake', ic:'🧈', needs:'butter'}
    ],
    desc:'Needs flour (from a Mill) — always bakes bread first; tap to choose which cake to bake with any flour left over'},
  {id:'oliveoilmill', name:"Olive Press", ic:'🛢️', cat:'Production', cost:{wood:30,stone:15}, workers:2,
@@ -84,9 +90,12 @@ export const BUILDINGS = [
  {id:'orchard', name:"Orchard", ic:'🍏', cat:'Production', cost:{wood:15}, workers:2, requiresTech:'orcharding',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), produce:{fruit:1.4},
    desc:'Grows fruit for the Baker and the Jam Maker'},
+ {id:'sugarmill', name:"Sugar Mill", ic:'🧂', cat:'Production', cost:{wood:30,stone:15}, workers:2, requiresTech:'orcharding',
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{sugarcane:2}, produce:{sugar:1.4},
+   desc:'Refines sugarcane from Fields into sugar for jam and cakes'},
  {id:'jammaker', name:"Jam Maker", ic:'🫙', cat:'Production', cost:{wood:25,stone:10}, workers:2, requiresTech:'orcharding',
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{fruit:1.5,sugarcane:1}, produce:{jam:1},
-   desc:'Needs fruit (from an Orchard) and sugarcane (from a Field) — produces jam'},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{fruit:1.5,sugar:1}, produce:{jam:1},
+   desc:'Needs fruit (from an Orchard) and sugar (from a Sugar Mill) — produces jam'},
  {id:'pigpasture', name:"Pig Pasture", ic:'🐖', cat:'Production', cost:{wood:25}, workers:2, requiresTech:'animalhusbandry',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), produce:{meat:1.0,hide:0.6},
    desc:'Raises pigs for meat and hide'},
@@ -100,8 +109,8 @@ export const BUILDINGS = [
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), produce:{eggs:1.6,feathers:0.8,meat:0.4},
    desc:'Raises chickens for eggs, feathers, and meat'},
  {id:'butcher', name:"Butcher", ic:'🥩', cat:'Production', cost:{wood:30,stone:15}, workers:2, requiresTech:'animalhusbandry',
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), produce:{meat:1.5},
-   desc:'Processes livestock into extra meat'},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{deer:1,salt:0.2}, produce:{meat:1.5},
+   desc:'Uses salt to preserve meat supplied by Hunters'},
  {id:'tanner', name:"Tanner", ic:'🪢', cat:'Production', cost:{wood:25,stone:10}, workers:2, requiresTech:'tanning',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{hide:1.5}, produce:{leather:1},
    desc:'Needs hide (from pastures) — produces leather'},
@@ -115,7 +124,7 @@ export const BUILDINGS = [
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), special:'dairy',
    recipes:[
      {id:'butter', name:'Butter', ic:'🧈'},
-     {id:'cheese', name:'Cheese', ic:'🧀'},
+     {id:'cheese', name:'Cheese', ic:'🧀', needs:'salt'},
      {id:'cream', name:'Cream', ic:'🍶'},
      {id:'yoghurt', name:'Yoghurt', ic:'🥣'}
    ],
@@ -143,7 +152,8 @@ export const BUILDINGS = [
  {id:'doctor', name:"Doctor's House", ic:'⚕️', cat:'Services', cost:{wood:30,stone:30}, workers:2,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), happinessBonus:7},
  {id:'dentist', name:"Dentist", ic:'🦷', cat:'Services', cost:{wood:30,stone:20,tools:10}, workers:2,
-   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), happinessBonus:6},
+   valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), happinessBonus:6,
+   desc:'Protects citizens from the dental cost of abundant cakes and sweets'},
  {id:'school', name:"School", ic:'🏫', cat:'Services', cost:{wood:40,stone:20}, workers:3,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), happinessBonus:5,
    desc:'Boosts nearby Library research by 20%'},

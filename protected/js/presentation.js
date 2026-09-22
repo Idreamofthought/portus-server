@@ -38,6 +38,7 @@ export const RESOURCE_INFO = {
   honey:'Honey: a sweet trade good gathered by beekeepers.',
   wax:'Wax: a valuable crafting material, refined into candles.',
   sugarcane:'Sugarcane: a sweet crop grown in fields, used by the Jam Maker.',
+  sugar:'Sugar: refined from sugarcane, used in jam and cakes.',
   feathers:'Feathers: gathered from chickens, used by the Quilt Maker.',
   hide:'Hide: raw animal skin, tanned into leather.',
   leather:'Leather: tanned hide used by the Leatherworker.',

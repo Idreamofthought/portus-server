@@ -14,6 +14,7 @@ function baseCtx(overrides={}){
     hasRiverBuild: true,
     hasFields: true,
     droughtTicksLeft: 0,
+    tickCount: 240,
     coin: 0,
     addHappiness: () => {},
     reducePop: () => {},
@@ -45,6 +46,15 @@ test("pickDisaster returns null when no disaster's roll succeeds", () => {
   } finally {
     Math.random = originalRandom;
   }
+});
+
+test("earthquakes and volcanoes wait until the settlement is established", () => {
+  const earthquake = DISASTER_TYPES.find((d) => d.id === "earthquake");
+  const volcano = DISASTER_TYPES.find((d) => d.id === "volcano");
+  assert.equal(earthquake.eligible(baseCtx({ tickCount: 239 })), false);
+  assert.equal(earthquake.eligible(baseCtx({ tickCount: 240 })), true);
+  assert.equal(volcano.eligible(baseCtx({ tickCount: 599 })), false);
+  assert.equal(volcano.eligible(baseCtx({ tickCount: 600 })), true);
 });
 
 test("every disaster's resolve() returns a non-empty message", () => {

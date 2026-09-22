@@ -13,6 +13,15 @@ import { createPortusMusic } from '/music.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
+  { id: 'wood', label: 'Wood', buyCost: 4, sellValue: 1 },
+  { id: 'stone', label: 'Stone', buyCost: 5, sellValue: 1 },
+  { id: 'clay', label: 'Clay', buyCost: 4, sellValue: 1 },
+  { id: 'tools', label: 'Tools', buyCost: 12, sellValue: 3 },
+  { id: 'wheat', label: 'Wheat', buyCost: 5, sellValue: 1 },
+  { id: 'copperOre', label: 'Copper Ore', buyCost: 9, sellValue: 2 },
+  { id: 'copper', label: 'Copper', buyCost: 14, sellValue: 4 },
+  { id: 'salt', label: 'Salt', buyCost: 7, sellValue: 2 },
+  { id: 'sugar', label: 'Sugar', buyCost: 9, sellValue: 3 },
   { id: 'marble', label: 'Marble', buyCost: 12, sellValue: 4 },
   { id: 'tin', label: 'Tin', buyCost: 10, sellValue: 3 },
   { id: 'bronze', label: 'Bronze', buyCost: 15, sellValue: 5 },
@@ -28,6 +37,20 @@ const TRADE_GOODS = [
   { id: 'beer', label: 'Beer', buyCost: 9, sellValue: 3 },
   { id: 'mead', label: 'Mead', buyCost: 13, sellValue: 4 }
 ];
+
+const CIVIC_MILESTONES = {
+  bar: '🍺 Citizens celebrate as the first bar opens its doors.',
+  sewer: '♻️ Citizens thank the gods as clean streets bring relief to the city.',
+  dentist: '🦷 Citizens sigh with relief as the city\'s first dentist opens — just in time.',
+  doctor: '⚕️ The sick take heart: a physician now serves the city.',
+  school: '🏫 Children gather as the city\'s first school opens.',
+  market: '🛒 Merchants fill the square, and the city begins to prosper.',
+  temple: '⛩️ Incense rises as citizens dedicate their first temple.',
+  library: '📚 The city\'s knowledge finds a home.',
+  fire: '🧯 Citizens sleep more easily beneath the watch of the fire brigade.',
+  police: '🛡️ Order comes to the streets.',
+  sugarmill: '🧂 Sweetness reaches Portus as the first sugar mill begins production.'
+};
 
 /* ---------------- TRADE DEMAND ---------------- */
 // buy = base*(1 + demand*X), sell = base*(1 + demand*Y). X > Y and buyCost >
@@ -83,6 +106,7 @@ let divineFavourTicks = 0;
 let choiceEventOpen = false;
 let captainName = '';
 let eventLog = [];
+let celebratedBuildings = new Set();
 let discoveryRollInFlight = false;
 let taxRate = 0;      // coin per citizen per tick
 let scenarioId = null;
@@ -160,12 +184,20 @@ function tick(){
       return;
     }
     if(def.special==='foundry'){
-      const pairs=[['goldOre','gold'],['silverOre','silver'],['copperOre','copper']];
+      const selected = b.recipe || 'foundryAuto';
+      const pairs = selected === 'foundryAuto'
+        ? [['goldOre','gold'],['silverOre','silver'],['copperOre','copper']]
+        : selected === 'foundryGold' ? [['goldOre','gold']]
+        : selected === 'foundrySilver' ? [['silverOre','silver']]
+        : selected === 'foundryCopper' ? [['copperOre','copper']]
+        : [];
       for(const [ore,bar] of pairs){
         let amt = Math.min(1*laborRatio, res[ore]);
         if(amt>0){ res[ore]-=amt; addRes(bar, amt*0.8*techBonus.foundry*roadBoost); }
       }
-      const bronzeAmt = Math.min(1*laborRatio, res.tin, res.copper);
+      const bronzeAmt = ['foundryAuto','foundryBronze'].includes(selected)
+        ? Math.min(1*laborRatio, res.tin, res.copper)
+        : 0;
       if(bronzeAmt > 0){
         res.tin -= bronzeAmt;
         res.copper -= bronzeAmt;
@@ -197,8 +229,10 @@ function tick(){
       // first option so an unconfigured Dairy still produces something).
       const chosen = b.recipe || (def.recipes && def.recipes[0].id) || 'cheese';
       const yieldMult = {butter:0.4, cheese:0.4, cream:0.35, yoghurt:0.45}[chosen] ?? 0.4;
-      const amt = Math.min(1.2*laborRatio, res.milk);
+      const extraInput = def.recipes && def.recipes.find(r=>r.id===chosen)?.needs;
+      const amt = Math.min(1.2*laborRatio, res.milk, extraInput ? res[extraInput] : Infinity);
       if(amt>0){ res.milk -= amt; addRes(chosen, amt*yieldMult*roadBoost); }
+      if(amt>0 && extraInput) res[extraInput] -= amt;
       return;
     }
     if(def.special==='bakery'){
@@ -211,9 +245,10 @@ function tick(){
       const chosenCake = b.recipe || (def.recipes && def.recipes[0].id);
       const recipe = def.recipes && def.recipes.find(r=>r.id===chosenCake);
       if(recipe){
-        const cakeAmt = Math.min(0.6*laborRatio, res.flour, res[recipe.needs]);
+        const cakeAmt = Math.min(0.6*laborRatio, res.flour, res.sugar, res[recipe.needs]);
         if(cakeAmt>0){
           res.flour -= cakeAmt;
+          res.sugar -= cakeAmt;
           res[recipe.needs] -= cakeAmt;
           addRes(recipe.id, cakeAmt*0.8*roadBoost);
         }
@@ -275,12 +310,14 @@ function tick(){
 
   // happiness from services
   let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
+  const sweetStock = res.honeyCake+res.fruitCake+res.dairyCake+res.jam;
+  const dentalPenalty = placedBuildings.some(b=>b.id==='dentist') ? 0 : Math.min(6, sweetStock*0.025);
   let comfortBonus = Math.min(6, res.quilts*0.06) + Math.min(6, res.leatherGoods*0.05) +
     Math.min(6, res.statues*0.08) +
     Math.min(6, (res.wine+res.beer+res.mead)*0.05) +
     Math.min(8, (res.honeyCake+res.fruitCake+res.dairyCake)*0.04);
   let taxPenalty = taxRate * 400;
-  let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty));
+  let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty - dentalPenalty));
   happiness += (target-happiness)*0.02;
   happiness = Math.max(0, Math.min(100, happiness));
 
@@ -596,7 +633,7 @@ const RES_DISPLAY = [
   ['wheat','🌾'],['flour','🌾➡️'],['bread','🍞'],['olives','🫒'],['oliveOil','🛢️'],
   ['chickpeas','🌱'],['grapes','🍇'],['barley','🌿'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
   ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','�'],
-  ['sugarcane','🎋'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
+  ['sugarcane','🎋'],['sugar','🧂'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
   ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['yoghurt','🥣'],['jam','🫙'],['candles','🕯️'],
   ['quilts','🛏️'],['leatherGoods','👜'],['statues','🗿'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
   ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁'],
@@ -778,6 +815,7 @@ function buildingProductionStatus(building){
 
   if(def.special === 'dairy'){
     const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
+    if(recipe?.needs && (res[recipe.needs] || 0) <= 0) return `Paused — ${recipe.name} needs ${recipe.needs} (available 0)`;
     return res.milk > 0
       ? `Producing ${recipe?.name || 'dairy goods'}`
       : 'Paused — needs milk (available 0)';
@@ -786,8 +824,9 @@ function buildingProductionStatus(building){
   if(def.special === 'bakery'){
     const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
     if(res.flour <= 0) return 'Paused — needs flour (available 0)';
-    if(recipe?.needs && (res[recipe.needs] || 0) <= 0){
-      return `Baking bread — ${recipe.name} needs ${recipe.needs} (available 0)`;
+    const missingCakeInputs = ['sugar', recipe?.needs].filter(key=>key && (res[key] || 0) <= 0);
+    if(missingCakeInputs.length){
+      return `Baking bread — ${recipe.name} needs ${missingCakeInputs.join(' and ')} (available 0)`;
     }
     return recipe ? `Baking bread and ${recipe.name}` : 'Baking bread';
   }
@@ -967,7 +1006,14 @@ function placeAt({x,y}){
     if(def.capBonus.general) cap.general += def.capBonus.general;
     if(def.capBonus.food) cap.food += def.capBonus.food;
   }
-  showToast(`Built ${def.name}`);
+  const milestone = CIVIC_MILESTONES[def.id];
+  if(milestone && !celebratedBuildings.has(def.id)){
+    celebratedBuildings.add(def.id);
+    logEvent(milestone);
+    showToast(milestone);
+  } else {
+    showToast(`Built ${def.name}`);
+  }
   playTone('build');
   const guide = document.getElementById('firstActionGuide');
   if(def.id === 'house' && guide){
@@ -1013,7 +1059,12 @@ function renderRecipePanel(){
   if(def.id === 'baker'){
     const note = document.createElement('p');
     note.className = 'pnote';
-    note.textContent = 'Bread is always baked first. Pick which cake to bake with any flour left over.';
+    note.textContent = 'Bread is always baked first. Cakes also need sugar; pick their final ingredient.';
+    list.appendChild(note);
+  } else if(def.id === 'foundry'){
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Choose a metal to protect scarce copper, or use Automatic for mixed output.';
     list.appendChild(note);
   } else {
     const note = document.createElement('p');
@@ -1520,7 +1571,7 @@ function disasterCtx(){
     hasCoastalBuild: placedBuildings.some(b=>['docks','fisherhut','boatbuilder'].includes(b.id)),
     hasRiverBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'river')),
     hasFields: placedBuildings.some(b=>BLD_BY_ID[b.id].isField),
-    droughtTicksLeft, coin,
+    droughtTicksLeft, coin, tickCount,
     addHappiness: (delta)=>{ happiness = Math.max(0, happiness+delta); },
     reducePop: (n)=>{ pop.count = Math.max(1, pop.count-n); },
     reduceBoats: (n)=>{ boats = Math.max(0, boats-n); },
@@ -1791,7 +1842,8 @@ function getState(){
     techBonus, techHappinessBonus,
     questsCompleted: Array.from(questsCompleted),
     military,
-    droughtTicksLeft,
+    droughtTicksLeft, tickCount,
+    celebratedBuildings: Array.from(celebratedBuildings),
     taxRate, scenarioId, scenarioState,
     grid: grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit}))),
     buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
@@ -1812,6 +1864,7 @@ function applyState(s){
   res = { ...zeroedResources, ...s.res };
   cap = s.cap; pop = s.pop; happiness = s.happiness; boats = s.boats;
   coin = s.coin; research = s.research; droughtTicksLeft = s.droughtTicksLeft||0;
+  tickCount = s.tickCount || 0;
   unlockedTechs = new Set(s.unlockedTechs||[]);
   Object.assign(techBonus, s.techBonus||{});
   techHappinessBonus = s.techHappinessBonus || 0;
@@ -1831,6 +1884,7 @@ function applyState(s){
     grid[b.y][b.x].building = bld;
     placedBuildings.push(bld);
   });
+  celebratedBuildings = new Set(s.celebratedBuildings || placedBuildings.map(b=>b.id));
   minimapDirty = true;
   render(); renderRes(); renderPanel();
   showToast(`Game Loaded. Welcome back${captainName? ', '+captainName:''}`);
