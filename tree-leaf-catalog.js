@@ -1,4 +1,4 @@
-// Generated from I_Dream_of_Thought_250_Post_Master_Category_List.xlsx.
+// Generated from the 250-post category master and supplemented by newer writing.
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
   {
@@ -49,6 +49,13 @@ export const TREE_LEAVES = [
     "category": "Culture",
     "slug": "measuring-culture",
     "source": "writing/opinions/measuring-culture.html"
+  },
+  {
+    "title": "Measuring culture 1",
+    "branch": "art",
+    "category": "Culture",
+    "slug": "measuring-culture-1",
+    "source": "writing/opinions/measuring-culture-1.html"
   },
   {
     "title": "Observations on culture",
@@ -415,11 +422,25 @@ export const TREE_LEAVES = [
     "source": "writing/poetry/age.html"
   },
   {
+    "title": "Ask",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "ask",
+    "source": "writing/poetry/ask.html"
+  },
+  {
     "title": "block",
     "branch": "poems",
     "category": "Poetry",
     "slug": "block",
     "source": "writing/poetry/block.html"
+  },
+  {
+    "title": "Blue Eyes",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "blue-eyes",
+    "source": "writing/poetry/blue-eyes.html"
   },
   {
     "title": "Bubbles",
@@ -436,6 +457,13 @@ export const TREE_LEAVES = [
     "source": "writing/poetry/clouds.html"
   },
   {
+    "title": "Cry from the Heart",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "cry-from-the-heart",
+    "source": "writing/poetry/cry-from-the-heart.html"
+  },
+  {
     "title": "Dappled Brambles",
     "branch": "poems",
     "category": "Poetry",
@@ -448,6 +476,13 @@ export const TREE_LEAVES = [
     "category": "Poetry",
     "slug": "default",
     "source": "writing/poetry/default.html"
+  },
+  {
+    "title": "Desire",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "desire",
+    "source": "writing/poetry/desire.html"
   },
   {
     "title": "Disability",
@@ -534,6 +569,13 @@ export const TREE_LEAVES = [
     "source": "writing/poetry/metal-bird.html"
   },
   {
+    "title": "Might",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "might",
+    "source": "writing/poetry/might.html"
+  },
+  {
     "title": "NaPoWriMo",
     "branch": "poems",
     "category": "Poetry",
@@ -604,6 +646,13 @@ export const TREE_LEAVES = [
     "source": "writing/poetry/ring-of-finger-ring-of-phone.html"
   },
   {
+    "title": "Sandmartins Linger",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "sandmartins-linger",
+    "source": "writing/poetry/sandmartins-linger.html"
+  },
+  {
     "title": "Savour life",
     "branch": "poems",
     "category": "Poetry",
@@ -644,6 +693,13 @@ export const TREE_LEAVES = [
     "category": "Poetry",
     "slug": "sonnet-for-caroline",
     "source": "writing/poetry/sonnet-for-caroline.html"
+  },
+  {
+    "title": "Strive",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "strive",
+    "source": "writing/poetry/strive.html"
   },
   {
     "title": "Summer in Angers",
@@ -737,6 +793,13 @@ export const TREE_LEAVES = [
     "source": "writing/poetry/time.html"
   },
   {
+    "title": "Time to Go",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "time-to-go",
+    "source": "writing/poetry/time-to-go.html"
+  },
+  {
     "title": "Tiredness",
     "branch": "poems",
     "category": "Poetry",
@@ -758,11 +821,32 @@ export const TREE_LEAVES = [
     "source": "writing/poetry/villanelle.html"
   },
   {
+    "title": "What Was I Feeling",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "what-was-i-feeling",
+    "source": "writing/poetry/what-was-i-feeling.html"
+  },
+  {
     "title": "Write and rewrite",
     "branch": "poems",
     "category": "Poetry",
     "slug": "write-and-rewrite",
     "source": "writing/poetry/write-and-rewrite.html"
+  },
+  {
+    "title": "Youth",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "youth",
+    "source": "writing/poetry/youth.html"
+  },
+  {
+    "title": "Zero One Two Three",
+    "branch": "poems",
+    "category": "Poetry",
+    "slug": "zero-one-two-three",
+    "source": "writing/poetry/zero-one-two-three.html"
   },
   {
     "title": "\"Notre pays ne produit pas assez\" selon François Bayrou: où se situe vraiment le Français par rapport à ses voisins?",
@@ -1707,5 +1791,45 @@ export const TREE_BRANCHES = {
   "philosophy-ideas": "Philosophy & Ideas",
   "teaching-education": "Teaching & Education",
   "prose": "Personal",
-  "health": "Health"
+  "health": "Health",
+  "bird-nests": "Bird Nests",
+  "fungi": "Fungi"
+};
+
+// Additional places where a leaf grows without duplicating its canonical text.
+export const TREE_CROSS_BRANCHES = {
+  "poems/sandmartins-linger": [
+    "bird-nests",
+    "science"
+  ],
+  "poems/the-crows": [
+    "bird-nests"
+  ],
+  "poems/the-owl": [
+    "bird-nests"
+  ],
+  "poems/metal-bird": [
+    "bird-nests"
+  ],
+  "poems/disability": [
+    "health"
+  ],
+  "short-stories/2nd-june-insertion-of-the-catheter": [
+    "health"
+  ],
+  "short-stories/transplanting-hope-bobs-story": [
+    "health"
+  ],
+  "poems/i-dont-know-what-it-was-that-i-could-feel-the-damp-creeping-in-waves-p": [
+    "fungi",
+    "bird-nests",
+    "science"
+  ],
+  "poems/what-was-i-feeling": [
+    "fungi",
+    "science"
+  ],
+  "science/all-the-trees-turn-brown": [
+    "fungi"
+  ]
 };
