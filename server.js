@@ -258,13 +258,13 @@ function treeLeafUrl(leaf) {
 
 // The old writing URLs remain useful as catalogue references, but the work now
 // lives at a leaf address inside the Great Tree.
-app.get("/writing/:archive/:slug.html", (req, res, next) => {
+app.get("/writing/:archive/:slug.html", generalApiLimiter, (req, res, next) => {
   const leaf = treeLeafBySourceUrl.get(req.path);
   if (!leaf) return next();
   res.redirect(301, treeLeafUrl(leaf));
 });
 
-app.get("/tree/leaves/:branch/:slug.html", (req, res, next) => {
+app.get("/tree/leaves/:branch/:slug.html", generalApiLimiter, (req, res, next) => {
   const leaf = treeLeafByAddress.get(`${req.params.branch}/${req.params.slug}`);
   if (!leaf) return next();
 
@@ -287,7 +287,7 @@ app.get("/tree/leaves/:branch/:slug.html", (req, res, next) => {
   res.type("html").send(html);
 });
 
-app.get("/tree/leaves/:branch/", (req, res, next) => {
+app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
   const branchTitle = TREE_BRANCHES[req.params.branch];
   if (!branchTitle) return next();
 
