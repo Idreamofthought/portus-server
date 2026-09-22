@@ -37,7 +37,13 @@ export const BUILDINGS = [
    desc:'Needs copper (from a Foundry) — produces tools'},
  {id:'foundry', name:"Foundry", ic:'🔥', cat:'Production', cost:{stone:50,wood:20}, workers:3,
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain),
-   special:'foundry', desc:'Refines ore from mines into gold, silver and copper'},
+   special:'foundry', recipes:[
+     {id:'foundryAuto', name:'Automatic', ic:'⚙️'},
+     {id:'foundryCopper', name:'Copper', ic:'🟠'},
+     {id:'foundrySilver', name:'Silver', ic:'⚪'},
+     {id:'foundryGold', name:'Gold', ic:'🟡'},
+     {id:'foundryBronze', name:'Bronze', ic:'🧲'}
+   ], desc:'Refines ore from mines — tap to choose which metal takes priority'},
  {id:'bronzesmith', name:"Bronzesmith", ic:'🗿', cat:'Production', cost:{wood:35,stone:25}, workers:3, requiresTech:'metallurgy',
    valid:(x,y)=>['grass','sand'].includes(grid[y][x].terrain), consume:{copper:1,tin:1}, produce:{statues:0.7},
    desc:'Needs copper and tin — casts bronze statues for trade and civic pride'},
