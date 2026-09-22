@@ -68,7 +68,7 @@ import {
 } from "./payments.js";
 import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
-import { TREE_LEAVES, TREE_BRANCHES } from "./tree-leaf-catalog.js";
+import { TREE_LEAVES, TREE_BRANCHES, TREE_CROSS_BRANCHES } from "./tree-leaf-catalog.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -256,6 +256,16 @@ function treeLeafUrl(leaf) {
   return `/tree/leaves/${leaf.branch}/${encodeURIComponent(leaf.slug)}.html`;
 }
 
+function leafBranches(leaf) {
+  return [leaf.branch, ...(TREE_CROSS_BRANCHES[`${leaf.branch}/${leaf.slug}`] || [])];
+}
+
+function leavesForBranch(branch) {
+  return TREE_LEAVES
+    .filter((leaf) => leafBranches(leaf).includes(branch))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
 // The old writing URLs remain useful as catalogue references, but the work now
 // lives at a leaf address inside the Great Tree.
 app.get("/writing/:archive/:slug.html", generalApiLimiter, (req, res, next) => {
@@ -284,6 +294,36 @@ app.get("/tree/leaves/:branch/:slug.html", generalApiLimiter, (req, res, next) =
     html = html.replace("</head>", `  ${canonical}\n</head>`);
   }
   html = html.replaceAll('href="/#branches"', 'href="/tree/"');
+  html = html.replace(/href="\/writing\/[^"]+\/index\.html"/i, `href="/tree/leaves/${leaf.branch}/"`);
+
+  const branches = leafBranches(leaf);
+  const siblings = leavesForBranch(leaf.branch);
+  const position = siblings.findIndex((item) => item.slug === leaf.slug);
+  const previous = position > 0 ? siblings[position - 1] : null;
+  const nextLeaf = position >= 0 && position < siblings.length - 1 ? siblings[position + 1] : null;
+  const alsoGrows = branches.slice(1).map((branch) =>
+    `<a href="/tree/leaves/${encodeURIComponent(branch)}/">${escapeHtml(TREE_BRANCHES[branch] || branch)}</a>`
+  ).join("");
+
+  const context = `<aside class="leaf-context" aria-label="Continue exploring">
+    <p><a href="/tree/leaves/${encodeURIComponent(leaf.branch)}/">← ${escapeHtml(TREE_BRANCHES[leaf.branch])} leaves</a></p>
+    ${alsoGrows ? `<p class="also-grows"><span>Also grows on</span> ${alsoGrows}</p>` : ""}
+    <nav class="leaf-pagination" aria-label="Adjacent leaves">
+      ${previous ? `<a rel="prev" href="${treeLeafUrl(previous)}">← ${escapeHtml(previous.title)}</a>` : "<span></span>"}
+      ${nextLeaf ? `<a rel="next" href="${treeLeafUrl(nextLeaf)}">${escapeHtml(nextLeaf.title)} →</a>` : "<span></span>"}
+    </nav>
+  </aside>`;
+
+  const articleData = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: leaf.title,
+    url: `${SITE_URL}${treeLeafUrl(leaf)}`,
+    author: { "@type": "Person", name: "Richard Jenkins" },
+    isPartOf: { "@type": "CollectionPage", name: TREE_BRANCHES[leaf.branch], url: `${SITE_URL}/tree/leaves/${leaf.branch}/` }
+  }).replaceAll("<", "\\u003c");
+  html = html.replace("</head>", `<script type="application/ld+json">${articleData}</script>\n</head>`);
+  html = html.replace("</body>", `${context}</body>`);
   res.type("html").send(html);
 });
 
@@ -291,10 +331,10 @@ app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
   const branchTitle = TREE_BRANCHES[req.params.branch];
   if (!branchTitle) return next();
 
-  const leaves = TREE_LEAVES.filter((leaf) => leaf.branch === req.params.branch);
+  const leaves = leavesForBranch(req.params.branch);
   let cards = leaves.map((leaf) => `
-    <article>
-      <p class="leaf-number">${escapeHtml(leaf.category)}</p>
+    <article class="leaf-card" data-title="${escapeHtml(leaf.title.toLocaleLowerCase())}">
+      <p class="leaf-number">${escapeHtml(leaf.category)}${leaf.branch !== req.params.branch ? " · Cross-pollinated" : ""}</p>
       <h2><a href="${treeLeafUrl(leaf)}">${escapeHtml(leaf.title)}</a></h2>
     </article>`).join("");
   if (req.params.branch === "health") {
@@ -311,9 +351,8 @@ app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
 <link rel="stylesheet" href="/tree/css/tree.css"></head><body>
 <nav class="idot-topnav" aria-label="Site navigation"><a class="idot-brand" href="/">I Dream of Thought</a><a href="/tree/">Tree</a><a href="/writing/index.html">Catalogue</a><a href="/what-is">About</a><a href="/contact">Contact</a><a class="idot-play" href="/game">Play Portus</a></nav>
 <main class="tree-page"><a class="site-link" href="/tree/branches/${encodeURIComponent(req.params.branch)}.html">← ${escapeHtml(branchTitle)} branch</a>
-<header class="tree-header"><p class="eyebrow">${leaves.length} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>
-<section class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section>
-<footer><a href="/tree/">The Great Tree</a><a href="/writing/index.html">Catalogue</a></footer></main></body></html>`);
+<header class="tree-header"><p class="eyebrow">${leaves.length} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>\n<section class="leaf-tools" aria-label="Find a leaf"><label for="leaf-search">Search this branch</label><input id="leaf-search" type="search" placeholder="Type a title or word"><label for="leaf-sort">Sort</label><select id="leaf-sort"><option value="az">A–Z</option><option value="za">Z–A</option></select><output id="leaf-count">${leaves.length} leaves</output></section>\n<section id="leaf-list" class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section><p id="leaf-empty" class="leaf-empty" hidden>No leaves match that search.</p>
+<footer><a href="/tree/">The Great Tree</a><a href="/writing/">Catalogue</a></footer></main><script src="/tree/js/leaves.js" defer></script></body></html>`);
 });
 
 app.use(express.static(path.join(__dirname, "homepage")));
