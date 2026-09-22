@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TREE_LEAVES, TREE_BRANCHES } from "../tree-leaf-catalog.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const homepageDirectory = path.join(root, "..", "homepage");
@@ -42,10 +43,24 @@ function xml(urls) {
     .join("\n")}\n</urlset>\n`;
 }
 
-const urls = walk(homepageDirectory)
+const staticUrls = walk(homepageDirectory)
   .filter((filePath) => filePath.endsWith(".html"))
   .map(toUrl)
-  .filter(Boolean);
+  .filter((url) => url && !url.startsWith("/tree/leaves/"));
+
+const leafUrls = TREE_LEAVES.map(
+  (leaf) => `/tree/leaves/${leaf.branch}/${encodeURIComponent(leaf.slug)}.html`
+);
+const leafIndexes = Object.keys(TREE_BRANCHES).map(
+  (branch) => `/tree/leaves/${encodeURIComponent(branch)}/`
+);
+const urls = [...new Set([
+  ...staticUrls,
+  "/tree/",
+  "/tree/leaves/health/the-borrowed-kidney.html",
+  ...leafIndexes,
+  ...leafUrls
+])];
 
 const groups = {
   main: urls.filter((url) => !url.startsWith("/tree/") && !url.startsWith("/codex/") && !url.startsWith("/writing/")),
