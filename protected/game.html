@@ -65,6 +65,17 @@
   </div>
 
   <div id="main">
+    <aside id="marshStory" hidden aria-live="polite">
+      <p class="marshKicker">A memory before Portus</p>
+      <h2 id="marshStoryTitle">The reedbank</h2>
+      <p id="marshStoryText"></p>
+      <p id="marshStoryTask"></p>
+      <div class="marshActions">
+        <button id="marshSoundBtn" type="button" aria-pressed="false">Sound off</button>
+        <button id="marshLeaveBtn" type="button">Leave lesson</button>
+      </div>
+    </aside>
+    <div id="worldMood" aria-live="polite"></div>
     <div id="mapwrap">
       <canvas id="canvas"></canvas>
       <div id="minimapWrap" aria-label="Settlement minimap">
@@ -272,12 +283,12 @@
       <li>Start by placing a <b>House</b> and a <b>Field</b> on the grass.</li>
       <li>Watch your <b>resources</b> and <b>population</b> grow in the bar at the top.</li>
       <li>Use <b>Research</b>, <b>Army</b>, <b>Goals</b>, <b>Taxes</b>, and <b>Save</b> from the menu on the map.</li>
-      <li>Roads boost nearby production by 15%; a continuous road to storage or a market raises it to 20%.</li>
+      <li>Roads boost nearby production by 15%; a continuous road to storage or a market raises it to 20%. The optional marsh lesson lets you try a wood, stone, and grain chain.</li>
       <li>Tap a House, Healer's Room, Doctor's House, or Gathering Circle to upgrade it in place.</li>
       <li>Survive disasters, grow your town, and discover what your settlement remembers.</li>
     </ol>
     <button id="tutorialCloseBtn">Got it — start building</button>
-    <button id="marshPrologueBtn" type="button">Play the optional marsh prologue</button>
+    <button id="marshPrologueBtn" type="button">Try the marsh lesson: wood, stone, grain and roads</button>
   </div>
 </div>
 
