@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   customer_id TEXT,
   checkout_session_id TEXT,
   payment_intent_id TEXT,
+  withdrawal_consent INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
@@ -100,6 +101,7 @@ CREATE TABLE IF NOT EXISTS pending_orders (
   minutes INTEGER NOT NULL,
   amount TEXT NOT NULL,
   currency TEXT NOT NULL,
+  withdrawal_consent INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   consumed INTEGER DEFAULT 0,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -208,17 +210,25 @@ if (purchasesCascadesFromUsers) {
         customer_id TEXT,
         checkout_session_id TEXT,
         payment_intent_id TEXT,
+        withdrawal_consent INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         FOREIGN KEY(user_id) REFERENCES users(id)
       );
       INSERT INTO purchases_new SELECT
         id, user_id, provider, product_id, minutes, amount, currency,
-        customer_id, checkout_session_id, payment_intent_id, created_at
+        customer_id, checkout_session_id, payment_intent_id, 0, created_at
       FROM purchases;
       DROP TABLE purchases;
       ALTER TABLE purchases_new RENAME TO purchases;
     `);
   })();
+}
+
+for (const table of ["purchases", "pending_orders"]) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some(column => column.name === "withdrawal_consent")) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN withdrawal_consent INTEGER NOT NULL DEFAULT 0`);
+  }
 }
 
 export function cleanupExpired() {

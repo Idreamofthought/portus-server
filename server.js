@@ -984,11 +984,13 @@ app.post(
   authenticateRequest,
   requireVerified,
   async (req, res) => {
+    if (req.body?.withdrawalConsent !== true) return res.status(400).json({ error: "withdrawal consent is required before checkout" });
     try {
       res.json(
         await createPayPalOrder({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: true,
           siteUrl: SITE_URL
         })
       );
@@ -1030,11 +1032,13 @@ app.post(
   authenticateRequest,
   requireVerified,
   async (req, res) => {
+    if (req.body?.withdrawalConsent !== true) return res.status(400).json({ error: "withdrawal consent is required before checkout" });
     try {
       res.json(
         await createStripeCheckout({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: true,
           siteUrl: SITE_URL
         })
       );
