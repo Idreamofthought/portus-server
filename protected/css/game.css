@@ -58,6 +58,7 @@
     cursor:pointer;
   }
   .musicToggle[aria-pressed="true"]{border-color:var(--gold); color:var(--gold);}
+  #voicesToggle{margin-left:0;}
 
   #main{flex:1; display:flex; overflow:hidden; min-height:0; position:relative;}
   #marshStory{
@@ -75,6 +76,20 @@
     text-shadow:0 1px 2px #101820;
   }
   #main.marsh-active #worldMood{display:none;}
+  #settlementVoice{
+    position:absolute; z-index:18; bottom:18px; left:16px; width:min(330px,calc(100% - 250px));
+    padding:15px 17px; border:1px solid rgba(221,192,133,.7); border-radius:10px;
+    color:#f7ecd5; background:rgba(21,31,32,.96); box-shadow:0 10px 32px rgba(0,0,0,.4);
+    font:13px/1.45 Georgia,serif;
+  }
+  #settlementVoice[hidden]{display:none;}
+  #settlementVoice .voiceKicker{margin:0 0 4px; color:#d8bc82; font:10px/1.3 sans-serif; letter-spacing:.13em; text-transform:uppercase;}
+  #settlementVoice h2{margin:0 0 7px; font:normal 21px/1.2 Georgia,serif;}
+  #settlementVoice p{margin:0 0 10px;}
+  .voiceActions{display:flex; gap:8px; flex-wrap:wrap;}
+  .voiceActions button{border:1px solid #957b58; border-radius:15px; padding:5px 9px; color:#f7ecd5; background:#303d3b; cursor:pointer;}
+  .voiceActions button:hover,.voiceActions button:focus-visible{background:#4d615b;}
+  #main.marsh-active #settlementVoice{display:none;}
   #main[data-light="dusk"]::after,#main[data-light="night"]::after{
     content:""; position:absolute; z-index:9; inset:0 210px 0 0; pointer-events:none;
     background:linear-gradient(155deg,rgba(68,44,66,.09),rgba(20,32,49,.19));
@@ -92,6 +107,7 @@
   }
   #main.marsh-flood #mapwrap{box-shadow:inset 0 0 160px rgba(21,103,123,.85);}
   @media(max-width:700px){
+    #settlementVoice{left:8px; bottom:8px; width:min(300px,calc(100% - 24px)); padding:10px 12px; font-size:12px;}
     #marshStory{width:min(300px,calc(100% - 24px)); top:8px; left:8px; padding:10px 12px; font-size:12px;}
     #worldMood{top:8px; left:8px; max-width:min(220px,calc(100% - 230px)); font-size:12px;}
   }
