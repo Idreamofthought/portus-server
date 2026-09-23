@@ -59,7 +59,46 @@
   }
   .musicToggle[aria-pressed="true"]{border-color:var(--gold); color:var(--gold);}
 
-  #main{flex:1; display:flex; overflow:hidden; min-height:0;}
+  #main{flex:1; display:flex; overflow:hidden; min-height:0; position:relative;}
+  #marshStory{
+    position:absolute; z-index:19; top:14px; left:14px; width:min(320px,calc(100% - 245px));
+    padding:16px 18px; border:1px solid rgba(221,192,133,.7); border-radius:10px;
+    color:#f7ecd5; background:linear-gradient(145deg,rgba(18,30,34,.96),rgba(35,29,27,.94));
+    box-shadow:0 12px 40px rgba(0,0,0,.45); font:13px/1.45 Georgia,serif;
+  }
+  #marshStory[hidden]{display:none;}
+  #worldMood{
+    position:absolute; z-index:12; top:18px; left:16px; max-width:310px;
+    padding:8px 12px; border-left:2px solid rgba(230,198,140,.65);
+    color:#f2e4c5; background:rgba(20,29,31,.75);
+    font:italic 14px/1.4 Georgia,serif; pointer-events:none;
+    text-shadow:0 1px 2px #101820;
+  }
+  #main.marsh-active #worldMood{display:none;}
+  #main[data-light="dusk"]::after,#main[data-light="night"]::after{
+    content:""; position:absolute; z-index:9; inset:0 210px 0 0; pointer-events:none;
+    background:linear-gradient(155deg,rgba(68,44,66,.09),rgba(20,32,49,.19));
+  }
+  #main[data-light="night"]::after{background:rgba(20,27,50,.22);}
+  #marshStory .marshKicker{margin:0 0 6px; color:#d8bc82; font:10px/1.3 sans-serif; letter-spacing:.16em; text-transform:uppercase;}
+  #marshStory h2{margin:0 0 7px; font:normal 23px/1.2 Georgia,serif;}
+  #marshStory p{margin:0 0 9px;}
+  #marshStoryTask{color:#e8cb88; font-family:sans-serif; font-weight:600;}
+  .marshActions{display:flex; gap:8px; flex-wrap:wrap;}
+  .marshActions button{border:1px solid #957b58; border-radius:15px; padding:5px 9px; color:#f7ecd5; background:#303d3b; cursor:pointer;}
+  #main.marsh-active #mapwrap::after{
+    content:""; position:sticky; display:block; bottom:0; left:0; width:100%; height:0;
+    box-shadow:0 0 110px 45px rgba(23,46,48,.6); pointer-events:none;
+  }
+  #main.marsh-flood #mapwrap{box-shadow:inset 0 0 160px rgba(21,103,123,.85);}
+  @media(max-width:700px){
+    #marshStory{width:min(300px,calc(100% - 24px)); top:8px; left:8px; padding:10px 12px; font-size:12px;}
+    #worldMood{top:8px; left:8px; max-width:min(220px,calc(100% - 230px)); font-size:12px;}
+  }
+  @media(prefers-reduced-motion:no-preference){
+    #main.marsh-active #marshStory{animation:marshAppear .35s ease-out;}
+    @keyframes marshAppear{from{opacity:0; transform:translateY(-8px)}to{opacity:1; transform:none}}
+  }
   #mapwrap{
     flex:1; overflow:auto; position:relative; background:var(--sea-deep);
     touch-action:pan-x pan-y;
