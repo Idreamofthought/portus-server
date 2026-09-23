@@ -372,6 +372,13 @@
     #orientationOverlay{display:flex;}
   }
 
+  .marshMobileNote{display:none;}
+  @media (pointer: coarse) and (max-width: 900px){
+    .marshMobileNote{display:block; margin:6px 0; font-size:12px; line-height:1.4; color:#745b41;}
+    #menuStack .marshMobileNote{max-width:150px; color:#fff0ca;}
+    #marshPrologueBtn:disabled, #marshLessonMenu:disabled{opacity:.55; cursor:not-allowed;}
+  }
+
   /* simple tutorial overlay */
   #tutorialOverlay{
     position:fixed; inset:0; z-index:998; background:rgba(10,8,6,0.85);
