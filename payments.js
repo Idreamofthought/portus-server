@@ -31,7 +31,8 @@ function getPayPalClient() {
   return new paypal.core.PayPalHttpClient(environment);
 }
 
-export async function createPayPalOrder({ userId, productId, siteUrl }) {
+export async function createPayPalOrder({ userId, productId, withdrawalConsent, siteUrl }) {
+  if (withdrawalConsent !== true) throw new Error("withdrawal consent is required before checkout");
   const product = getProduct(productId);
   if (!product) throw new Error("invalid product");
   const request = new paypal.orders.OrdersCreateRequest();
@@ -46,8 +47,8 @@ export async function createPayPalOrder({ userId, productId, siteUrl }) {
   });
   const result = await getPayPalClient().execute(request);
   const orderId = result.result.id;
-  db.prepare(`INSERT INTO pending_orders (order_id,provider,user_id,product_id,minutes,amount,currency,created_at) VALUES (?,?,?,?,?,?,?,?)`)
-    .run(orderId, "paypal", userId, product.id, product.minutes, product.amount, product.currency, Date.now());
+  db.prepare(`INSERT INTO pending_orders (order_id,provider,user_id,product_id,minutes,amount,currency,withdrawal_consent,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(orderId, "paypal", userId, product.id, product.minutes, product.amount, product.currency, 1, Date.now());
   const approval = result.result.links?.find(x => x.rel === "approve")?.href;
   return { id: orderId, url: approval };
 }
@@ -66,7 +67,8 @@ export async function capturePayPalOrder({ userId, orderId }) {
   return creditPayment({ pending, eventId: capture.id, capturedAmount, capturedCurrency });
 }
 
-export async function createStripeCheckout({ userId, productId, siteUrl }) {
+export async function createStripeCheckout({ userId, productId, withdrawalConsent, siteUrl }) {
+  if (withdrawalConsent !== true) throw new Error("withdrawal consent is required before checkout");
   if (!stripe) throw new Error("Stripe is not configured");
   const product = getProduct(productId);
   if (!product) throw new Error("invalid product");
@@ -82,7 +84,7 @@ export async function createStripeCheckout({ userId, productId, siteUrl }) {
     }, quantity: 1 }],
     success_url: `${siteUrl}/purchase.html?provider=stripe&status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/purchase.html?provider=stripe&status=cancelled`,
-    metadata: { userId: String(userId), productId: product.id }
+    metadata: { userId: String(userId), productId: product.id, withdrawalConsent: "1", amount: product.amount, currency: product.currency }
   });
   return { url: session.url };
 }
@@ -95,6 +97,8 @@ export async function confirmStripeCheckout({ userId, sessionId }) {
   const sessionUserId = Number(session.metadata?.userId);
   const product = getProduct(session.metadata?.productId);
   if (sessionUserId !== userId || !product) throw new Error("invalid Stripe metadata");
+  const originalCurrency = session.metadata?.currency || "USD"; // Existing sessions predate the EUR switch.
+  const originalAmount = session.metadata?.amount || product.amount;
   return creditPayment({
     pending: {
       order_id: session.id,
@@ -102,8 +106,9 @@ export async function confirmStripeCheckout({ userId, sessionId }) {
       user_id: userId,
       product_id: product.id,
       minutes: product.minutes,
-      amount: product.amount,
-      currency: product.currency,
+      amount: originalAmount,
+      currency: originalCurrency,
+      withdrawal_consent: session.metadata?.withdrawalConsent === "1" ? 1 : 0,
       consumed: 0,
       customer_id: session.customer,
       checkout_session_id: session.id,
@@ -127,6 +132,8 @@ export async function handleStripeWebhook(rawBody, signature) {
   const userId = Number(session.metadata?.userId);
   const product = getProduct(session.metadata?.productId);
   if (!userId || !product) throw new Error("invalid Stripe metadata");
+  const originalCurrency = session.metadata?.currency || "USD";
+  const originalAmount = session.metadata?.amount || product.amount;
   return creditPayment({
     pending: {
       order_id: session.id,
@@ -134,8 +141,9 @@ export async function handleStripeWebhook(rawBody, signature) {
       user_id: userId,
       product_id: product.id,
       minutes: product.minutes,
-      amount: product.amount,
-      currency: product.currency,
+      amount: originalAmount,
+      currency: originalCurrency,
+      withdrawal_consent: session.metadata?.withdrawalConsent === "1" ? 1 : 0,
       consumed: 0,
       customer_id: session.customer,
       checkout_session_id: session.id,
@@ -165,8 +173,8 @@ export function creditPayment({ pending, eventId, capturedAmount, capturedCurren
       : { changes: 1 };
     if (pending.provider === "paypal" && claim.changes === 0) return;
     db.prepare(`INSERT INTO processed_payment_events (id,created_at) VALUES (?,?)`).run(eventId, Date.now());
-    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,customer_id,checkout_session_id,payment_intent_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, customerId || pending.customer_id || null, checkoutSessionId || pending.checkout_session_id || null, paymentIntentId || pending.payment_intent_id || null, Date.now());
+    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,customer_id,checkout_session_id,payment_intent_id,withdrawal_consent,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, customerId || pending.customer_id || null, checkoutSessionId || pending.checkout_session_id || null, paymentIntentId || pending.payment_intent_id || null, pending.withdrawal_consent ? 1 : 0, Date.now());
     const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(pending.user_id);
     if (row) db.prepare(`UPDATE time_tracking SET remaining_seconds=remaining_seconds+?,updated_at=?,last_active_at=NULL WHERE user_id=?`).run(pending.minutes*60, Date.now(), pending.user_id);
     else db.prepare(`INSERT INTO time_tracking (user_id,remaining_seconds,last_active_at,updated_at) VALUES (?,?,NULL,?)`).run(pending.user_id, pending.minutes*60, Date.now());
