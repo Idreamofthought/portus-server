@@ -10,6 +10,7 @@ import { GOD_MESSAGES } from '/game-assets/blessings.js';
 import { pickChoiceEvent } from '/game-assets/events.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
 import { createPortusMusic } from '/music.js';
+import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
@@ -186,27 +187,8 @@ function totalWorkersNeeded(){
   return placedBuildings.reduce((s,b)=>s + (BLD_BY_ID[b.id].workers||0), 0);
 }
 
-function roadNeighbours(x,y){
-  return [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]
-    .filter(([nx,ny])=>inBounds(nx,ny));
-}
-function connectedToStore(building){
-  const queue = roadNeighbours(building.x,building.y).filter(([x,y])=>grid[y][x].building?.id==='road');
-  const seen = new Set();
-  while(queue.length){
-    const [x,y] = queue.shift(), key = `${x},${y}`;
-    if(seen.has(key)) continue;
-    seen.add(key);
-    for(const [nx,ny] of roadNeighbours(x,y)){
-      const id = grid[ny][nx].building?.id;
-      if(['stockage','granary','market','tradingpost'].includes(id)) return true;
-      if(id==='road' && !seen.has(`${nx},${ny}`)) queue.push([nx,ny]);
-    }
-  }
-  return false;
-}
 function roadPreview(x,y){
-  const nearby = roadNeighbours(x,y)
+  const nearby = roadNeighbours(grid,x,y)
     .map(([nx,ny])=>grid[ny][nx].building?.id)
     .filter(id=>id && id!=='road');
   if(nearby.includes('claypit') && nearby.includes('potter')) return 'This road serves the claypit and potter.';
@@ -225,7 +207,7 @@ function tick(){
 
   placedBuildings.forEach(b=>{
     const def = BLD_BY_ID[b.id];
-    const roadBoost = nearBuilding(b.x,b.y,'road',1) ? (connectedToStore(b) ? 1.2 : 1.15) : 1;
+    const roadBoost = roadProductionBoost(grid,b);
     if(def.isField){
       let farmBoost = nearBuilding(b.x,b.y,'farmerhut',2) ? 1.2 : 1;
       let wellBoost = nearBuilding(b.x,b.y,'well',2) ? 1.15 : 1;
@@ -965,7 +947,7 @@ function updateBuildingTooltip(e){
   const status = buildingProductionStatus(building);
   if(status) label += `\n${status}`;
   if(building.id==='road') label += '\nAdjacent production +15%; connected route to storage or market +20%.';
-  if(def.produce && connectedToStore(building)) label += '\nRoad route reaches storage or market.';
+  if(def.produce && connectedToStore(grid,building)) label += '\nRoad route reaches storage or market.';
   tooltip.textContent = label;
   tooltip.classList.add('show');
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -1133,7 +1115,7 @@ function placeAt({x,y}){
     if(marshPrologue.roads===1){
       document.getElementById('legend').textContent='Lay a second road beside the mill and the storage yard.';
       showToast('One path reaches the fields. Complete the route to storage.');
-    } else if(connectedToStore(marshPrologue.mill)){
+    } else if(connectedToStore(grid,marshPrologue.mill)){
       setTimeout(finishMarshPrologue, 1700);
     }
   }
@@ -1163,7 +1145,7 @@ function placeAt({x,y}){
   }
   if(def.id==='road'){
     buildMessage=roadPreview(x,y);
-    if(placedBuildings.some(b=>BLD_BY_ID[b.id].produce && connectedToStore(b)))
+    if(placedBuildings.some(b=>BLD_BY_ID[b.id].produce && connectedToStore(grid,b)))
       remember('first-route', 'The first route',
         'The settlement laid a path between work and storage. Goods now have a way through the town.');
   }
@@ -2185,7 +2167,7 @@ function startMarshPrologue(){
   render(); renderRes();
 }
 function finishMarshPrologue(){
-  if(!marshPrologue || !connectedToStore(marshPrologue.mill)) return;
+  if(!marshPrologue || !connectedToStore(grid,marshPrologue.mill)) return;
   const {saved}=marshPrologue;
   for(let x=marshPrologue.mill.x-3;x<=marshPrologue.mill.x+3;x++)
     grid[marshPrologue.mill.y][x].terrain='river';
