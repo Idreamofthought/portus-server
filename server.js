@@ -185,7 +185,7 @@ app.use((req, res, next) => {
       "img-src 'self' data:",
       "script-src 'self' https://plausible.io",
       "style-src 'self' 'unsafe-inline'",
-      "form-action 'self' https://buttondown.email",
+      "form-action 'self' https://buttondown.com",
       "object-src 'none'",
       "frame-ancestors 'none'"
     ].join("; ")
