@@ -23,6 +23,7 @@ function validSave() {
     droughtTicksLeft: 0,
     tickCount: 0,
     civicMilestones: [],
+    townMemory: [],
     taxRate: 0,
     scenarioId: null,
     scenarioState: { disastersSurvived: 0, failed: false },
@@ -39,6 +40,14 @@ test("accepts a completed scenario save", () => {
   const save = validSave();
   save.scenarioState.completed = true;
   assert.deepEqual(validateSave(save), { ok: true });
+});
+
+test("accepts a remembered loss and rejects oversized memories", () => {
+  const save = validSave();
+  save.townMemory = [{ id: "loss-20", title: "Those we lost", content: "One resident died." }];
+  assert.deepEqual(validateSave(save), { ok: true });
+  save.townMemory[0].content = "x".repeat(601);
+  assert.equal(validateSave(save).ok, false);
 });
 
 test("rejects unknown top-level fields", () => {
