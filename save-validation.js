@@ -1,7 +1,7 @@
 const SAVE_KEYS = new Set([
   "v", "captain", "res", "cap", "pop", "happiness", "boats", "coin", "research",
   "unlockedTechs", "techBonus", "techHappinessBonus", "questsCompleted", "military",
-  "droughtTicksLeft", "tickCount", "civicMilestones", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
+  "droughtTicksLeft", "tickCount", "civicMilestones", "townMemory", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
 ]);
 export { SAVE_KEYS };
 
@@ -23,7 +23,8 @@ export const BUILDING_IDS = new Set([
   "taxoffice", "barracks", "orchard", "sugarhouse", "jammaker", "pigpasture", "cowpasture", "goatpasture",
   "chickencoop", "butcher", "tanner", "leatherworker", "quiltmaker", "dairy", "candlemaker", "bronzesmith",
   "templegrand", "templemonument", "armourer", "wall", "guardtower", "moat", "trap", "fort",
-  "winemaker", "brewery", "meadery", "floodbarrier"
+  "winemaker", "brewery", "meadery", "floodbarrier", "largehouse", "healer", "hospital",
+  "undertaker", "graveyard", "gathering", "theatre"
 ]);
 
 const RECIPE_IDS = new Set([
@@ -71,6 +72,7 @@ export function migrateSave(state) {
   const migrated = { ...state };
   if (state.v === 1 && !Object.hasOwn(migrated, "tickCount")) migrated.tickCount = 0;
   if (state.v === 1 && !Object.hasOwn(migrated, "civicMilestones")) migrated.civicMilestones = [];
+  if (state.v === 1 && !Object.hasOwn(migrated, "townMemory")) migrated.townMemory = [];
 
   if (isPlainObject(state.res)) {
     const res = { ...state.res };
@@ -136,6 +138,11 @@ export function validateSave(value) {
   if (!exactKeys(value.military, new Set(["soldiers", "cap"])) || !finiteNumber(value.military.soldiers, { min: 0 }) || !finiteNumber(value.military.cap, { min: 0 })) return invalid();
   if (!finiteNumber(value.droughtTicksLeft, { min: 0 }) || !finiteNumber(value.tickCount, { min: 0 }) || !finiteNumber(value.taxRate, { min: 0, max: MAX_NUMBER })) return invalid();
   if (!Array.isArray(value.civicMilestones) || !value.civicMilestones.every((id) => typeof id === "string" && id.length <= 64)) return invalid();
+  if (!Array.isArray(value.townMemory) || value.townMemory.length > 100 ||
+      !value.townMemory.every((entry) => isPlainObject(entry) &&
+        Object.keys(entry).every((key) => ["id", "title", "content"].includes(key)) &&
+        ["id", "title", "content"].every((key) => typeof entry[key] === "string") &&
+        entry.id.length <= 80 && entry.title.length <= 120 && entry.content.length <= 600)) return invalid();
   if (value.scenarioId !== null && typeof value.scenarioId !== "string") return invalid();
   if (!isPlainObject(value.scenarioState) || !Object.hasOwn(value.scenarioState, "disastersSurvived")) return invalid();
   if (Object.keys(value.scenarioState).some((key) => !["disastersSurvived", "completed", "failed"].includes(key))) return invalid();
