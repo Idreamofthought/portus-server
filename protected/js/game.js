@@ -826,7 +826,7 @@ function renderPanel(){
     const label=document.createElement('div');
     label.className='catlabel'; label.textContent=cat;
     list.appendChild(label);
-    BUILDINGS.filter(b=>b.cat===cat).forEach(b=>{
+    BUILDINGS.filter(b=>b.cat===cat && !b.upgradeOnly).forEach(b=>{
       const btn=document.createElement('button');
       const locked = b.requiresTech && !unlockedTechs.has(b.requiresTech);
       btn.className='bldbtn'+(locked?' locked':''); btn.dataset.id=b.id;
@@ -1116,6 +1116,7 @@ function placeAt({x,y}){
     return;
   }
   const def = BLD_BY_ID[selectedBuild];
+  if(def.upgradeOnly){ showToast('Upgrade an existing building to create this'); return; }
   const tile = grid[y][x];
   if(tile.building){ showToast('Tile already occupied'); return; }
   if(!def.valid(x,y)){ showToast(`Can't place ${def.name} here`); return; }
