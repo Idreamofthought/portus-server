@@ -11,6 +11,7 @@ import { pickChoiceEvent } from '/game-assets/events.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
 import { createPortusMusic } from '/music.js';
 import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
+import { marshTargets, marshPlacementAllowed, advanceMarshLesson } from '/game-assets/marsh-lesson.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
@@ -112,6 +113,29 @@ let buildingPops = [];
 let previousResourceValues = {};
 let civicMilestones = new Set();
 let marshPrologue = null;
+function updateWorldMood(){
+  if(marshPrologue) return;
+  const phase=['morning','day','dusk','night'][Math.floor((tickCount%144)/36)];
+  const has=id=>placedBuildings.some(b=>b.id===id);
+  const connected=placedBuildings.some(b=>BLD_BY_ID[b.id]?.produce && connectedToStore(grid,b));
+  const lines={
+    morning:has('sawmill') ? 'Morning: an axe sounds at the edge of the trees.' :
+      has('fields') ? 'Morning: the fields take the first light.' :
+      'Morning: the tide has left a line of salt on the shore.',
+    day:connected ? 'Day: carts carry the settlement’s work towards the store.' :
+      has('quarry') ? 'Day: stone waits at the quarry for a way into town.' :
+      'Day: footsteps mark paths that have no names yet.',
+    dusk:has('theatre') ? 'Dusk: voices rise from the theatre into the cooling air.' :
+      has('market') ? 'Dusk: traders count the day’s last exchanges.' :
+      'Dusk: smoke settles low among the unfinished houses.',
+    night:has('graveyard') && townMemory.some(entry=>entry.id.startsWith('loss-')) ?
+      'Night: a lantern burns beside the names the town remembers.' :
+      has('temple') ? 'Night: the shrine keeps one flame against the dark.' :
+      'Night: beyond the last roof, reeds move in the wind.'
+  };
+  document.getElementById('main').dataset.light=phase;
+  document.getElementById('worldMood').textContent=lines[phase];
+}
 
 const CIVIC_MESSAGES = {
   bar:'🍺 Citizens celebrate as the first bar opens.',
@@ -139,6 +163,7 @@ function payCivicMaintenance(){
 
 const audioState = { context: null };
 function playTone(kind){
+  if(marshPrologue && !marshPrologue.sound) return;
   try{
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if(!AudioContext) return;
@@ -199,6 +224,7 @@ function roadPreview(x,y){
 function tick(){
   if(marshPrologue) return;
   tickCount++;
+  if(tickCount%36===0) updateWorldMood();
   const needed = totalWorkersNeeded();
   const civilianPop = Math.max(0, pop.count - military.soldiers);
   const laborRatio = needed>0 ? Math.min(1, civilianPop/needed) : 1;
@@ -653,9 +679,12 @@ function render(){
     }
   }
   if(marshPrologue){
-    for(const [x,y] of marshPrologue.slots){
+    const targets = marshPrologue.phase==='wood' ? [marshPrologue.targets.sawmill] :
+      marshPrologue.phase==='stone' ? [marshPrologue.targets.quarry] :
+      marshPrologue.phase==='roads' ? marshPrologue.targets.roads : [];
+    for(const [x,y] of targets){
       if(grid[y][x].building) continue;
-      ctx.fillStyle='rgba(245,205,100,0.5)';
+      ctx.fillStyle=marshPrologue.phase==='roads' ? 'rgba(245,205,100,0.5)' : 'rgba(138,216,173,0.55)';
       ctx.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);
       ctx.strokeStyle='#ffe7a3';
       ctx.strokeRect(x*TS+1,y*TS+1,TS-2,TS-2);
@@ -1031,7 +1060,7 @@ function handleBuildingTap(tile){
         `The ${def.name} became a ${next.name}. The same ground now serves a different future.`);
       logEvent(`🏛️ ${def.name} became ${next.name}.`);
       showToast(`Upgraded to ${next.name}`);
-      render(); renderRes();
+      render(); renderRes(); updateWorldMood();
     }
     return;
   }
@@ -1083,15 +1112,14 @@ function demolishAt(x, y){
   removeBuilding(b);
   minimapDirty = true;
   showToast(`Demolished ${def ? def.name : b.id} and refunded resources`);
-  render(); renderRes();
+  render(); renderRes(); updateWorldMood();
 }
 
 function placeAt({x,y}){
   if(!selectedBuild) return;
   if(!inBounds(x,y)) return;
-  if(marshPrologue && (selectedBuild!=='road' ||
-      !marshPrologue.slots.some(([sx,sy])=>sx===x && sy===y))){
-    showToast('Practice: lay roads on the two marked tiles'); return;
+  if(marshPrologue && !marshPlacementAllowed(marshPrologue,selectedBuild,x,y)){
+    showToast('Follow the marked tile and the instruction beside the map'); return;
   }
   if(selectedBuild === 'demolish'){
     demolishAt(x, y);
@@ -1110,15 +1138,6 @@ function placeAt({x,y}){
   if(def.isField) b.crop = selectedCrop;
   tile.building = b;
   placedBuildings.push(b);
-  if(marshPrologue && def.id==='road'){
-    marshPrologue.roads++;
-    if(marshPrologue.roads===1){
-      document.getElementById('legend').textContent='Lay a second road beside the mill and the storage yard.';
-      showToast('One path reaches the fields. Complete the route to storage.');
-    } else if(connectedToStore(grid,marshPrologue.mill)){
-      setTimeout(finishMarshPrologue, 1700);
-    }
-  }
   buildingPops.push({x,y,startedAt:performance.now()});
   minimapDirty = true;
   const animatePlacement = ()=>{
@@ -1154,6 +1173,7 @@ function placeAt({x,y}){
   if(def.id==='theatre') remember('theatre', 'Voices in the open air',
     'The town gathered to tell its own story beneath the sky.');
   showToast(buildMessage);
+  if(marshPrologue) progressMarshLesson(b);
   playTone('build');
   const guide = document.getElementById('firstActionGuide');
   if(def.id === 'house' && guide){
@@ -1161,7 +1181,7 @@ function placeAt({x,y}){
     guide.classList.add('complete');
     document.querySelectorAll('.bldbtn').forEach(btn=>btn.classList.remove('guided'));
   }
-  render(); renderRes();
+  render(); renderRes(); updateWorldMood();
 }
 
 /* ---------------- MENU PANELS ---------------- */
@@ -2075,7 +2095,7 @@ function applyState(s){
     placedBuildings.push(bld);
   });
   minimapDirty = true;
-  render(); renderRes(); renderPanel(); renderCodexPanel();
+  render(); renderRes(); renderPanel(); renderCodexPanel(); updateWorldMood();
   showToast(`Game Loaded. Welcome back${captainName? ', '+captainName:''}`);
   playTone('click');
   logEvent('📜 City loaded from a save code.');
@@ -2128,66 +2148,161 @@ genMap();
 resizeCanvas();
 renderPanel();
 renderRes();
+updateWorldMood();
 fitCanvas();
 window.addEventListener('resize', resizeCanvas, {passive:true});
 
 refreshFromServer();
 
+function marshNarration(title,text,task){
+  const story=document.getElementById('marshStory');
+  story.hidden=false;
+  document.getElementById('marshStoryTitle').textContent=title;
+  document.getElementById('marshStoryText').textContent=text;
+  document.getElementById('marshStoryTask').textContent=task;
+  document.getElementById('legend').textContent=task;
+}
+function marshSound(kind){
+  if(!marshPrologue?.sound) return;
+  try{
+    const AudioContext=window.AudioContext || window.webkitAudioContext;
+    if(!AudioContext) return;
+    audioState.context ||= new AudioContext();
+    audioState.context.resume();
+    const context=audioState.context, now=context.currentTime;
+    const oscillator=context.createOscillator(), gain=context.createGain();
+    oscillator.type=kind==='flood'?'sine':'triangle';
+    oscillator.frequency.setValueAtTime(({wood:130,stone:95,road:180,flow:240,flood:75})[kind]||120,now);
+    if(kind==='flood') oscillator.frequency.exponentialRampToValueAtTime(45,now+2);
+    gain.gain.setValueAtTime(0.0001,now);
+    gain.gain.exponentialRampToValueAtTime(0.035,now+0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001,now+(kind==='flood'?2.3:0.7));
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now+(kind==='flood'?2.4:0.8));
+  }catch(e){ /* Sound is optional. */ }
+}
 function startMarshPrologue(){
   if(marshPrologue) return;
-  const saved = structuredClone(getState());
+  const saved=structuredClone(getState());
+  const oldEvents=eventLog.slice();
   const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
+  const targets=marshTargets(cx,cy);
   const map=saved.grid.map(row=>row.map(tile=>({...tile,building:null})));
-  for(let x=cx-3;x<=cx+3;x++) map[cy][x]={terrain:'grass',deposit:null,building:null};
-  for(let x=cx-3;x<=cx+3;x++){
-    map[cy-1][x]={terrain:'river',deposit:null,building:null};
-    map[cy+1][x]={terrain:'river',deposit:null,building:null};
-  }
+  for(let y=cy-4;y<=cy+2;y++) for(let x=cx-4;x<=cx+4;x++)
+    map[y][x]={terrain:y===cy+2?'river':'grass',deposit:null,building:null};
+  map[cy-1][cx-2]={terrain:'forest',deposit:null,building:null};
+  map[cy][cx+2]={terrain:'mountain',deposit:null,building:null};
   setGrid(map);
   placedBuildings=[];
   pop={count:6,capacity:10};
-  res={...createResources(),stone:30,wheat:10,wood:40};
-  const add=(id,x)=>{
-    const b={id,x,y:cy};
+  res={...createResources(),stone:35,wheat:12,wood:100};
+  const add=(id,[x,y])=>{
+    const b={id,x,y};
     if(id==='fields') b.crop='wheat';
-    grid[cy][x].building=b;
+    grid[y][x].building=b;
     placedBuildings.push(b);
     return b;
   };
-  add('fields',cx-2);
-  const mill=add('mill',cx);
-  add('stockage',cx+2);
-  marshPrologue={saved,mill,slots:[[cx-1,cy],[cx+1,cy]],roads:0};
+  add('fields',targets.field);
+  const mill=add('mill',targets.mill);
+  add('stockage',targets.storage);
+  marshPrologue={saved,oldEvents,targets,mill,phase:'wood',sound:false};
+  document.getElementById('marshSoundBtn').textContent='Sound off';
+  document.getElementById('marshSoundBtn').setAttribute('aria-pressed','false');
+  document.getElementById('main').classList.add('marsh-active');
   selectBuild(null);
-  selectBuild('road');
-  document.getElementById('legend').textContent='Practice: lay a road on each glowing tile to connect field, mill, and storage.';
+  selectBuild('sawmill');
+  marshNarration('The reedbank',
+    'Grain waits by the mill. Beyond it, the first trees lean over wet ground. The settlers need timber before the rain returns.',
+    'Build a Woodcutter on the green marked tile beside the forest.');
   const wrap=document.getElementById('mapwrap');
   wrap.scrollTo({left:Math.max(0,cx*TS-wrap.clientWidth/2),top:Math.max(0,cy*TS-wrap.clientHeight/2),behavior:'smooth'});
-  logEvent('🌫️ Before Portus, a small marsh settlement tried to make a road.');
+  logEvent('🌫️ On the reedbank, a mill waited for a road and the first trees were felled.');
   render(); renderRes();
 }
+function progressMarshLesson(building){
+  const lesson=marshPrologue;
+  if(!lesson) return;
+  const cue=advanceMarshLesson(lesson,building,grid);
+  if(cue==='wood'){
+    marshSound('wood');
+    selectBuild(null); selectBuild('quarry');
+    marshNarration('The first timber',
+      'Axes sound at the edge of the reeds. The wood is cut, but no cart can reach the store. Across the clearing, stone shows through the earth.',
+      'Build a Quarry on the marked mountain seam.');
+  } else if(cue==='stone'){
+    marshSound('stone');
+    selectBuild(null); selectBuild('road');
+    marshNarration('Stone in the ground',
+      'The quarry opens. Wood, stone, and grain now exist in the same settlement, but work does not move simply because a building stands.',
+      'Lay roads on the three amber tiles to bring the mill, Woodcutter, and Quarry to storage.');
+  } else if(cue==='road'){
+    marshSound('road');
+    const done=lesson.targets.roads.filter(([x,y])=>grid[y][x].building?.id==='road').length;
+    marshNarration('A way through',
+      'Feet and carts mark the wet ground. Each connected workplace can now send its goods to the store.',
+      `${done}/3 road links laid. Connect all three workplaces to storage.`);
+  } else if(cue==='flow'){
+    marshSound('flow');
+    res.wheat-=2;
+    addRes('flour',1.6*roadProductionBoost(grid,lesson.mill));
+    addRes('wood',3*roadProductionBoost(grid,lesson.sawmill));
+    addRes('stone',2.2*roadProductionBoost(grid,lesson.quarry));
+    marshNarration('The settlement breathes',
+      'The field gives wheat. The mill makes flour. Timber and stone reach the store along the new paths. Connected roads improve each yield. For one clear morning, the town works.',
+      'Watch the resource bar: wheat becomes flour; wood and stone arrive. The water is rising.');
+    logEvent('🌾 Wheat → flour; timber and stone reached storage along the new roads.');
+    renderRes();
+    setTimeout(()=>{if(marshPrologue===lesson && lesson.phase==='flow') finishMarshPrologue();},6500);
+  }
+  render();
+}
+function restoreMarshPrologue(completed){
+  const lesson=marshPrologue;
+  if(!lesson) return;
+  marshPrologue=null;
+  document.getElementById('main').classList.remove('marsh-active','marsh-flood');
+  document.getElementById('marshStory').hidden=true;
+  applyState(lesson.saved);
+  eventLog=lesson.oldEvents;
+  if(completed){
+    remember('marsh-prologue','What the marsh kept',
+      'A Woodcutter, Quarry, field, and mill worked together. Roads carried timber, stone, and flour to storage. The water took the first settlement, but not what its people learned.');
+    logEvent('📖 The reedbank is gone. Its lesson remains in the Codex.');
+  } else renderChronicle();
+  selectBuild(null);
+  document.getElementById('legend').textContent='Build freely; roads help nearby work and routes to storage.';
+}
+document.getElementById('marshSoundBtn').onclick=()=>{
+  if(!marshPrologue) return;
+  marshPrologue.sound=!marshPrologue.sound;
+  const button=document.getElementById('marshSoundBtn');
+  button.textContent=marshPrologue.sound?'Sound on':'Sound off';
+  button.setAttribute('aria-pressed',String(marshPrologue.sound));
+  marshSound('wood');
+};
+document.getElementById('marshLeaveBtn').onclick=()=>restoreMarshPrologue(false);
 document.getElementById('marshLessonMenu').onclick=()=>{
   if(marshPrologue){ showToast('The marsh lesson is already underway'); return; }
   closeAllPanels();
   startMarshPrologue();
 };
 function finishMarshPrologue(){
-  if(!marshPrologue || !connectedToStore(grid,marshPrologue.mill)) return;
-  const {saved}=marshPrologue;
-  for(let x=marshPrologue.mill.x-3;x<=marshPrologue.mill.x+3;x++)
-    grid[marshPrologue.mill.y][x].terrain='river';
-  render();
-  document.getElementById('legend').textContent='The mill has a route to storage. The marsh rises; this practice settlement will be lost.';
+  const lesson=marshPrologue;
+  if(!lesson || lesson.phase!=='flow') return;
+  lesson.phase='flood';
+  document.getElementById('main').classList.add('marsh-flood');
+  for(let y=lesson.mill.y-3;y<=lesson.mill.y+1;y++)
+    for(let x=lesson.mill.x-3;x<=lesson.mill.x+3;x++)
+      grid[y][x].terrain='river';
+  marshSound('flood');
+  marshNarration('The marsh remembers',
+    'Water crosses the roads, fills the quarry, and reaches the doors. The first town cannot be kept. Its pattern can.',
+    'Your original settlement will return. This place will remain in the Codex.');
   logEvent('🌊 The marsh rose. The practice town disappeared beneath the water.');
-  showToast('The marsh took the settlement. Its lesson remains.');
-  setTimeout(()=>{
-    marshPrologue=null;
-    applyState(saved);
-    remember('marsh-prologue','What the marsh kept',
-      'A field fed a mill. Two short roads led its flour to storage. Then the marsh rose and the practice town vanished. The route remains in memory.');
-    selectBuild(null);
-    document.getElementById('legend').textContent='Build freely; roads help nearby work and routes to storage.';
-  },2200);
+  render();
+  setTimeout(()=>{if(marshPrologue===lesson) restoreMarshPrologue(true);},4500);
 }
 
 /* tutorial overlay: show once on first load */
