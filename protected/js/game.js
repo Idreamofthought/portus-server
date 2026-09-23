@@ -10,6 +10,7 @@ import { GOD_MESSAGES } from '/game-assets/blessings.js';
 import { pickChoiceEvent } from '/game-assets/events.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
 import { createPortusMusic } from '/music.js';
+import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
@@ -83,6 +84,15 @@ let tickCount = 0;
 let coin = 20;       // trade currency, not subject to storage cap
 let research = 0;    // banked research points, spent on techs
 let codexEntries = [];
+let townMemory = [];
+const remembered = new Set();
+function remember(id, title, content){
+  if(remembered.has(id)) return;
+  remembered.add(id);
+  townMemory.push({id, title, content});
+  townMemory = townMemory.slice(-100);
+  renderCodexPanel();
+}
 let military = { soldiers:0, cap:0 };
 let droughtTicksLeft = 0;
 // Seasonal protections won from choice events; runtime-only, not saved.
@@ -101,6 +111,7 @@ let questsCompleted = new Set();
 let buildingPops = [];
 let previousResourceValues = {};
 let civicMilestones = new Set();
+let marshPrologue = null;
 
 const CIVIC_MESSAGES = {
   bar:'🍺 Citizens celebrate as the first bar opens.',
@@ -176,7 +187,17 @@ function totalWorkersNeeded(){
   return placedBuildings.reduce((s,b)=>s + (BLD_BY_ID[b.id].workers||0), 0);
 }
 
+function roadPreview(x,y){
+  const nearby = roadNeighbours(grid,x,y)
+    .map(([nx,ny])=>grid[ny][nx].building?.id)
+    .filter(id=>id && id!=='road');
+  if(nearby.includes('claypit') && nearby.includes('potter')) return 'This road serves the claypit and potter.';
+  if(nearby.length) return `This road serves ${[...new Set(nearby)].map(id=>BLD_BY_ID[id].name).join(' and ')}; adjacent producers gain 15%.`;
+  return 'Extend a road towards producers and a storage yard or market.';
+}
+
 function tick(){
+  if(marshPrologue) return;
   tickCount++;
   const needed = totalWorkersNeeded();
   const civilianPop = Math.max(0, pop.count - military.soldiers);
@@ -186,7 +207,7 @@ function tick(){
 
   placedBuildings.forEach(b=>{
     const def = BLD_BY_ID[b.id];
-    const roadBoost = nearBuilding(b.x,b.y,'road',1) ? 1.15 : 1;
+    const roadBoost = roadProductionBoost(grid,b);
     if(def.isField){
       let farmBoost = nearBuilding(b.x,b.y,'farmerhut',2) ? 1.2 : 1;
       let wellBoost = nearBuilding(b.x,b.y,'well',2) ? 1.15 : 1;
@@ -305,6 +326,9 @@ function tick(){
     }
   });
 
+  if(placedBuildings.some(b=>b.id==='fields') && [...FOOD_KEYS].some(k=>res[k]>0))
+    remember('first-harvest', 'The first harvest',
+      'The first crops were carried from the fields. For a moment the settlement could imagine another year.');
   coin += tradeIncome;
   payCivicMaintenance();
 
@@ -323,7 +347,17 @@ function tick(){
   } else {
     FOOD_KEYS.forEach(k=> res[k]=0);
     happiness = Math.max(0, happiness - 1.2);
-    if(Math.random()<0.05 && pop.count>1) pop.count--;
+    if(Math.random()<0.05 && pop.count>1) loseCitizens(1, 'hunger');
+  }
+
+  if(tickCount % 240 === 0 && pop.count > 1){
+    const has = id=>placedBuildings.some(b=>b.id===id);
+    const illnessRisk = 0.25 * (has('sewer') ? 0.55 : 1) *
+      (has('hospital') ? 0.15 : has('doctor') ? 0.45 : has('healer') ? 0.75 : 1);
+    if(Math.random() < illnessRisk) loseCitizens(1, 'illness');
+    else if(has('doctor') || has('hospital'))
+      remember('care-prevents-illness', 'The work of care',
+        'A season of illness passed. The town’s healers helped people remain.');
   }
 
   // happiness from services
@@ -452,6 +486,24 @@ function drawBuildingIllustration(building, def, x, y){
     ctx.beginPath(); ctx.arc(x*TS+TS/2, y*TS+TS/2, 6, 0, Math.PI*2); ctx.stroke();
     return;
   }
+  if(building.id === 'theatre' || building.id === 'gathering'){
+    ctx.fillStyle='#8a7355';
+    ctx.beginPath(); ctx.arc(x*TS+TS/2,y*TS+TS/2,9,0,Math.PI); ctx.fill();
+    ctx.fillStyle='#d7bb84';
+    ctx.fillRect(x*TS+4,y*TS+13,TS-8,3);
+    if(building.id==='theatre'){
+      ctx.fillStyle='#7b3951';
+      ctx.fillRect(x*TS+9,y*TS+5,TS-18,8);
+    }
+    return;
+  }
+  if(building.id === 'graveyard'){
+    ctx.fillStyle='#648167';
+    ctx.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);
+    ctx.fillStyle='#d2c7a9';
+    for(let i=0;i<3;i++) ctx.fillRect(x*TS+5+i*5,y*TS+7+(i%2)*3,3,7);
+    return;
+  }
   const [wall, roof] = BUILDING_COLORS[def.cat] || ['#e3d2ad', '#76513a'];
   ctx.fillStyle = 'rgba(35,28,22,0.24)';
   ctx.fillRect(left+2, top+3, width-1, height-1);
@@ -472,6 +524,10 @@ function drawBuildingIllustration(building, def, x, y){
   ctx.fillStyle = '#dff1e5';
   ctx.fillRect(left+4, top+height-8, 3, 3);
   ctx.fillRect(left+width-7, top+height-8, 3, 3);
+  if(building.id==='largehouse' || building.id==='hospital'){
+    ctx.strokeStyle='#f2d594'; ctx.lineWidth=2;
+    ctx.strokeRect(left-2,top+2,width+4,height-1);
+  }
   if(['quarry','marblequarry','goldmine','silvermine','coppermine','tinmine','saltmine'].includes(building.id)){
     ctx.fillStyle = '#5b554c';
     ctx.beginPath();
@@ -594,6 +650,15 @@ function render(){
         ctx.fillStyle = 'rgba(120,200,120,0.18)';
         ctx.fillRect(x*TS,y*TS,TS,TS);
       }
+    }
+  }
+  if(marshPrologue){
+    for(const [x,y] of marshPrologue.slots){
+      if(grid[y][x].building) continue;
+      ctx.fillStyle='rgba(245,205,100,0.5)';
+      ctx.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);
+      ctx.strokeStyle='#ffe7a3';
+      ctx.strokeRect(x*TS+1,y*TS+1,TS-2,TS-2);
     }
   }
   if(hoverTile && inBounds(hoverTile.x, hoverTile.y)){
@@ -743,7 +808,7 @@ function renderPanel(){
     const label=document.createElement('div');
     label.className='catlabel'; label.textContent=cat;
     list.appendChild(label);
-    BUILDINGS.filter(b=>b.cat===cat).forEach(b=>{
+    BUILDINGS.filter(b=>b.cat===cat && !b.upgradeOnly).forEach(b=>{
       const btn=document.createElement('button');
       const locked = b.requiresTech && !unlockedTechs.has(b.requiresTech);
       btn.className='bldbtn'+(locked?' locked':''); btn.dataset.id=b.id;
@@ -881,6 +946,8 @@ function updateBuildingTooltip(e){
   }
   const status = buildingProductionStatus(building);
   if(status) label += `\n${status}`;
+  if(building.id==='road') label += '\nAdjacent production +15%; connected route to storage or market +20%.';
+  if(def.produce && connectedToStore(grid,building)) label += '\nRoad route reaches storage or market.';
   tooltip.textContent = label;
   tooltip.classList.add('show');
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -888,7 +955,13 @@ function updateBuildingTooltip(e){
   tooltip.style.left = `${Math.min(clientX+12, window.innerWidth-tooltip.offsetWidth-8)}px`;
   tooltip.style.top = `${Math.min(clientY+12, window.innerHeight-tooltip.offsetHeight-8)}px`;
 }
-canvas.addEventListener('mousemove', e=>{ hoverTile=tileFromEvent(e); updateBuildingTooltip(e); render(); });
+canvas.addEventListener('mousemove', e=>{
+  hoverTile=tileFromEvent(e);
+  updateBuildingTooltip(e);
+  if(selectedBuild==='road' && inBounds(hoverTile.x,hoverTile.y) && !grid[hoverTile.y][hoverTile.x].building)
+    document.getElementById('legend').textContent=roadPreview(hoverTile.x,hoverTile.y);
+  render();
+});
 canvas.addEventListener('mouseleave', ()=> document.getElementById('buildingTooltip').classList.remove('show'));
 let lastTouchActionTime = 0;
 canvas.addEventListener('click', e=>{
@@ -942,6 +1015,26 @@ function handleBuildingTap(tile){
   const building = grid[tile.y][tile.x].building;
   if(!building) return;
   const def = BLD_BY_ID[building.id];
+  if(def?.upgradeTo){
+    const next = BLD_BY_ID[def.upgradeTo];
+    const cost = Object.entries(next.cost).map(([key,value])=>`${value} ${key}`).join(', ');
+    if(window.confirm(`Upgrade ${def.name} to ${next.name} for ${cost}?\nThe building stays on this tile.`)){
+      if(!canAfford(next.cost)){ showToast('Not enough resources for this upgrade'); return; }
+      pay(next.cost);
+      removeBuilding(building);
+      const upgraded = {id:next.id,x:tile.x,y:tile.y};
+      grid[tile.y][tile.x].building=upgraded;
+      placedBuildings.push(upgraded);
+      if(next.popCap) pop.capacity+=next.popCap;
+      minimapDirty=true;
+      remember(`upgrade-${next.id}`, 'What endured',
+        `The ${def.name} became a ${next.name}. The same ground now serves a different future.`);
+      logEvent(`🏛️ ${def.name} became ${next.name}.`);
+      showToast(`Upgraded to ${next.name}`);
+      render(); renderRes();
+    }
+    return;
+  }
   if(building.id === 'tradingpost'){
     openPanel('tradePanel');
     playTone('click');
@@ -996,11 +1089,16 @@ function demolishAt(x, y){
 function placeAt({x,y}){
   if(!selectedBuild) return;
   if(!inBounds(x,y)) return;
+  if(marshPrologue && (selectedBuild!=='road' ||
+      !marshPrologue.slots.some(([sx,sy])=>sx===x && sy===y))){
+    showToast('Practice: lay roads on the two marked tiles'); return;
+  }
   if(selectedBuild === 'demolish'){
     demolishAt(x, y);
     return;
   }
   const def = BLD_BY_ID[selectedBuild];
+  if(def.upgradeOnly){ showToast('Upgrade an existing building to create this'); return; }
   const tile = grid[y][x];
   if(tile.building){ showToast('Tile already occupied'); return; }
   if(!def.valid(x,y)){ showToast(`Can't place ${def.name} here`); return; }
@@ -1012,6 +1110,15 @@ function placeAt({x,y}){
   if(def.isField) b.crop = selectedCrop;
   tile.building = b;
   placedBuildings.push(b);
+  if(marshPrologue && def.id==='road'){
+    marshPrologue.roads++;
+    if(marshPrologue.roads===1){
+      document.getElementById('legend').textContent='Lay a second road beside the mill and the storage yard.';
+      showToast('One path reaches the fields. Complete the route to storage.');
+    } else if(connectedToStore(grid,marshPrologue.mill)){
+      setTimeout(finishMarshPrologue, 1700);
+    }
+  }
   buildingPops.push({x,y,startedAt:performance.now()});
   minimapDirty = true;
   const animatePlacement = ()=>{
@@ -1036,6 +1143,16 @@ function placeAt({x,y}){
     buildMessage = CIVIC_MESSAGES[def.id];
     logEvent(buildMessage);
   }
+  if(def.id==='road'){
+    buildMessage=roadPreview(x,y);
+    if(placedBuildings.some(b=>BLD_BY_ID[b.id].produce && connectedToStore(grid,b)))
+      remember('first-route', 'The first route',
+        'The settlement laid a path between work and storage. Goods now have a way through the town.');
+  }
+  if(def.id==='graveyard') remember('burial-ground', 'A place for names',
+    'The living set aside ground to remember those who will not see the city grow.');
+  if(def.id==='theatre') remember('theatre', 'Voices in the open air',
+    'The town gathered to tell its own story beneath the sky.');
   showToast(buildMessage);
   playTone('build');
   const guide = document.getElementById('firstActionGuide');
@@ -1202,14 +1319,14 @@ function renderCodexPanel(){
   const list = document.getElementById('codexList');
   if(!list) return;
   list.replaceChildren();
-  if(!codexEntries.length){
+  if(!codexEntries.length && !townMemory.length){
     const empty = document.createElement('p');
     empty.className = 'pnote';
     empty.textContent = 'No Codex entries unlocked yet.';
     list.appendChild(empty);
     return;
   }
-  codexEntries.forEach(entry=>{
+  [...townMemory, ...codexEntries].forEach(entry=>{
     const article = document.createElement('article');
     article.className = 'codexEntry';
     const title = document.createElement('h3');
@@ -1494,6 +1611,20 @@ function logEvent(msg){
   renderChronicle();
 }
 
+function loseCitizens(number, cause){
+  const lost = Math.min(Math.max(0, pop.count - 1), number);
+  if(!lost) return;
+  pop.count -= lost;
+  const sheltered = placedBuildings.some(b=>b.id==='graveyard');
+  const tended = sheltered && placedBuildings.some(b=>b.id==='undertaker');
+  happiness = Math.max(0, happiness - lost * (tended ? 0.8 : sheltered ? 1.5 : 3));
+  const message = `🕯️ ${lost} ${lost===1?'person was':'people were'} lost to ${cause}.` +
+    (sheltered ? ' The burial ground remembers.' : ' The town has no burial ground.');
+  logEvent(message);
+  remember(`loss-${tickCount}-${townMemory.length}`, 'Those we lost',
+    `On turn ${tickCount}, ${lost} ${lost===1?'resident died':'residents died'} from ${cause}. ${sheltered?'Their story rests in the burial ground.':'The settlement still seeks a place to remember them.'}`);
+}
+
 function maybeSendGodMessage(){
   if(tickCount === 0 || tickCount % 24 !== 0 || Math.random() > 0.7) return;
   const blessing = GOD_MESSAGES[rnd(GOD_MESSAGES.length)];
@@ -1565,7 +1696,9 @@ function removeBuilding(b){
 }
 
 function damageRandomBuildings(count, filterFn){
-  let candidates = filterFn ? placedBuildings.filter(filterFn) : placedBuildings.slice();
+  // A flooded track remains a track; generic disasters damage structures,
+  // without making players rebuild every segment of a long road.
+  let candidates = placedBuildings.filter(b=>b.id!=='road' && (!filterFn || filterFn(b)));
   let destroyed = 0;
   for(let i=0;i<count && candidates.length>0;i++){
     const idx = rnd(candidates.length);
@@ -1625,7 +1758,7 @@ function disasterCtx(){
     droughtTicksLeft, coin, ageTicks:tickCount,
     floodRelief: placedBuildings.some(b=>b.id==='floodbarrier') ? 0.3 : 1,
     addHappiness: (delta)=>{ happiness = Math.max(0, happiness+delta); },
-    reducePop: (n)=>{ pop.count = Math.max(1, pop.count-n); },
+    reducePop: (n)=>loseCitizens(n, 'the mountain eruption'),
     reduceBoats: (n)=>{ boats = Math.max(0, boats-n); },
     waterlogStores: (relief=1)=>{ res.wheat *= 1-0.4*relief; res.wood *= 1-0.2*relief; res.clay *= 1-0.2*relief; },
     startDrought: (ticks)=>{ droughtTicksLeft = ticks; },
@@ -1635,6 +1768,8 @@ function disasterCtx(){
 function triggerDisaster(disaster, ctx){
   const msg = disaster.resolve(ctx);
   logEvent(msg);
+  remember(`disaster-${disaster.id}-${tickCount}`, 'After the ' + disaster.id,
+    `On turn ${tickCount}, ${msg} The town must decide what to rebuild and what to remember.`);
   showToast(msg);
   if(happiness >= 20) scenarioState.disastersSurvived = (scenarioState.disastersSurvived||0) + 1;
   else scenarioState.disastersSurvived = 0;
@@ -1666,7 +1801,7 @@ function choiceEventCtx(){
     nearRiver: (b)=> nearTerrainOfBuilding(b,'river'),
     damageBuildings: (n, filterFn)=> damageRandomBuildings(n, filterFn),
     addHappiness: (delta)=>{ happiness = Math.max(0, Math.min(100, happiness+delta)); },
-    reducePop: (n)=>{ pop.count = Math.max(1, pop.count-n); },
+    reducePop: (n)=>loseCitizens(n, 'disaster'),
     scaleFood: (mult)=> FOOD_KEYS.forEach(k=> res[k] *= mult),
     waterlogStores: ()=>{ res.wheat *= 0.6; res.wood *= 0.8; res.clay *= 0.8; },
     payWood: (n)=>{ res.wood = Math.max(0, res.wood-n); },
@@ -1894,7 +2029,7 @@ function getState(){
     techBonus, techHappinessBonus,
     questsCompleted: Array.from(questsCompleted),
     military,
-    droughtTicksLeft, tickCount, civicMilestones:Array.from(civicMilestones),
+    droughtTicksLeft, tickCount, civicMilestones:Array.from(civicMilestones), townMemory,
     taxRate, scenarioId, scenarioState,
     grid: grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit}))),
     buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
@@ -1917,6 +2052,9 @@ function applyState(s){
   coin = s.coin; research = s.research; droughtTicksLeft = s.droughtTicksLeft||0;
   tickCount = s.tickCount||0;
   civicMilestones = new Set(s.civicMilestones||[]);
+  townMemory = s.townMemory || [];
+  remembered.clear();
+  townMemory.forEach(entry=>remembered.add(entry.id));
   unlockedTechs = new Set(s.unlockedTechs||[]);
   Object.assign(techBonus, s.techBonus||{});
   techHappinessBonus = s.techHappinessBonus || 0;
@@ -1937,7 +2075,7 @@ function applyState(s){
     placedBuildings.push(bld);
   });
   minimapDirty = true;
-  render(); renderRes(); renderPanel();
+  render(); renderRes(); renderPanel(); renderCodexPanel();
   showToast(`Game Loaded. Welcome back${captainName? ', '+captainName:''}`);
   playTone('click');
   logEvent('📜 City loaded from a save code.');
@@ -1945,18 +2083,21 @@ function applyState(s){
 
 document.getElementById('captainInput').oninput = e=> captainName = e.target.value;
 document.getElementById('genSaveBtn').onclick = ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
   const code = encodeState(getState());
   document.getElementById('saveOut').value = code;
   showToast('Game Saved. Save code generated — copy it now');
   playTone('click');
 };
 document.getElementById('loadBtn').onclick = ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before loading'); return; }
   const code = document.getElementById('loadIn').value;
   if(!code.trim()){ showToast('Paste a save code first'); return; }
   const state = decodeState(code);
   applyState(state);
 };
 document.getElementById('cloudSaveBtn').onclick = async ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
   if(!currentUser){ showToast('Log in first to save to your account'); return; }
   try{
     const state = getState();
@@ -1969,6 +2110,7 @@ document.getElementById('cloudSaveBtn').onclick = async ()=>{
   } catch(e){ showToast(e.message); }
 };
 document.getElementById('cloudLoadBtn').onclick = async ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before loading'); return; }
   if(!currentUser){ showToast('Log in first to load from your account'); return; }
   try{
     const {state} = await api('/api/save');
@@ -1991,10 +2133,71 @@ window.addEventListener('resize', resizeCanvas, {passive:true});
 
 refreshFromServer();
 
+function startMarshPrologue(){
+  if(marshPrologue) return;
+  const saved = structuredClone(getState());
+  const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
+  const map=saved.grid.map(row=>row.map(tile=>({...tile,building:null})));
+  for(let x=cx-3;x<=cx+3;x++) map[cy][x]={terrain:'grass',deposit:null,building:null};
+  for(let x=cx-3;x<=cx+3;x++){
+    map[cy-1][x]={terrain:'river',deposit:null,building:null};
+    map[cy+1][x]={terrain:'river',deposit:null,building:null};
+  }
+  setGrid(map);
+  placedBuildings=[];
+  pop={count:6,capacity:10};
+  res={...createResources(),stone:30,wheat:10,wood:40};
+  const add=(id,x)=>{
+    const b={id,x,y:cy};
+    if(id==='fields') b.crop='wheat';
+    grid[cy][x].building=b;
+    placedBuildings.push(b);
+    return b;
+  };
+  add('fields',cx-2);
+  const mill=add('mill',cx);
+  add('stockage',cx+2);
+  marshPrologue={saved,mill,slots:[[cx-1,cy],[cx+1,cy]],roads:0};
+  selectBuild(null);
+  selectBuild('road');
+  document.getElementById('legend').textContent='Practice: lay a road on each glowing tile to connect field, mill, and storage.';
+  const wrap=document.getElementById('mapwrap');
+  wrap.scrollTo({left:Math.max(0,cx*TS-wrap.clientWidth/2),top:Math.max(0,cy*TS-wrap.clientHeight/2),behavior:'smooth'});
+  logEvent('🌫️ Before Portus, a small marsh settlement tried to make a road.');
+  render(); renderRes();
+}
+document.getElementById('marshLessonMenu').onclick=()=>{
+  if(marshPrologue){ showToast('The marsh lesson is already underway'); return; }
+  closeAllPanels();
+  startMarshPrologue();
+};
+function finishMarshPrologue(){
+  if(!marshPrologue || !connectedToStore(grid,marshPrologue.mill)) return;
+  const {saved}=marshPrologue;
+  for(let x=marshPrologue.mill.x-3;x<=marshPrologue.mill.x+3;x++)
+    grid[marshPrologue.mill.y][x].terrain='river';
+  render();
+  document.getElementById('legend').textContent='The mill has a route to storage. The marsh rises; this practice settlement will be lost.';
+  logEvent('🌊 The marsh rose. The practice town disappeared beneath the water.');
+  showToast('The marsh took the settlement. Its lesson remains.');
+  setTimeout(()=>{
+    marshPrologue=null;
+    applyState(saved);
+    remember('marsh-prologue','What the marsh kept',
+      'A field fed a mill. Two short roads led its flour to storage. Then the marsh rose and the practice town vanished. The route remains in memory.');
+    selectBuild(null);
+    document.getElementById('legend').textContent='Build freely; roads help nearby work and routes to storage.';
+  },2200);
+}
+
 /* tutorial overlay: show once on first load */
 (function(){
   const overlay = document.getElementById('tutorialOverlay');
   const btn = document.getElementById('tutorialCloseBtn');
+  document.getElementById('marshPrologueBtn').onclick=()=>{
+    overlay.style.display='none';
+    startMarshPrologue();
+  };
   const showTutorial = ()=>{
     overlay.style.display = 'flex';
     btn.onclick = ()=>{
