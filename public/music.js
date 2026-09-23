@@ -77,14 +77,19 @@ export function createPortusMusic(button, playingLabel = 'Pause Portus music'){
 }
 
 function addPoemControl(){
-  const music = document.querySelector('.poem-music');
-  if(!music || document.querySelector('.portus-music-control')) return;
+  if(!/^\/writing\/poetry\/[^/]+\.html$/.test(window.location.pathname)) return;
+  const poem = document.querySelector('.container');
+  if(!poem || document.querySelector('.portus-music-control')) return;
+  const music = poem.querySelector('.poem-music') || document.createElement('div');
+  music.classList.add('poem-music');
+  // The three legacy MP3s are empty placeholders; do not show a player that cannot play.
+  music.querySelectorAll('audio').forEach(audio => audio.remove());
+  if(!music.parentNode) (poem.querySelector('.intro') || poem.querySelector('h1')).after(music);
   const button = document.createElement('button');
   button.className = 'poem-mute-toggle portus-music-control';
   button.type = 'button';
-  button.textContent = 'Play Portus music';
-  button.setAttribute('aria-label', 'Play the shared Portus music');
-  music.parentNode.insertBefore(button, music);
+  button.setAttribute('aria-label', 'Play optional background music');
+  music.append(button);
   createPortusMusic(button);
 }
 
