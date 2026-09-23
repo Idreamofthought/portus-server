@@ -85,7 +85,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 2
 .ecosystem-branches > header { max-width: 680px; margin: 0 auto 25px; text-align: center; }
 .ecosystem-branches h2 { margin: 0 0 10px; font-size: clamp(2rem,5vw,4rem); font-weight: normal; }
 .ecosystem-floor { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin: 0 auto 70px; }
-.ecosystem-floor a { min-height: 160px; padding: 22px; border: 1px solid rgba(200,200,255,.25); border-radius: 16px; background: rgba(255,255,255,.05); color: var(--ink); }
+.ecosystem-floor a,.ecosystem-floor article { min-height: 160px; padding: 22px; border: 1px solid rgba(200,200,255,.25); border-radius: 16px; background: rgba(255,255,255,.05); color: var(--ink); }
 .ecosystem-floor a:hover,.ecosystem-floor a:focus-visible { background: rgba(255,255,255,.1); text-decoration: none; transform: translateY(-3px); }
 .ecosystem-floor strong { display: block; margin: 12px 0 5px; font-size: 1.2rem; font-weight: normal; }.ecosystem-floor small { color: var(--muted); }
 .leaf-article { max-width: 760px; margin: auto; }.leaf-article .tree-header { margin-bottom: 40px; }.leaf-article .content { font-size: 1.12rem; }.leaf-article .content p { margin: 0 0 1.35em; }
@@ -125,3 +125,5 @@ footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 2
 .branch-growing { opacity: .62; border-style: dashed; box-shadow: none; cursor: default; }
 .branch-growing:hover { transform: none; background: rgba(255,255,255,.06); box-shadow: none; }
 .branch-growing small { margin-top: 10px; color: var(--muted); font-size: .76rem; }
+
+.ecosystem-floor article { scroll-margin-top: 24px; }
