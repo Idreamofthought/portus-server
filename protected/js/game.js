@@ -162,18 +162,34 @@ function payCivicMaintenance(){
 }
 
 const audioState = { context: null };
+const effectsKey = 'portus_effects_enabled';
+let effectsEnabled = true;
+try{ effectsEnabled = localStorage.getItem(effectsKey) !== 'false'; }catch(e){ /* Storage may be disabled. */ }
+const effectsToggle = document.getElementById('effectsToggle');
+function updateEffectsToggle(){
+  effectsToggle.textContent = effectsEnabled ? 'Effects: On' : 'Effects: Off';
+  effectsToggle.setAttribute('aria-pressed', String(effectsEnabled));
+  effectsToggle.title = effectsEnabled ? 'Mute gameplay effects' : 'Enable gameplay effects';
+}
+effectsToggle.onclick = () => {
+  effectsEnabled = !effectsEnabled;
+  try{ localStorage.setItem(effectsKey, String(effectsEnabled)); }catch(e){ /* Storage may be disabled. */ }
+  updateEffectsToggle();
+};
+updateEffectsToggle();
 function playTone(kind){
-  if(marshPrologue && !marshPrologue.sound) return;
+  if(!effectsEnabled || kind === 'click' || (marshPrologue && !marshPrologue.sound)) return;
   try{
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if(!AudioContext) return;
     audioState.context ||= new AudioContext();
     const oscillator = audioState.context.createOscillator();
     const gain = audioState.context.createGain();
-    const settings = {click:[440,0.035], build:[220,0.12], gather:[660,0.08]}[kind] || [440,0.05];
+    const settings = {build:[165,0.22], gather:[196,0.16]}[kind] || [165,0.12];
     oscillator.frequency.value = settings[0];
     oscillator.type = kind === 'build' ? 'triangle' : 'sine';
-    gain.gain.setValueAtTime(0.045, audioState.context.currentTime);
+    gain.gain.setValueAtTime(0.0001, audioState.context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.018, audioState.context.currentTime + 0.035);
     gain.gain.exponentialRampToValueAtTime(0.001, audioState.context.currentTime + settings[1]);
     oscillator.connect(gain).connect(audioState.context.destination);
     oscillator.start();
@@ -2163,7 +2179,7 @@ function marshNarration(title,text,task){
   document.getElementById('legend').textContent=task;
 }
 function marshSound(kind){
-  if(!marshPrologue?.sound) return;
+  if(!effectsEnabled || !marshPrologue?.sound) return;
   try{
     const AudioContext=window.AudioContext || window.webkitAudioContext;
     if(!AudioContext) return;
