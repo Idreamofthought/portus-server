@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPortusMusic } from '../public/music.js';
+import { createPortusMusic, poemSoundTheme, setPortusMood } from '../public/music.js';
+
+test('poem tags choose restrained shared variations', () => {
+  assert.equal(poemSoundTheme('autumn, birds, nature'), 'sky');
+  assert.equal(poemSoundTheme('fruit, flowers'), 'earth');
+  assert.equal(poemSoundTheme('loss, memory'), 'memory');
+  assert.equal(poemSoundTheme('love'), 'poetry');
+});
 
 test('soundscape buttons share playback and connect the master only once', async () => {
   const connections = [];
@@ -28,6 +35,7 @@ test('soundscape buttons share playback and connect the master only once', async
     assert.equal(title.textContent, 'Pause Portus soundscape');
     assert.equal(status.textContent, 'Soundscape: Pause');
     assert.ok(oscillators.length >= 2);
+    setPortusMood('route');
     await title.onclick();
     assert.equal(status.attributes['aria-pressed'], 'false');
     await status.onclick();
