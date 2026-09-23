@@ -2336,7 +2336,18 @@ document.getElementById('marshSoundBtn').onclick=()=>{
   marshSound('wood');
 };
 document.getElementById('marshLeaveBtn').onclick=()=>restoreMarshPrologue(false);
+const marshMobileScreen=window.matchMedia('(pointer: coarse) and (max-width: 900px)');
+function updateMarshAvailability(){
+  for(const id of ['marshPrologueBtn','marshLessonMenu']){
+    const button=document.getElementById(id);
+    button.disabled=marshMobileScreen.matches;
+    button.title=marshMobileScreen.matches?'The marsh lesson needs a larger screen':'';
+  }
+}
+updateMarshAvailability();
+marshMobileScreen.addEventListener('change',updateMarshAvailability);
 document.getElementById('marshLessonMenu').onclick=()=>{
+  if(marshMobileScreen.matches) return;
   if(marshPrologue){ showToast('The marsh lesson is already underway'); return; }
   closeAllPanels();
   startMarshPrologue();
@@ -2363,6 +2374,7 @@ function finishMarshPrologue(){
   const overlay = document.getElementById('tutorialOverlay');
   const btn = document.getElementById('tutorialCloseBtn');
   document.getElementById('marshPrologueBtn').onclick=()=>{
+    if(marshMobileScreen.matches) return;
     overlay.style.display='none';
     startMarshPrologue();
   };
