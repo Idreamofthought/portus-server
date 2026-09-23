@@ -2,6 +2,7 @@ const PORTUS_SCALE = [146.83, 174.61, 196, 220, 261.63, 293.66, 329.63];
 const state = {
   context: null,
   master: null,
+  connected: false,
   timer: null,
   step: 0,
   active: false,
@@ -14,8 +15,11 @@ function ensureAudio(){
   if(!AudioContext) return false;
   state.context ||= new AudioContext();
   state.master ||= state.context.createGain();
-  state.master.gain.value = 0.0001;
-  state.master.connect(state.context.destination);
+  if(!state.connected){
+    state.master.gain.value = 0.0001;
+    state.master.connect(state.context.destination);
+    state.connected = true;
+  }
   return true;
 }
 
@@ -38,10 +42,11 @@ function playNote(frequency, duration, volume, type = 'sine'){
 function scheduleBar(){
   if(!state.active) return;
   const root = PORTUS_SCALE[state.step % 4];
-  playNote(root / 2, 2.8, 0.035, 'triangle');
-  playNote(PORTUS_SCALE[(state.step * 2 + 1) % PORTUS_SCALE.length], 1.4, 0.018);
+  // Keep the melody above the range many phone speakers cannot reproduce.
+  playNote(root * 2, 2.8, 0.14, 'triangle');
+  playNote(PORTUS_SCALE[(state.step * 2 + 1) % PORTUS_SCALE.length] * 2, 1.4, 0.09);
   if(state.step % 2 === 0){
-    playNote(PORTUS_SCALE[(state.step * 3 + 3) % PORTUS_SCALE.length] * 2, 0.65, 0.012, 'sine');
+    playNote(PORTUS_SCALE[(state.step * 3 + 3) % PORTUS_SCALE.length] * 2, 0.65, 0.06, 'sine');
   }
   state.step++;
 }
@@ -50,28 +55,40 @@ export function createPortusMusic(button, playingLabel = 'Pause Portus music'){
   if(!button) return;
   const updateLabel = () => {
     state.controls.forEach(control => {
-      control.textContent = state.active ? playingLabel : 'Play Portus music';
+      control.textContent = control.id === 'musicToggle'
+        ? (state.active ? 'Music: On' : 'Music: Off')
+        : (state.active ? playingLabel : 'Play Portus music');
       control.setAttribute('aria-pressed', String(state.active));
     });
   };
   state.controls.add(button);
   button.onclick = async () => {
-    if(!ensureAudio()) return;
-    if(state.active){
+    try {
+      if(!ensureAudio()) throw new Error('Audio is unavailable in this browser');
+      if(state.active){
+        state.active = false;
+        clearInterval(state.timer);
+        state.timer = null;
+        state.master.gain.cancelScheduledValues(state.context.currentTime);
+        state.master.gain.exponentialRampToValueAtTime(0.0001, state.context.currentTime + 0.35);
+      } else {
+        await state.context.resume();
+        if(state.context.state !== 'running') throw new Error('Audio playback is blocked');
+        state.active = true;
+        state.master.gain.cancelScheduledValues(state.context.currentTime);
+        state.master.gain.exponentialRampToValueAtTime(0.5, state.context.currentTime + 0.3);
+        scheduleBar();
+        state.timer = setInterval(scheduleBar, 2800);
+      }
+      updateLabel();
+    } catch(error) {
       state.active = false;
       clearInterval(state.timer);
       state.timer = null;
-      state.master.gain.cancelScheduledValues(state.context.currentTime);
-      state.master.gain.exponentialRampToValueAtTime(0.0001, state.context.currentTime + 0.35);
-    } else {
-      await state.context.resume();
-      state.active = true;
-      state.master.gain.cancelScheduledValues(state.context.currentTime);
-      state.master.gain.exponentialRampToValueAtTime(0.18, state.context.currentTime + 0.8);
-      scheduleBar();
-      state.timer = setInterval(scheduleBar, 2800);
+      updateLabel();
+      button.textContent = 'Music unavailable';
+      button.title = error.message;
     }
-    updateLabel();
   };
   updateLabel();
 }
