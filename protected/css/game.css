@@ -53,11 +53,12 @@
     overflow-x:auto; white-space:nowrap;
   }
   .musicToggle{
-    flex:0 0 auto; margin-left:auto; padding:3px 8px; border:1px solid #6a5c46;
+    flex:0 0 auto; padding:3px 8px; border:1px solid #6a5c46;
     border-radius:10px; background:#3a3128; color:#c9bfa8; font:11px -apple-system,sans-serif;
     cursor:pointer;
   }
   .musicToggle[aria-pressed="true"]{border-color:var(--gold); color:var(--gold);}
+  #musicToggle{margin-left:auto;}
 
   #main{flex:1; display:flex; overflow:hidden; min-height:0; position:relative;}
   #marshStory{
