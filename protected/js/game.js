@@ -9,7 +9,7 @@ import { RAID_TIERS, resolveRaid } from '/game-assets/army.js';
 import { GOD_MESSAGES } from '/game-assets/blessings.js';
 import { pickChoiceEvent } from '/game-assets/events.js';
 import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
-import { createPortusMusic } from '/music.js';
+import { createPortusMusic, setPortusMood } from '/music.js';
 import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
 import { marshTargets, marshPlacementAllowed, advanceMarshLesson } from '/game-assets/marsh-lesson.js';
 
@@ -135,6 +135,7 @@ function updateWorldMood(){
   };
   document.getElementById('main').dataset.light=phase;
   document.getElementById('worldMood').textContent=lines[phase];
+  setPortusMood(connected ? 'settlement' : 'isolated');
 }
 
 const CIVIC_MESSAGES = {
@@ -162,18 +163,34 @@ function payCivicMaintenance(){
 }
 
 const audioState = { context: null };
+const effectsKey = 'portus_effects_enabled';
+let effectsEnabled = true;
+try{ effectsEnabled = localStorage.getItem(effectsKey) !== 'false'; }catch(e){ /* Storage may be disabled. */ }
+const effectsToggle = document.getElementById('effectsToggle');
+function updateEffectsToggle(){
+  effectsToggle.textContent = effectsEnabled ? 'Effects: On' : 'Effects: Off';
+  effectsToggle.setAttribute('aria-pressed', String(effectsEnabled));
+  effectsToggle.title = effectsEnabled ? 'Mute gameplay effects' : 'Enable gameplay effects';
+}
+effectsToggle.onclick = () => {
+  effectsEnabled = !effectsEnabled;
+  try{ localStorage.setItem(effectsKey, String(effectsEnabled)); }catch(e){ /* Storage may be disabled. */ }
+  updateEffectsToggle();
+};
+updateEffectsToggle();
 function playTone(kind){
-  if(marshPrologue && !marshPrologue.sound) return;
+  if(!effectsEnabled || kind === 'click' || (marshPrologue && !marshPrologue.sound)) return;
   try{
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if(!AudioContext) return;
     audioState.context ||= new AudioContext();
     const oscillator = audioState.context.createOscillator();
     const gain = audioState.context.createGain();
-    const settings = {click:[440,0.035], build:[220,0.12], gather:[660,0.08]}[kind] || [440,0.05];
+    const settings = {build:[165,0.22], gather:[196,0.16]}[kind] || [165,0.12];
     oscillator.frequency.value = settings[0];
     oscillator.type = kind === 'build' ? 'triangle' : 'sine';
-    gain.gain.setValueAtTime(0.045, audioState.context.currentTime);
+    gain.gain.setValueAtTime(0.0001, audioState.context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.018, audioState.context.currentTime + 0.035);
     gain.gain.exponentialRampToValueAtTime(0.001, audioState.context.currentTime + settings[1]);
     oscillator.connect(gain).connect(audioState.context.destination);
     oscillator.start();
@@ -1182,6 +1199,7 @@ function placeAt({x,y}){
     document.querySelectorAll('.bldbtn').forEach(btn=>btn.classList.remove('guided'));
   }
   render(); renderRes(); updateWorldMood();
+  if(def.id==='road' && placedBuildings.some(b=>BLD_BY_ID[b.id]?.produce && connectedToStore(grid,b))) setPortusMood('route');
 }
 
 /* ---------------- MENU PANELS ---------------- */
@@ -1643,6 +1661,7 @@ function loseCitizens(number, cause){
   logEvent(message);
   remember(`loss-${tickCount}-${townMemory.length}`, 'Those we lost',
     `On turn ${tickCount}, ${lost} ${lost===1?'resident died':'residents died'} from ${cause}. ${sheltered?'Their story rests in the burial ground.':'The settlement still seeks a place to remember them.'}`);
+  setPortusMood('mourning');
 }
 
 function maybeSendGodMessage(){
@@ -1791,6 +1810,7 @@ function triggerDisaster(disaster, ctx){
   remember(`disaster-${disaster.id}-${tickCount}`, 'After the ' + disaster.id,
     `On turn ${tickCount}, ${msg} The town must decide what to rebuild and what to remember.`);
   showToast(msg);
+  setPortusMood('flood');
   if(happiness >= 20) scenarioState.disastersSurvived = (scenarioState.disastersSurvived||0) + 1;
   else scenarioState.disastersSurvived = 0;
 }
@@ -2163,7 +2183,7 @@ function marshNarration(title,text,task){
   document.getElementById('legend').textContent=task;
 }
 function marshSound(kind){
-  if(!marshPrologue?.sound) return;
+  if(!effectsEnabled || !marshPrologue?.sound) return;
   try{
     const AudioContext=window.AudioContext || window.webkitAudioContext;
     if(!AudioContext) return;
@@ -2244,6 +2264,7 @@ function progressMarshLesson(building){
       'Feet and carts mark the wet ground. Each connected workplace can now send its goods to the store.',
       `${done}/3 road links laid. Connect all three workplaces to storage.`);
   } else if(cue==='flow'){
+    setPortusMood('harvest');
     marshSound('flow');
     res.wheat-=2;
     addRes('flour',1.6*roadProductionBoost(grid,lesson.mill));
@@ -2262,6 +2283,7 @@ function restoreMarshPrologue(completed){
   const lesson=marshPrologue;
   if(!lesson) return;
   marshPrologue=null;
+  setPortusMood(completed ? 'mourning' : 'settlement');
   document.getElementById('main').classList.remove('marsh-active','marsh-flood');
   document.getElementById('marshStory').hidden=true;
   applyState(lesson.saved);
@@ -2292,6 +2314,7 @@ function finishMarshPrologue(){
   const lesson=marshPrologue;
   if(!lesson || lesson.phase!=='flow') return;
   lesson.phase='flood';
+  setPortusMood('flood');
   document.getElementById('main').classList.add('marsh-flood');
   for(let y=lesson.mill.y-3;y<=lesson.mill.y+1;y++)
     for(let x=lesson.mill.x-3;x<=lesson.mill.x+3;x++)
