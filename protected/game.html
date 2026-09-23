@@ -52,6 +52,7 @@
     <span id="timeline"></span>
     <span id="tickline"></span>
     <button id="musicToggle" class="musicToggle" type="button" aria-pressed="false">Music: Off</button>
+    <button id="voicesToggle" class="musicToggle" type="button" aria-pressed="true" title="Turn optional settlement suggestions off">Voices: On</button>
   </div>
 
   <div id="cropbar">
@@ -76,6 +77,15 @@
       </div>
     </aside>
     <div id="worldMood" aria-live="polite"></div>
+    <aside id="settlementVoice" hidden aria-labelledby="voiceTitle">
+      <p id="voiceSpeaker" class="voiceKicker"></p>
+      <h2 id="voiceTitle"></h2>
+      <p id="voiceText"></p>
+      <div class="voiceActions">
+        <button id="voiceFollow" type="button">Explore the idea</button>
+        <button id="voiceLater" type="button">Perhaps later</button>
+      </div>
+    </aside>
     <div id="mapwrap">
       <canvas id="canvas"></canvas>
       <div id="minimapWrap" aria-label="Settlement minimap">
