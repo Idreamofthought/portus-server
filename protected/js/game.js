@@ -12,6 +12,7 @@ import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presen
 import { createPortusMusic } from '/music.js';
 import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
 import { marshTargets, marshPlacementAllowed, advanceMarshLesson } from '/game-assets/marsh-lesson.js';
+import { settlementVoice } from '/game-assets/settlement-voices.js';
 
 let selectedCrop = 'wheat';
 const TRADE_GOODS = [
@@ -113,6 +114,55 @@ let buildingPops = [];
 let previousResourceValues = {};
 let civicMilestones = new Set();
 let marshPrologue = null;
+const voicesKey = 'portus_settlement_voices';
+let voicesEnabled = true;
+try { voicesEnabled = localStorage.getItem(voicesKey) !== 'false'; } catch { /* Private browsing may disable storage. */ }
+const voicesToggle = document.getElementById('voicesToggle');
+const voiceCard = document.getElementById('settlementVoice');
+let activeVoice = null;
+function dismissVoice(){ voiceCard.hidden = true; activeVoice = null; }
+function updateVoicesToggle(){
+  voicesToggle.textContent = voicesEnabled ? 'Voices: On' : 'Voices: Off';
+  voicesToggle.setAttribute('aria-pressed', String(voicesEnabled));
+  voicesToggle.title = voicesEnabled ? 'Turn settlement suggestions off' : 'Turn settlement suggestions on';
+}
+voicesToggle.onclick = () => {
+  voicesEnabled = !voicesEnabled;
+  try { localStorage.setItem(voicesKey, String(voicesEnabled)); } catch { /* Preference lasts for this visit. */ }
+  if(!voicesEnabled) dismissVoice();
+  updateVoicesToggle();
+};
+document.getElementById('voiceLater').onclick = dismissVoice;
+document.getElementById('voiceFollow').onclick = () => {
+  if(!activeVoice) return;
+  const next = BLD_BY_ID[activeVoice.next];
+  dismissVoice();
+  if(next.requiresTech && !unlockedTechs.has(next.requiresTech)) {
+    openPanel('researchPanel');
+    showToast(`Research ${techName(next.requiresTech)} to unlock ${next.name}`);
+  } else {
+    selectBuild(null);
+    selectBuild(next.id);
+    showToast(`Find a place for ${next.name} when you are ready`);
+  }
+};
+updateVoicesToggle();
+function offerSettlementVoice(building){
+  if(!voicesEnabled || marshPrologue || !voiceCard.hidden) return;
+  const seenId = `voice-${building.id}`;
+  if(civicMilestones.has(seenId)) return;
+  const voice = settlementVoice(building.id, placedBuildings.map(b=>b.id), building.crop);
+  if(!voice) return;
+  civicMilestones.add(seenId); // Saved with the town; neither response changes the economy.
+  activeVoice = voice;
+  document.getElementById('voiceSpeaker').textContent = `A voice from Portus · ${voice.speaker}`;
+  document.getElementById('voiceTitle').textContent = voice.title;
+  document.getElementById('voiceText').textContent = voice.text;
+  const next = BLD_BY_ID[voice.next];
+  document.getElementById('voiceFollow').textContent = next.requiresTech && !unlockedTechs.has(next.requiresTech)
+    ? `Explore ${techName(next.requiresTech)}` : `Explore ${next.name}`;
+  voiceCard.hidden = false;
+}
 function updateWorldMood(){
   if(marshPrologue) return;
   const phase=['morning','day','dusk','night'][Math.floor((tickCount%144)/36)];
@@ -1182,6 +1232,7 @@ function placeAt({x,y}){
     document.querySelectorAll('.bldbtn').forEach(btn=>btn.classList.remove('guided'));
   }
   render(); renderRes(); updateWorldMood();
+  offerSettlementVoice(b);
 }
 
 /* ---------------- MENU PANELS ---------------- */
@@ -2063,6 +2114,7 @@ function decodeState(code){
   catch(e){ return null; }
 }
 function applyState(s){
+  dismissVoice();
   if(!s || s.v!==1 || !s.grid || !s.buildings){ showToast('That save code looks invalid'); return; }
   // Saves predating a resource omit its key entirely; zero-fill so the arithmetic
   // below can't turn into NaN.
@@ -2183,6 +2235,7 @@ function marshSound(kind){
   }catch(e){ /* Sound is optional. */ }
 }
 function startMarshPrologue(){
+  dismissVoice();
   if(marshPrologue) return;
   const saved=structuredClone(getState());
   const oldEvents=eventLog.slice();
