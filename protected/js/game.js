@@ -2166,6 +2166,11 @@ function startMarshPrologue(){
   logEvent('🌫️ Before Portus, a small marsh settlement tried to make a road.');
   render(); renderRes();
 }
+document.getElementById('marshLessonMenu').onclick=()=>{
+  if(marshPrologue){ showToast('The marsh lesson is already underway'); return; }
+  closeAllPanels();
+  startMarshPrologue();
+};
 function finishMarshPrologue(){
   if(!marshPrologue || !connectedToStore(grid,marshPrologue.mill)) return;
   const {saved}=marshPrologue;
