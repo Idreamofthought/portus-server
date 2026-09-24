@@ -15,17 +15,17 @@
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^18.0.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
-    "resend": "^2.0.0",
-    "stripe": "^16.9.0"
+    "resend": "^6.28.1",
+    "stripe": "^22.6.2"
   },
   "overrides": {
     "qs": "^6.16.0"
