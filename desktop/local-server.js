@@ -2,15 +2,22 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {ARTIFACTS, ARCHAEOLOGICAL_FINDS, FOUNDATION_CODEX_ENTRIES} from '../data/discovery_catalog.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contentTypes = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
-  '.css':'text/css; charset=utf-8','.svg':'image/svg+xml'};
+  '.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.md':'text/plain; charset=utf-8'};
+const codexIds=new Set([...ARTIFACTS,...ARCHAEOLOGICAL_FINDS].map(item=>item.codexEntry)
+  .concat(FOUNDATION_CODEX_ENTRIES));
 
 export function desktopAsset(requestPath){
   if(requestPath==='/game' || requestPath==='/') return path.join(root,'protected/game.html');
   if(requestPath==='/music.js') return path.join(root,'public/music.js');
   if(requestPath==='/favicon.svg') return path.join(root,'homepage/favicon.svg');
+  if(requestPath==='/desktop/discoveries.js') return path.join(root,'desktop/discoveries.js');
+  if(requestPath==='/data/discovery_catalog.js') return path.join(root,'data/discovery_catalog.js');
+  const codex=/^\/codex\/([a-z0-9_/-]+)\.md$/.exec(requestPath);
+  if(codex && codexIds.has(codex[1])) return path.join(root,'portus/codex',`${codex[1]}.md`);
   const match=/^\/game-assets\/([a-z0-9-]+\.(?:js|css))$/.exec(requestPath);
   if(!match) return null;
   return path.join(root,'protected',match[1].endsWith('.css')?'css':'js',match[1]);
