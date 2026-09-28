@@ -1482,6 +1482,21 @@ let hasFreeAccess = false;
 // Only the separately hosted desktop entry point sets this marker. Web routes
 // remain protected by the server regardless of client-side state.
 const desktopMode = window.PORTUS_DESKTOP === true;
+const offlineDiscoveryModule = desktopMode ? await import('/desktop/discoveries.js') : null;
+let offlineDiscoveries = offlineDiscoveryModule?.emptyDiscoveryState() || null;
+
+async function refreshOfflineCodex(){
+  if(!desktopMode) return;
+  const ids=[...new Set([...offlineDiscoveryModule.FOUNDATION_CODEX_ENTRIES,
+    ...offlineDiscoveries.unlocked])];
+  codexEntries=(await Promise.all(ids.map(async entryId=>{
+    const response=await fetch(`/codex/${entryId}.md`);
+    if(!response.ok) return null;
+    const content=await response.text();
+    return {entryId,title:content.match(/^#\s+(.+)$/m)?.[1]?.trim() || entryId,content};
+  }))).filter(Boolean);
+  renderCodexPanel();
+}
 
 let csrfPromise = null;
 async function getCsrf(){
@@ -1530,6 +1545,7 @@ async function refreshFromServer(){
   if(desktopMode){
     hasFreeAccess = true;
     accessExpiresAt = Infinity;
+    await refreshOfflineCodex();
     startPlaying();
     return;
   }
@@ -1723,6 +1739,13 @@ function discoveryActivity(){
 }
 
 async function maybeRollDiscovery(){
+  if(desktopMode){
+    if(tickCount===0 || tickCount%12!==0) return;
+    const discovery=offlineDiscoveryModule.rollOfflineDiscovery(offlineDiscoveries,
+      discoveryActivity(),Math.floor(tickCount/12));
+    if(discovery) await announceOfflineDiscovery(discovery);
+    return;
+  }
   if(!currentUser || discoveryRollInFlight || tickCount === 0 || tickCount % 12 !== 0) return;
   discoveryRollInFlight = true;
   try{
@@ -1747,6 +1770,15 @@ async function maybeRollDiscovery(){
   } finally {
     discoveryRollInFlight = false;
   }
+}
+
+async function announceOfflineDiscovery(discovery){
+  const detail=discovery.type==='archaeological_find' && !discovery.assembled
+    ? `fragment ${discovery.fragmentIndex}/${discovery.fragmentCount}` : 'Codex entry unlocked';
+  const message=`🔎 Discovery: ${discovery.title} — ${detail}.`;
+  logEvent(message);
+  showToast(message);
+  await refreshOfflineCodex();
 }
 
 function renderChronicle(){
@@ -2001,6 +2033,11 @@ function checkQuests(){
 }
 
 async function rollQuestDiscovery(questIndex){
+  if(desktopMode){
+    const discovery=offlineDiscoveryModule.rollOfflineDiscovery(offlineDiscoveries,'quest',questIndex);
+    if(discovery) await announceOfflineDiscovery(discovery);
+    return;
+  }
   if(!currentUser) return;
   try{
     const result = await api('/api/discoveries/roll', {
@@ -2116,6 +2153,9 @@ function getState(){
     buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
   };
 }
+function getPortableState(){
+  return desktopMode ? {...getState(),offlineDiscoveries} : getState();
+}
 function encodeState(s){
   return btoa(unescape(encodeURIComponent(JSON.stringify(s))));
 }
@@ -2145,6 +2185,10 @@ function applyState(s){
   taxRate = s.taxRate || 0;
   scenarioId = s.scenarioId || null;
   scenarioState = s.scenarioState || { disastersSurvived:0, completed:false };
+  if(desktopMode){
+    offlineDiscoveries=s.offlineDiscoveries || offlineDiscoveryModule.emptyDiscoveryState();
+    refreshOfflineCodex().catch(error=>console.warn('Local Codex unavailable',error));
+  }
   captainName = s.captain||'';
   document.getElementById('captainInput').value = captainName;
   setGrid(s.grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit, building:null}))));
@@ -2166,7 +2210,7 @@ function applyState(s){
 document.getElementById('captainInput').oninput = e=> captainName = e.target.value;
 document.getElementById('genSaveBtn').onclick = ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
-  const code = encodeState(getState());
+  const code = encodeState(getPortableState());
   document.getElementById('saveOut').value = code;
   showToast('Game Saved. Save code generated — copy it now');
   playTone('click');
@@ -2181,7 +2225,7 @@ document.getElementById('loadBtn').onclick = ()=>{
 document.getElementById('cloudSaveBtn').onclick = async ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
   if(desktopMode){
-    try{ await window.portusDesktopStorage.save(getState()); showToast('Saved on this computer.'); }
+    try{ await window.portusDesktopStorage.save(getPortableState()); showToast('Saved on this computer.'); }
     catch(e){ showToast('Local save failed'); }
     return;
   }
@@ -2270,7 +2314,7 @@ function marshSound(kind){
 function startMarshPrologue(){
   dismissVoice();
   if(marshPrologue) return;
-  const saved=structuredClone(getState());
+  const saved=structuredClone(getPortableState());
   const oldEvents=eventLog.slice();
   const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
   const targets=marshTargets(cx,cy);

@@ -17,9 +17,15 @@ test('desktop entry loads game assets without exposing web API or server secrets
     assert.equal(module.status,200);
     assert.match(await module.text(),/desktopMode/);
     assert.equal((await fetch(`${origin}/music.js`)).status,200);
+    assert.equal((await fetch(`${origin}/desktop/discoveries.js`)).status,200);
+    assert.equal((await fetch(`${origin}/data/discovery_catalog.js`)).status,200);
+    const codex=await fetch(`${origin}/codex/artifacts/star-reader.md`);
+    assert.equal(codex.status,200);
+    assert.match(await codex.text(),/^# /);
     for(const path of ['/api/me','/server.js','/game-assets/../server.js']){
       assert.equal((await fetch(`${origin}${path}`)).status,404);
     }
+    assert.equal((await fetch(`${origin}/codex/rituals/not-allowlisted.md`)).status,404);
   }finally{await new Promise(resolve=>server.close(resolve));}
 });
 
