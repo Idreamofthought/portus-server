@@ -1479,6 +1479,9 @@ let tickInterval = null;
 let sessionInterval = null;
 let currentUser = null; // {email, captainName}
 let hasFreeAccess = false;
+// Only the separately hosted desktop entry point sets this marker. Web routes
+// remain protected by the server regardless of client-side state.
+const desktopMode = window.PORTUS_DESKTOP === true;
 
 let csrfPromise = null;
 async function getCsrf(){
@@ -1524,6 +1527,12 @@ function showPayBox(){
 
 async function refreshFromServer(){
   selectBuild(null);
+  if(desktopMode){
+    hasFreeAccess = true;
+    accessExpiresAt = Infinity;
+    startPlaying();
+    return;
+  }
   try{
     const me = await api('/api/me');
     currentUser = me;
@@ -2171,6 +2180,11 @@ document.getElementById('loadBtn').onclick = ()=>{
 };
 document.getElementById('cloudSaveBtn').onclick = async ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
+  if(desktopMode){
+    try{ await window.portusDesktopStorage.save(getState()); showToast('Saved on this computer.'); }
+    catch(e){ showToast('Local save failed'); }
+    return;
+  }
   if(!currentUser){ showToast('Log in first to save to your account'); return; }
   try{
     const state = getState();
@@ -2184,6 +2198,15 @@ document.getElementById('cloudSaveBtn').onclick = async ()=>{
 };
 document.getElementById('cloudLoadBtn').onclick = async ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before loading'); return; }
+  if(desktopMode){
+    try{
+      const state=await window.portusDesktopStorage.load();
+      if(!state){ showToast('No local save found yet'); return; }
+      applyState(state);
+      showToast('Local game loaded.');
+    }catch(e){ showToast('Local save could not be loaded'); }
+    return;
+  }
   if(!currentUser){ showToast('Log in first to load from your account'); return; }
   try{
     const {state} = await api('/api/save');
@@ -2206,6 +2229,10 @@ fitCanvas();
 window.addEventListener('resize', resizeCanvas, {passive:true});
 
 refreshFromServer();
+if(desktopMode){
+  document.getElementById('cloudSaveBtn').textContent='Save locally';
+  document.getElementById('cloudLoadBtn').textContent='Load local save';
+}
 
 function marshNarration(title,text,task){
   const story=document.getElementById('marshStory');
@@ -2482,7 +2509,7 @@ function finishMarshPrologue(){
   const bNextBtn = document.getElementById('bubbleNextBtn');
 
   const dismissedKey = id => `portus_bubble_${id}_dismissed`;
-  const pending = bubbles.filter(b => localStorage.getItem(dismissedKey(b.id)) !== 'true');
+  const pending = bubbles.filter(b => (b.id!=='terms' || !desktopMode) && localStorage.getItem(dismissedKey(b.id)) !== 'true');
 
   const runQueue = (index)=>{
     if(index >= pending.length){
