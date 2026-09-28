@@ -24,6 +24,10 @@ test('the practice lesson teaches terrain first, then all three roads to storage
   assert.equal(advanceMarshLesson(lesson,put(grid,'sawmill',lesson.targets.sawmill),grid),'wood');
   assert.equal(marshPlacementAllowed(lesson,'quarry',6,4),true);
   assert.equal(advanceMarshLesson(lesson,put(grid,'quarry',lesson.targets.quarry),grid),'stone');
+  assert.equal(lesson.phase,'clay');
+  assert.equal(marshPlacementAllowed(lesson,'road',3,4),false);
+  assert.equal(marshPlacementAllowed(lesson,'claypit',...lesson.targets.claypit),true);
+  assert.equal(advanceMarshLesson(lesson,put(grid,'claypit',lesson.targets.claypit),grid),'clay');
   assert.equal(lesson.phase,'roads');
   for(const [index,slot] of lesson.targets.roads.entries()){
     assert.equal(marshPlacementAllowed(lesson,'road',...slot),true);
@@ -38,6 +42,7 @@ test('the lesson does not finish when a road link is missing',()=>{
   const {grid,lesson}=practice();
   advanceMarshLesson(lesson,put(grid,'sawmill',lesson.targets.sawmill),grid);
   advanceMarshLesson(lesson,put(grid,'quarry',lesson.targets.quarry),grid);
+  advanceMarshLesson(lesson,put(grid,'claypit',lesson.targets.claypit),grid);
   for(const slot of lesson.targets.roads.slice(0,2))
     advanceMarshLesson(lesson,put(grid,'road',slot),grid);
   assert.equal(lesson.phase,'roads');
