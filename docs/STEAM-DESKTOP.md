@@ -1,7 +1,9 @@
 # Windows desktop prototype
 
 This is the first local desktop entry point for Portus. It is not yet a Steam
-release build.
+release build. The Steam edition is Windows-first and must remain playable
+offline with local saves; a Portus account or internet connection is not
+required.
 
 Run `npm install` and `npm run desktop:dev` on a Windows development machine.
 The Electron window serves the existing game assets from a loopback-only HTTP
@@ -17,7 +19,7 @@ played without an internet connection. The browser edition continues to use
 its existing server and payments.
 
 Before a Steam upload, we need a Windows package with only the desktop assets,
-a Windows play test (including restart/save/load and offline play), a decision
-about optional account sync, and a review of which Codex discoveries should
-run locally. The packaged build will also need Steam installation and launch
+a Windows play test (including restart/save/load and offline play), and an
+offline implementation for the server-driven Codex discoveries. The packaged
+build will also need Steam installation and launch
 configuration and a final content/asset audit.
