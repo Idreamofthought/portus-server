@@ -399,6 +399,12 @@
     display:inline-block; margin-top:6px; padding:6px 12px; border-radius:16px;
     border:1px solid var(--gold); background:#2b6777; color:#fff; font-size:12px; cursor:pointer;
   }
+  #marshPrologueBtn{display:block; width:100%; margin:10px 0 4px; padding:10px 12px;
+    border:1px solid var(--gold); border-radius:8px; background:#2b6777; color:white;
+    font-weight:700; cursor:pointer;}
+  #tutorialCloseBtn{background:transparent; color:#3a3128;}
+  .bldbtn.lesson-next{outline:3px solid #e8cb88; outline-offset:-3px;
+    background:#536c59;}
 
   /* info bubbles: sequence of dismissible notices shown at game start */
   #bubbleOverlay{

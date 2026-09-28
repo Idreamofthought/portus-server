@@ -731,6 +731,7 @@ function render(){
   if(marshPrologue){
     const targets = marshPrologue.phase==='wood' ? [marshPrologue.targets.sawmill] :
       marshPrologue.phase==='stone' ? [marshPrologue.targets.quarry] :
+      marshPrologue.phase==='clay' ? [marshPrologue.targets.claypit] :
       marshPrologue.phase==='roads' ? marshPrologue.targets.roads : [];
     for(const [x,y] of targets){
       if(grid[y][x].building) continue;
@@ -2213,6 +2214,11 @@ function marshNarration(title,text,task){
   document.getElementById('marshStoryText').textContent=text;
   document.getElementById('marshStoryTask').textContent=task;
   document.getElementById('legend').textContent=task;
+  const nextId=({wood:'sawmill',stone:'quarry',clay:'claypit',roads:'road'})[marshPrologue?.phase];
+  document.querySelectorAll('.bldbtn').forEach(button=>{
+    button.classList.toggle('lesson-next',button.dataset.id===nextId);
+  });
+  if(nextId) document.querySelector(`.bldbtn[data-id="${nextId}"]`)?.scrollIntoView({block:'nearest'});
 }
 function marshSound(kind){
   if(!marshPrologue?.sound) return;
@@ -2246,6 +2252,7 @@ function startMarshPrologue(){
     map[y][x]={terrain:y===cy+2?'river':'grass',deposit:null,building:null};
   map[cy-1][cx-2]={terrain:'forest',deposit:null,building:null};
   map[cy][cx+2]={terrain:'mountain',deposit:null,building:null};
+  map[cy-1][cx+3]={terrain:'grass',deposit:'clay',building:null};
   setGrid(map);
   placedBuildings=[];
   pop={count:6,capacity:10};
@@ -2265,10 +2272,9 @@ function startMarshPrologue(){
   document.getElementById('marshSoundBtn').setAttribute('aria-pressed','false');
   document.getElementById('main').classList.add('marsh-active');
   selectBuild(null);
-  selectBuild('sawmill');
   marshNarration('The reedbank',
     'Grain waits by the mill. Beyond it, the first trees lean over wet ground. The settlers need timber before the rain returns.',
-    'Build a Woodcutter on the green marked tile beside the forest.');
+    'Choose Production → 🪓 Woodcutter, then click the green marked grass beside the forest. Woodcutters need nearby trees.');
   const wrap=document.getElementById('mapwrap');
   wrap.scrollTo({left:Math.max(0,cx*TS-wrap.clientWidth/2),top:Math.max(0,cy*TS-wrap.clientHeight/2),behavior:'smooth'});
   logEvent('🌫️ On the reedbank, a mill waited for a road and the first trees were felled.');
@@ -2280,16 +2286,21 @@ function progressMarshLesson(building){
   const cue=advanceMarshLesson(lesson,building,grid);
   if(cue==='wood'){
     marshSound('wood');
-    selectBuild(null); selectBuild('quarry');
+    selectBuild(null);
     marshNarration('The first timber',
       'Axes sound at the edge of the reeds. The wood is cut, but no cart can reach the store. Across the clearing, stone shows through the earth.',
-      'Build a Quarry on the marked mountain seam.');
+      'Choose Production → Quarry, then click the marked mountain seam. A Quarry needs stone terrain.');
   } else if(cue==='stone'){
     marshSound('stone');
-    selectBuild(null); selectBuild('road');
+    selectBuild(null);
     marshNarration('Stone in the ground',
-      'The quarry opens. Wood, stone, and grain now exist in the same settlement, but work does not move simply because a building stands.',
-      'Lay roads on the three amber tiles to bring the mill, Woodcutter, and Quarry to storage.');
+      'The quarry opens. The coloured dot nearby marks a clay deposit; deposits show where certain buildings can be placed.',
+      'Choose Production → Claypit, then click the marked clay dot. Claypits must sit directly on clay.');
+  } else if(cue==='clay'){
+    selectBuild(null);
+    marshNarration('Clay beneath the grass',
+      'The claypit opens. Other coloured dots mark other deposits, each with its own matching extractor. Work still needs a route to storage.',
+      'Choose Infrastructure → Road, then click the three amber tiles to connect the mill, Woodcutter, and Quarry to storage.');
   } else if(cue==='road'){
     marshSound('road');
     const done=lesson.targets.roads.filter(([x,y])=>grid[y][x].building?.id==='road').length;
@@ -2303,7 +2314,7 @@ function progressMarshLesson(building){
     addRes('wood',3*roadProductionBoost(grid,lesson.sawmill));
     addRes('stone',2.2*roadProductionBoost(grid,lesson.quarry));
     marshNarration('The settlement breathes',
-      'The field gives wheat. The mill makes flour. Timber and stone reach the store along the new paths. Connected roads improve each yield. For one clear morning, the town works.',
+      'The field gives wheat. The mill makes flour. Timber and stone reach the store along the new paths. Clay can be shaped by a Potter. For one clear morning, the town works.',
       'Watch the resource bar: wheat becomes flour; wood and stone arrive. The water is rising.');
     logEvent('🌾 Wheat → flour; timber and stone reached storage along the new roads.');
     renderRes();
@@ -2317,11 +2328,12 @@ function restoreMarshPrologue(completed){
   marshPrologue=null;
   document.getElementById('main').classList.remove('marsh-active','marsh-flood');
   document.getElementById('marshStory').hidden=true;
+  document.querySelectorAll('.bldbtn.lesson-next').forEach(button=>button.classList.remove('lesson-next'));
   applyState(lesson.saved);
   eventLog=lesson.oldEvents;
   if(completed){
     remember('marsh-prologue','What the marsh kept',
-      'A Woodcutter, Quarry, field, and mill worked together. Roads carried timber, stone, and flour to storage. The water took the first settlement, but not what its people learned.');
+      'A Woodcutter, Quarry, Claypit, field, and mill worked together. Roads carried timber, stone, and flour to storage. The water took the first settlement, but not what its people learned.');
     logEvent('📖 The reedbank is gone. Its lesson remains in the Codex.');
   } else renderChronicle();
   selectBuild(null);
