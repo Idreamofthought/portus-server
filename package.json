@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "desktop:dev": "electron desktop/main.cjs",
     "check": "node --check server.js",
     "test": "node --test test/*.test.js",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest",
@@ -31,6 +32,7 @@
     "qs": "^6.16.0"
   },
   "devDependencies": {
+    "electron": "^44.4.5",
     "jest": "^30.5.1"
   }
 }
