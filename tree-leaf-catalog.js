@@ -1778,6 +1778,27 @@ export const TREE_LEAVES = [
     "category": "Teaching & Education",
     "slug": "thoughts-on-the-students-i-teach",
     "source": "writing/opinions/thoughts-on-the-students-i-teach.html"
+  },
+  {
+    "title": "Pour une France lucide, laïque et libre",
+    "branch": "politics",
+    "category": "Manifeste · Laïcité",
+    "slug": "pour-une-france-lucide-laique-et-libre",
+    "source": "writing/opinions/pour-une-france-lucide-laique-et-libre.html"
+  },
+  {
+    "title": "Pour une éducation libre, pluraliste et protégée",
+    "branch": "teaching-education",
+    "category": "Manifeste · Éducation",
+    "slug": "pour-une-education-libre-pluraliste-et-protegee",
+    "source": "writing/opinions/pour-une-education-libre-pluraliste-et-protegee.html"
+  },
+  {
+    "title": "Pour une paix réelle",
+    "branch": "politics",
+    "category": "Manifeste · Paix",
+    "slug": "pour-une-paix-reelle",
+    "source": "writing/opinions/pour-une-paix-reelle.html"
   }
 ];
 
