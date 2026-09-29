@@ -1799,6 +1799,13 @@ export const TREE_LEAVES = [
     "category": "Manifeste · Paix",
     "slug": "pour-une-paix-reelle",
     "source": "writing/opinions/pour-une-paix-reelle.html"
+  },
+  {
+    "title": "La paix ne se prononce pas, elle se construit",
+    "branch": "politics",
+    "category": "Tribune · Laïcité & paix",
+    "slug": "la-paix-ne-se-prononce-pas-elle-se-construit",
+    "source": "writing/opinions/la-paix-ne-se-prononce-pas-elle-se-construit.html"
   }
 ];
 
