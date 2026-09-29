@@ -2276,6 +2276,7 @@ refreshFromServer();
 if(desktopMode){
   document.getElementById('cloudSaveBtn').textContent='Save locally';
   document.getElementById('cloudLoadBtn').textContent='Load local save';
+  document.getElementById('legalFooter').textContent='© 2026 idreamofthought.org. All rights reserved.';
 }
 
 function marshNarration(title,text,task){
@@ -2593,7 +2594,39 @@ const closeTitle = ()=>{
   playTone('click');
 };
 document.getElementById('newGameBtn').onclick = closeTitle;
-document.getElementById('continueBtn').onclick = closeTitle;
+const continueBtn=document.getElementById('continueBtn');
+const titleStatus=document.getElementById('titleStatus');
+if(desktopMode){
+  continueBtn.textContent='Continue saved game';
+  continueBtn.onclick=async()=>{
+    continueBtn.disabled=true;
+    titleStatus.hidden=true;
+    try{
+      const state=await window.portusDesktopStorage.load();
+      if(!state){
+        titleStatus.textContent='No local save yet. Choose New Game to begin.';
+        titleStatus.hidden=false;
+        return;
+      }
+      if(state.v!==1 || !Array.isArray(state.grid) || state.grid.length!==ROWS ||
+         !state.grid.every(row=>Array.isArray(row) && row.length===COLS) ||
+         !Array.isArray(state.buildings)){
+        titleStatus.textContent='The local save cannot be read. You can start a new game or load a save code.';
+        titleStatus.hidden=false;
+        return;
+      }
+      applyState(state);
+      closeTitle();
+    }catch(error){
+      titleStatus.textContent='The local save could not be loaded. You can start a new game or load a save code.';
+      titleStatus.hidden=false;
+    }finally{
+      continueBtn.disabled=false;
+    }
+  };
+}else{
+  continueBtn.onclick=closeTitle;
+}
 document.getElementById('titleCodexBtn').onclick = ()=>{
   closeTitle();
   document.querySelector('[data-panel="codexPanel"]').click();
