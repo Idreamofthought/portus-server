@@ -37,7 +37,7 @@ jobs:
           if (-not $archive) { throw "Windows package was not created" }
           Expand-Archive $archive.FullName -DestinationPath "dist/desktop/smoke"
           if (-not (Test-Path "dist/desktop/smoke/Portus.exe")) { throw "Portus.exe is missing" }
-          $contents = & npx asar list "dist/desktop/smoke/resources/app.asar"
+          $contents = (& npx asar list "dist/desktop/smoke/resources/app.asar") -replace '\\','/'
           if ($contents -match '^/node_modules') { throw "Web server dependencies leaked into the desktop package" }
           if ($contents -notcontains '/protected/js/game.js') { throw "Game code is missing from the desktop package" }
           $process = Start-Process -FilePath "dist/desktop/smoke/Portus.exe" -PassThru
