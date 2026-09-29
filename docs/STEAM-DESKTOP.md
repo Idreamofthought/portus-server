@@ -11,7 +11,9 @@ server. The desktop entry bypasses the web hourly pass and sign-in UI without
 changing the protected web routes. It starts the same town simulation and
 offers **Save locally** and **Load local save** in the Save panel. The save is
 stored as `portus-save.json` under Electron's persistent `userData` directory.
-The manual save-code export/import still works.
+The title screen's **Continue saved game** loads that file on the next launch;
+if it is missing or unreadable, the title screen explains what happened. The
+manual save-code export/import still works.
 
 Run `npm run desktop:package:win` to produce
 `dist/desktop/Portus-2.0.0-windows-x64.zip`. The build is deliberately staged
