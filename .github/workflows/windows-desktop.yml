@@ -1,0 +1,52 @@
+name: Windows desktop build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "data/discovery_catalog.js"
+      - "portus/codex/**"
+      - "protected/**"
+      - "public/music.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/windows-desktop.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run desktop:package:win
+      - name: Verify packaged executable
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem "dist/desktop/Portus-*-windows-x64.zip" | Select-Object -First 1
+          if (-not $archive) { throw "Windows package was not created" }
+          Expand-Archive $archive.FullName -DestinationPath "dist/desktop/smoke"
+          if (-not (Test-Path "dist/desktop/smoke/Portus.exe")) { throw "Portus.exe is missing" }
+          $contents = & npx asar list "dist/desktop/smoke/resources/app.asar"
+          if ($contents -match '^/node_modules') { throw "Web server dependencies leaked into the desktop package" }
+          if ($contents -notcontains '/protected/js/game.js') { throw "Game code is missing from the desktop package" }
+          $process = Start-Process -FilePath "dist/desktop/smoke/Portus.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($process.HasExited) { throw "Portus exited during the Windows launch smoke test" }
+          Stop-Process -Id $process.Id -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portus-windows-test-build
+          path: dist/desktop/Portus-*-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14

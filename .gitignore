@@ -1,4 +1,6 @@
 node_modules/
+dist/desktop/
+desktop-build/
 .env
 *.db
 *.db-shm
