@@ -3,6 +3,7 @@ const {ipcMain}=require('electron');
 const path=require('node:path');
 
 let localServer;
+app.setAppUserModelId('org.idreamofthought.portus');
 app.whenReady().then(async()=>{
   const {startDesktopServer}=await import('./local-server.js');
   const {saveLocalGame,loadLocalGame}=await import('./save-store.js');

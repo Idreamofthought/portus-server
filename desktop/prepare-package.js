@@ -12,6 +12,8 @@ const copies=[
   ['desktop/discoveries.js','desktop/discoveries.js'],
   ['desktop/local-server.js','desktop/local-server.js'],
   ['desktop/main.cjs','desktop/main.cjs'],
+  ['desktop/portus.ico','desktop/portus.ico'],
+  ['desktop/portus-icon-1024.png','desktop/portus-icon-1024.png'],
   ['desktop/preload.cjs','desktop/preload.cjs'],
   ['desktop/save-store.js','desktop/save-store.js'],
   ['data/discovery_catalog.js','data/discovery_catalog.js'],
@@ -42,7 +44,11 @@ const manifest={
     npmRebuild:false,
     files:['**/*'],
     directories:{output:'../dist/desktop'},
-    win:{artifactName:'Portus-${version}-windows-${arch}.${ext}',target:['zip']}
+    win:{
+      icon:'desktop/portus.ico',
+      artifactName:'Portus-${version}-windows-${arch}.${ext}',
+      target:['zip']
+    }
   }
 };
 await writeFile(path.join(stage,'package.json'),`${JSON.stringify(manifest,null,2)}\n`);
