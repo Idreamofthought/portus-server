@@ -11,9 +11,7 @@ server. The desktop entry bypasses the web hourly pass and sign-in UI without
 changing the protected web routes. It starts the same town simulation and
 offers **Save locally** and **Load local save** in the Save panel. The save is
 stored as `portus-save.json` under Electron's persistent `userData` directory.
-The title screen's **Continue saved game** loads that file on the next launch;
-if it is missing or unreadable, the title screen explains what happened. The
-manual save-code export/import still works.
+The manual save-code export/import still works.
 
 Run `npm run desktop:package:win` to produce
 `dist/desktop/Portus-2.0.0-windows-x64.zip`. The build is deliberately staged
@@ -28,6 +26,10 @@ bundled game data and are included in the local save. The game can be played
 without an internet connection. The browser edition continues to use its
 existing server and payments.
 
+The Windows executable now uses the dark green and gold Portus tree-seed mark
+from the website favicon. A 1024px source PNG and a multi-resolution Windows
+ICO are kept with the desktop runtime for later store and launcher assets.
+
 Before a Steam upload, the test archive needs a hands-on Windows play test
-(including restart/save/load and offline discoveries), a proper Portus icon,
-Steam installation/launch configuration and a final content/asset audit.
+(including restart/save/load and offline discoveries), Steam installation and
+launch configuration, and a final content/asset audit.
