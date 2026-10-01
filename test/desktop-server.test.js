@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { startDesktopServer } from '../desktop/local-server.js';
 import {saveLocalGame,loadLocalGame} from '../desktop/save-store.js';
-import {mkdtemp,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 
@@ -39,5 +39,19 @@ test('desktop saves survive a reload and reject oversized data',async()=>{
     assert.deepEqual(await loadLocalGame(file),state);
     await assert.rejects(saveLocalGame(file,{oversized:'x'.repeat(512*1024)}),/too large/);
     assert.deepEqual(await loadLocalGame(file),state);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('desktop saves preserve and recover the previous valid save',async()=>{
+  const dir=await mkdtemp(path.join(tmpdir(),'portus-desktop-backup-'));
+  const file=path.join(dir,'portus-save.json');
+  try{
+    const first={v:1,captain:'Aster',buildings:[{id:'hut',x:1,y:1}]};
+    const second={v:1,captain:'Bran',buildings:[{id:'house',x:2,y:3}]};
+    await saveLocalGame(file,first);
+    await saveLocalGame(file,second);
+    assert.deepEqual(JSON.parse(await readFile(`${file}.backup`,'utf8')),first);
+    await writeFile(file,'not valid json');
+    assert.deepEqual(await loadLocalGame(file),first);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
