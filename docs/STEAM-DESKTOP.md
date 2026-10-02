@@ -51,7 +51,9 @@ Steam installation test or final release approval.
 2. Once Steamworks supplies the IDs, run from the repository root:
    `npm run steam:prepare -- <AppID> <WindowsDepotID> "C:/Portus/Windows"`.
    The helper checks the executable, app archive and license notices and
-   writes SteamPipe scripts under `dist/steam/<AppID>/`. It performs no upload.
+   writes SteamPipe scripts under `dist/steam/<AppID>/`. Automated tests verify
+   that it creates a preview build first, maps the complete Windows folder and
+   contains no `SetLive` instruction. It performs no upload.
 3. In Steamworks, configure the Windows depot for Windows and 64-bit. Configure
    a Windows launch option with executable `Portus.exe` at the installation
    root, with no command-line arguments. Put the depot in the testing package.
