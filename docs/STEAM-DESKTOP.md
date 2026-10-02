@@ -35,3 +35,35 @@ ICO are kept with the desktop runtime for later store and launcher assets.
 Before a Steam upload, the test archive needs a hands-on Windows play test
 (including restart/save/load and offline discoveries), Steam installation and
 launch configuration, and a final content/asset audit.
+
+## Steam preparation — 2 October 2026
+
+Richard successfully tested launch, local save, restart/load and offline play
+on his Windows PC on 1 October. Steamworks fee paid on 2 October; tax and
+identity verification pending (Steamworks estimates 10–15 business days).
+App ID and Windows depot ID are still needed. This does not constitute a
+Steam installation test or final release approval.
+
+### Prepare the upload
+
+1. Build/download the Windows x64 ZIP and unpack the entire archive into a
+   dedicated folder. Keep Electron and Chromium license notices with it.
+2. Once Steamworks supplies the IDs, run from the repository root:
+   `npm run steam:prepare -- <AppID> <WindowsDepotID> "C:/Portus/Windows"`.
+   The helper checks the executable, app archive and license notices and
+   writes SteamPipe scripts under `dist/steam/<AppID>/`. It performs no upload.
+3. In Steamworks, configure the Windows depot for Windows and 64-bit. Configure
+   a Windows launch option with executable `Portus.exe` at the installation
+   root, with no command-line arguments. Put the depot in the testing package.
+4. Download the Steamworks SDK. Launch its ContentBuilder `steamcmd.exe`, then
+   log in interactively using a build account with the required permissions.
+   Do not put passwords in repository files or shell commands.
+5. Run `run_app_build <absolute-path-to-app_build_AppID_preview.vdf>` first.
+   Inspect the generated mapping/log output. Then run the non-preview script
+   to upload the candidate. Neither generated script contains `SetLive`.
+6. Select the uploaded build on a private test branch in Steamworks. Install
+   through Steam and check launch, tutorial, saving, restart, offline play,
+   discoveries and sound controls. Test an update preserves the local save.
+
+Upload reference: https://partner.steamgames.com/doc/sdk/uploading
+Store draft and capture brief: [STEAM-STORE.md](STEAM-STORE.md).
