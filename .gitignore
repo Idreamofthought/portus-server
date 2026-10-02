@@ -7,3 +7,4 @@ desktop-build/
 *.db-wal
 .DS_Store
 npm-debug.log*
+dist/steam/
