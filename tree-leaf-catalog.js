@@ -1806,7 +1806,21 @@ export const TREE_LEAVES = [
     "category": "Tribune · Laïcité & paix",
     "slug": "la-paix-ne-se-prononce-pas-elle-se-construit",
     "source": "writing/opinions/la-paix-ne-se-prononce-pas-elle-se-construit.html"
-  }
+  },
+{
+  "title": "Manifeste pour la maintenance de la France",
+  "branch": "politics",
+  "category": "Manifeste · Français",
+  "slug": "manifeste-pour-la-maintenance-de-la-france",
+  "source": "writing/opinions/manifeste-pour-la-maintenance-de-la-france.html"
+},
+{
+  "title": "Manifesto for the Maintenance of France",
+  "branch": "politics",
+  "category": "Manifesto · English",
+  "slug": "manifesto-for-the-maintenance-of-france",
+  "source": "writing/opinions/manifesto-for-the-maintenance-of-france.html"
+}
 ];
 
 export const TREE_BRANCHES = {
@@ -1861,3 +1875,4 @@ export const TREE_CROSS_BRANCHES = {
     "fungi"
   ]
 };
+
