@@ -13,7 +13,8 @@ offers **Save locally** and **Load local save** in the Save panel. The save is
 stored as `portus-save.json` under Electron's persistent `userData` directory.
 Before replacing it, Portus preserves the previous valid save as
 `portus-save.json.backup`; if the main file is damaged, Portus loads that
-backup automatically. The manual save-code export/import still works.
+backup automatically. Saving after recovery keeps the valid backup instead of
+copying the damaged file over it. The manual save-code export/import still works.
 
 Run `npm run desktop:package:win` to produce
 `dist/desktop/Portus-2.0.0-windows-x64.zip`. The build is deliberately staged
