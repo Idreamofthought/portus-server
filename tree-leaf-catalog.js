@@ -1,6 +1,7 @@
 // Generated from the 250-post category master and supplemented by newer writing.
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
+  {"title":"Peut mieux faire — Leçon de priorités","branch":"politics","category":"Caricature politique · Français","slug":"peut-mieux-faire","source":"writing/opinions/peut-mieux-faire.html"},
   {"title":"The Marsh Is Remembering","branch":"short-stories","category":"Fiction · Halloween","slug":"the-marsh-is-remembering","source":"writing/prose/the-marsh-is-remembering.html"},
   {
     "title": "Albums and Writers",
@@ -1848,6 +1849,7 @@ export const TREE_BRANCHES = {
 
 // Additional places where a leaf grows without duplicating its canonical text.
 export const TREE_CROSS_BRANCHES = {
+  "politics/peut-mieux-faire": ["teaching-education", "art"],
   "poems/sandmartins-linger": [
     "bird-nests",
     "science"
