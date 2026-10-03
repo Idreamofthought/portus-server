@@ -53,5 +53,11 @@ test('desktop saves preserve and recover the previous valid save',async()=>{
     assert.deepEqual(JSON.parse(await readFile(`${file}.backup`,'utf8')),first);
     await writeFile(file,'not valid json');
     assert.deepEqual(await loadLocalGame(file),first);
+    const recovered={v:1,captain:'Cora',buildings:[{id:'hut',x:4,y:5}]};
+    await saveLocalGame(file,recovered);
+    assert.deepEqual(await loadLocalGame(file),recovered);
+    assert.deepEqual(JSON.parse(await readFile(`${file}.backup`,'utf8')),first);
+    await rm(file);
+    assert.deepEqual(await loadLocalGame(file),first);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
