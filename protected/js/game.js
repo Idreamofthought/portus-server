@@ -1479,6 +1479,24 @@ let tickInterval = null;
 let sessionInterval = null;
 let currentUser = null; // {email, captainName}
 let hasFreeAccess = false;
+// Only the separately hosted desktop entry point sets this marker. Web routes
+// remain protected by the server regardless of client-side state.
+const desktopMode = window.PORTUS_DESKTOP === true;
+const offlineDiscoveryModule = desktopMode ? await import('/desktop/discoveries.js') : null;
+let offlineDiscoveries = offlineDiscoveryModule?.emptyDiscoveryState() || null;
+
+async function refreshOfflineCodex(){
+  if(!desktopMode) return;
+  const ids=[...new Set([...offlineDiscoveryModule.FOUNDATION_CODEX_ENTRIES,
+    ...offlineDiscoveries.unlocked])];
+  codexEntries=(await Promise.all(ids.map(async entryId=>{
+    const response=await fetch(`/codex/${entryId}.md`);
+    if(!response.ok) return null;
+    const content=await response.text();
+    return {entryId,title:content.match(/^#\s+(.+)$/m)?.[1]?.trim() || entryId,content};
+  }))).filter(Boolean);
+  renderCodexPanel();
+}
 
 let csrfPromise = null;
 async function getCsrf(){
@@ -1524,6 +1542,13 @@ function showPayBox(){
 
 async function refreshFromServer(){
   selectBuild(null);
+  if(desktopMode){
+    hasFreeAccess = true;
+    accessExpiresAt = Infinity;
+    await refreshOfflineCodex();
+    startPlaying();
+    return;
+  }
   try{
     const me = await api('/api/me');
     currentUser = me;
@@ -1714,6 +1739,13 @@ function discoveryActivity(){
 }
 
 async function maybeRollDiscovery(){
+  if(desktopMode){
+    if(tickCount===0 || tickCount%12!==0) return;
+    const discovery=offlineDiscoveryModule.rollOfflineDiscovery(offlineDiscoveries,
+      discoveryActivity(),Math.floor(tickCount/12));
+    if(discovery) await announceOfflineDiscovery(discovery);
+    return;
+  }
   if(!currentUser || discoveryRollInFlight || tickCount === 0 || tickCount % 12 !== 0) return;
   discoveryRollInFlight = true;
   try{
@@ -1738,6 +1770,15 @@ async function maybeRollDiscovery(){
   } finally {
     discoveryRollInFlight = false;
   }
+}
+
+async function announceOfflineDiscovery(discovery){
+  const detail=discovery.type==='archaeological_find' && !discovery.assembled
+    ? `fragment ${discovery.fragmentIndex}/${discovery.fragmentCount}` : 'Codex entry unlocked';
+  const message=`🔎 Discovery: ${discovery.title} — ${detail}.`;
+  logEvent(message);
+  showToast(message);
+  await refreshOfflineCodex();
 }
 
 function renderChronicle(){
@@ -1992,6 +2033,11 @@ function checkQuests(){
 }
 
 async function rollQuestDiscovery(questIndex){
+  if(desktopMode){
+    const discovery=offlineDiscoveryModule.rollOfflineDiscovery(offlineDiscoveries,'quest',questIndex);
+    if(discovery) await announceOfflineDiscovery(discovery);
+    return;
+  }
   if(!currentUser) return;
   try{
     const result = await api('/api/discoveries/roll', {
@@ -2107,6 +2153,9 @@ function getState(){
     buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
   };
 }
+function getPortableState(){
+  return desktopMode ? {...getState(),offlineDiscoveries} : getState();
+}
 function encodeState(s){
   return btoa(unescape(encodeURIComponent(JSON.stringify(s))));
 }
@@ -2136,6 +2185,10 @@ function applyState(s){
   taxRate = s.taxRate || 0;
   scenarioId = s.scenarioId || null;
   scenarioState = s.scenarioState || { disastersSurvived:0, completed:false };
+  if(desktopMode){
+    offlineDiscoveries=s.offlineDiscoveries || offlineDiscoveryModule.emptyDiscoveryState();
+    refreshOfflineCodex().catch(error=>console.warn('Local Codex unavailable',error));
+  }
   captainName = s.captain||'';
   document.getElementById('captainInput').value = captainName;
   setGrid(s.grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit, building:null}))));
@@ -2157,7 +2210,7 @@ function applyState(s){
 document.getElementById('captainInput').oninput = e=> captainName = e.target.value;
 document.getElementById('genSaveBtn').onclick = ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
-  const code = encodeState(getState());
+  const code = encodeState(getPortableState());
   document.getElementById('saveOut').value = code;
   showToast('Game Saved. Save code generated — copy it now');
   playTone('click');
@@ -2171,6 +2224,11 @@ document.getElementById('loadBtn').onclick = ()=>{
 };
 document.getElementById('cloudSaveBtn').onclick = async ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
+  if(desktopMode){
+    try{ await window.portusDesktopStorage.save(getPortableState()); showToast('Saved on this computer.'); }
+    catch(e){ showToast('Local save failed'); }
+    return;
+  }
   if(!currentUser){ showToast('Log in first to save to your account'); return; }
   try{
     const state = getState();
@@ -2184,6 +2242,15 @@ document.getElementById('cloudSaveBtn').onclick = async ()=>{
 };
 document.getElementById('cloudLoadBtn').onclick = async ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before loading'); return; }
+  if(desktopMode){
+    try{
+      const state=await window.portusDesktopStorage.load();
+      if(!state){ showToast('No local save found yet'); return; }
+      applyState(state);
+      showToast('Local game loaded.');
+    }catch(e){ showToast('Local save could not be loaded'); }
+    return;
+  }
   if(!currentUser){ showToast('Log in first to load from your account'); return; }
   try{
     const {state} = await api('/api/save');
@@ -2206,6 +2273,11 @@ fitCanvas();
 window.addEventListener('resize', resizeCanvas, {passive:true});
 
 refreshFromServer();
+if(desktopMode){
+  document.getElementById('cloudSaveBtn').textContent='Save locally';
+  document.getElementById('cloudLoadBtn').textContent='Load local save';
+  document.getElementById('legalFooter').textContent='© 2026 idreamofthought.org. All rights reserved.';
+}
 
 function marshNarration(title,text,task){
   const story=document.getElementById('marshStory');
@@ -2243,7 +2315,7 @@ function marshSound(kind){
 function startMarshPrologue(){
   dismissVoice();
   if(marshPrologue) return;
-  const saved=structuredClone(getState());
+  const saved=structuredClone(getPortableState());
   const oldEvents=eventLog.slice();
   const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
   const targets=marshTargets(cx,cy);
@@ -2482,7 +2554,7 @@ function finishMarshPrologue(){
   const bNextBtn = document.getElementById('bubbleNextBtn');
 
   const dismissedKey = id => `portus_bubble_${id}_dismissed`;
-  const pending = bubbles.filter(b => localStorage.getItem(dismissedKey(b.id)) !== 'true');
+  const pending = bubbles.filter(b => (b.id!=='terms' || !desktopMode) && localStorage.getItem(dismissedKey(b.id)) !== 'true');
 
   const runQueue = (index)=>{
     if(index >= pending.length){
@@ -2522,7 +2594,39 @@ const closeTitle = ()=>{
   playTone('click');
 };
 document.getElementById('newGameBtn').onclick = closeTitle;
-document.getElementById('continueBtn').onclick = closeTitle;
+const continueBtn=document.getElementById('continueBtn');
+const titleStatus=document.getElementById('titleStatus');
+if(desktopMode){
+  continueBtn.textContent='Continue saved game';
+  continueBtn.onclick=async()=>{
+    continueBtn.disabled=true;
+    titleStatus.hidden=true;
+    try{
+      const state=await window.portusDesktopStorage.load();
+      if(!state){
+        titleStatus.textContent='No local save yet. Choose New Game to begin.';
+        titleStatus.hidden=false;
+        return;
+      }
+      if(state.v!==1 || !Array.isArray(state.grid) || state.grid.length!==ROWS ||
+         !state.grid.every(row=>Array.isArray(row) && row.length===COLS) ||
+         !Array.isArray(state.buildings)){
+        titleStatus.textContent='The local save cannot be read. You can start a new game or load a save code.';
+        titleStatus.hidden=false;
+        return;
+      }
+      applyState(state);
+      closeTitle();
+    }catch(error){
+      titleStatus.textContent='The local save could not be loaded. You can start a new game or load a save code.';
+      titleStatus.hidden=false;
+    }finally{
+      continueBtn.disabled=false;
+    }
+  };
+}else{
+  continueBtn.onclick=closeTitle;
+}
 document.getElementById('titleCodexBtn').onclick = ()=>{
   closeTitle();
   document.querySelector('[data-panel="codexPanel"]').click();
