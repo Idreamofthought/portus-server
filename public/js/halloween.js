@@ -27,26 +27,49 @@
       const duration = 2.6;
       const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * duration), audio.sampleRate);
       const data = buffer.getChannelData(0);
-      let lowPhase = 0;
-      let highPhase = 0;
-      let scrape = 0;
-      for (let i = 0; i < data.length; i++) {
-        const t = i / audio.sampleRate;
-        const progress = t / duration;
-        // An iron hinge strains upward, then drops into a rusty groan.
-        const strain = Math.sin(Math.PI * progress) ** 1.4;
-        const lowHz = 82 + 38 * strain + 12 * Math.sin(t * 13);
-        const highHz = 300 + 1250 * strain + 65 * Math.sin(t * 21) + 23 * Math.sin(t * 113);
-        lowPhase += 2 * Math.PI * lowHz / audio.sampleRate;
-        highPhase += 2 * Math.PI * highHz / audio.sampleRate;
-        scrape = .72 * scrape + .28 * (Math.random() * 2 - 1);
-        const stickSlip = .55 + .45 * Math.sin(t * (31 + 18 * progress)) ** 8;
-        const envelope = Math.min(t / .08, 1) * Math.min((duration - t) / .35, 1);
-        const groan = .28 * Math.sin(lowPhase) + .13 * Math.sin(lowPhase * 3.01);
-        const shriek = (.3 + .7 * strain) * (.24 * Math.sin(highPhase) + .13 * Math.sin(highPhase * 2.017) + .07 * Math.sin(highPhase * 3.93));
-        const rasp = scrape * (.2 + .18 * strain);
-        const finalKnock = t > 2.24 ? .22 * Math.exp(-(t - 2.24) * 34) * Math.sin(2 * Math.PI * 64 * (t - 2.24)) : 0;
-        data[i] = envelope * stickSlip * (groan + shriek + rasp) + finalKnock;
+      // Separate stick/slip strokes, with silence between catches.
+      // No continuous bass oscillator or broadband hiss.
+      const strokes = [
+        { start: .03, length: .61, from: 520, to: 1120, level: .75 },
+        { start: .70, length: .73, from: 1080, to: 680, level: 1 },
+        { start: 1.52, length: .54, from: 650, to: 240, level: .85 },
+        { start: 2.16, length: .22, from: 280, to: 150, level: .5 }
+      ];
+      for (const stroke of strokes) {
+        let phase = 0;
+        let jitter = 0;
+        const first = Math.floor(stroke.start * audio.sampleRate);
+        const frames = Math.floor(stroke.length * audio.sampleRate);
+        for (let frame = 0; frame < frames; frame++) {
+          const u = frame / frames;
+          const t = frame / audio.sampleRate;
+          jitter += .015 * ((Math.random() * 2 - 1) - jitter);
+          const bend = u < .52 ? u * .8 : .416 + (u - .52) * 1.22;
+          const hz = stroke.from + (stroke.to - stroke.from) * bend;
+          phase += 2 * Math.PI * hz * (1 + jitter * .08) / audio.sampleRate;
+          const attack = Math.min(t / .018, 1);
+          const release = Math.min((stroke.length - t) / .065, 1);
+          // Friction catches irregularly instead of a motor-like even tremolo.
+          const catch1 = Math.exp(-(((u - .23) / .035) ** 2));
+          const catch2 = Math.exp(-(((u - .68) / .06) ** 2));
+          const grip = 1 - .91 * catch1 - .85 * catch2;
+          const squeak = Math.sin(phase) * .32
+            + Math.sin(phase * 2) * .13
+            + Math.sin(phase * 3) * .075
+            + Math.sin(phase * 5) * .025;
+          data[first + frame] += attack * release * grip * stroke.level * squeak;
+        }
+      }
+      // Two brief wood/iron ticks as the hinge catches and settles.
+      for (const start of [.66, 2.40]) {
+        let lastNoise = 0;
+        for (let frame = 0; frame < audio.sampleRate * .065; frame++) {
+          const t = frame / audio.sampleRate;
+          const noise = Math.random() * 2 - 1;
+          const click = (noise - lastNoise) * .08 + Math.sin(2 * Math.PI * 175 * t) * .11;
+          lastNoise = noise;
+          data[Math.floor(start * audio.sampleRate) + frame] += click * Math.exp(-t * 95) * Math.min(t * 1500, 1);
+        }
       }
       const source = audio.createBufferSource();
       source.buffer = buffer;
