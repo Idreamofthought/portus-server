@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { loadShootItems, renderShoots } from "./new-shoots.js";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -356,6 +357,14 @@ app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
 <section class="leaf-tools" aria-label="Find a leaf"><label for="leaf-search">Search this branch</label><input id="leaf-search" type="search" placeholder="Type a title or word"><label for="leaf-sort">Sort</label><select id="leaf-sort"><option value="az">A–Z</option><option value="za">Z–A</option></select><output id="leaf-count">${displayCount} leaves</output></section>
 <section id="leaf-list" class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section><p id="leaf-empty" class="leaf-empty" hidden>No leaves match that search.</p>
 <footer><a href="/tree/">The Great Tree</a><a href="/writing/">Catalogue</a></footer></main><script src="/tree/js/leaves.js" defer></script></body></html>`);
+});
+
+// Leaves exist from publication; New Shoots is a one-calendar-month feature.
+const shootItems = loadShootItems(TREE_LEAVES, __dirname);
+const writingTemplate = fs.readFileSync(path.join(__dirname, "homepage/writing/index.html"), "utf8");
+app.get(["/writing", "/writing/", "/writing/index.html"], (req, res) => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  res.set("Cache-Control", "no-cache").type("html").send(writingTemplate.replace(/<!-- NEW_SHOOTS_START -->[\s\S]*?<!-- NEW_SHOOTS_END -->/, renderShoots(shootItems, today)));
 });
 
 app.use(express.static(path.join(__dirname, "homepage")));
