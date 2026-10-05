@@ -183,7 +183,7 @@ app.use((req, res, next) => {
     [
       "default-src 'self'",
       `connect-src 'self' ${SITE_URL} https://plausible.io`,
-      "img-src 'self' data:",
+      "img-src 'self' data: https://idreamofthought.wordpress.com",
       "script-src 'self' https://plausible.io",
       "style-src 'self' 'unsafe-inline'",
       "form-action 'self' https://buttondown.com",
