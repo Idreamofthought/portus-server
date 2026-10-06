@@ -1830,6 +1830,14 @@ export const TREE_LEAVES = [
   "category": "Manifesto · English",
   "slug": "manifesto-for-the-maintenance-of-france",
   "source": "writing/opinions/manifesto-for-the-maintenance-of-france.html"
+},
+{
+  "title": "Please, sir, we want some more",
+  "branch": "politics",
+  "category": "Opinion · Education & democracy",
+  "slug": "please-sir-we-want-some-more",
+  "source": "writing/opinions/please-sir-we-want-some-more.html",
+  "published": "2026-10-06"
 }
 ];
 
@@ -1850,6 +1858,7 @@ export const TREE_BRANCHES = {
 
 // Additional places where a leaf grows without duplicating its canonical text.
 export const TREE_CROSS_BRANCHES = {
+  "politics/please-sir-we-want-some-more": ["teaching-education", "art"],
   "politics/lecons-de-republique": ["teaching-education", "art"],
   "politics/peut-mieux-faire": ["teaching-education", "art"],
   "poems/sandmartins-linger": [
