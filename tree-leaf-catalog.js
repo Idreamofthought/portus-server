@@ -1,6 +1,7 @@
 // Generated from the 250-post category master and supplemented by newer writing.
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
+  {"title":"The Boundary Keeper","branch":"short-stories","category":"Fiction · Rural horror","slug":"the-boundary-keeper","source":"writing/prose/the-boundary-keeper.html","published":"2026-10-07"},
   {"title": "Leçons de République — Quatre caricatures", "branch": "politics", "category": "Caricatures politiques · Français", "slug": "lecons-de-republique", "source": "writing/opinions/lecons-de-republique.html", "published": "2026-10-05"},
   {"title":"Peut mieux faire — Leçon de priorités","branch":"politics","category":"Caricature politique · Français","slug":"peut-mieux-faire","source":"writing/opinions/peut-mieux-faire.html"},
   {"title":"The Marsh Is Remembering","branch":"short-stories","category":"Fiction · Halloween","slug":"the-marsh-is-remembering","source":"writing/prose/the-marsh-is-remembering.html"},
