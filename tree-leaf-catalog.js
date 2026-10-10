@@ -1,6 +1,9 @@
 // Generated from the 250-post category master and supplemented by newer writing.
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
+  {"title": "Qui nous vend des remèdes miracles ?", "branch": "politics", "category": "Tribune · Médias et démocratie · Français", "slug": "qui-nous-vend-des-remedes-miracles", "source": "writing/opinions/qui-nous-vend-des-remedes-miracles.html", "published": "2026-10-10"},
+  {"title": "Who Is Selling the Snake Oil?", "branch": "politics", "category": "Opinion · Media & democracy · English", "slug": "who-is-selling-the-snake-oil", "source": "writing/opinions/who-is-selling-the-snake-oil.html", "published": "2026-10-10"},
+
   {"title": "The Woods Fed the Furnace", "branch": "philosophy-ideas", "category": "Essay · Science, history & ecology", "slug": "the-woods-fed-the-furnace", "source": "writing/opinions/the-woods-fed-the-furnace.html", "published": "2026-10-09"},
   {"title":"The Thinning Veil","branch":"history-memory","category":"Reflection · Autumn & memory","slug":"the-thinning-veil","source":"writing/prose/the-thinning-veil.html","published":"2026-10-07"},
   {"title":"The Boundary Keeper","branch":"short-stories","category":"Fiction · Rural horror","slug":"the-boundary-keeper","source":"writing/prose/the-boundary-keeper.html","published":"2026-10-07"},
