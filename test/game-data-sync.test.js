@@ -92,7 +92,7 @@ test("protected/js/presentation.js covers every resource/terrain/deposit key", a
 
 test("game.html getState() keys match save-validation SAVE_KEYS", () => {
   const script = extractScript();
-  const getStateMatch = script.match(/function getState\(\)\{\s*return \{([\s\S]*?)\n  \};\n\}/);
+  const getStateMatch = script.match(/function getState\(\)\{\s*return \{([\s\S]*?)\r?\n  \};\r?\n\}/);
   assert.ok(getStateMatch, "expected a getState() function in game.html");
   const keys = splitTopLevel(getStateMatch[1])
     .map((part) => part.trim())

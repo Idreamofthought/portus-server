@@ -6,12 +6,16 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "desktop:dev": "electron desktop/main.cjs",
+    "desktop:prepare": "node desktop/prepare-package.js",
+    "desktop:package:win": "npm run desktop:prepare && electron-builder --project desktop-build --win zip --x64",
     "check": "node --check server.js",
     "test": "node --test test/*.test.js",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:launch-sandbox": "RUN_LAUNCH_SANDBOX=1 node --test test/launch-sandbox.test.js",
     "validate:structure": "node validate-structure.js",
-    "generate:sitemap": "node scripts/generate-sitemap.js"
+    "generate:sitemap": "node scripts/generate-sitemap.js",
+    "steam:prepare": "node steam/prepare-upload.js"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
@@ -31,6 +35,8 @@
     "qs": "^6.16.0"
   },
   "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "jest": "^30.5.1"
   }
 }
