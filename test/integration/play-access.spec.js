@@ -53,4 +53,3 @@ test('a prepaid final window is usable at zero balance, then expired server acce
   expect(heartbeat.body.canPlay).toBe(false);
   expect(heartbeat.body.playWindowMs).toBe(0);
 });
-

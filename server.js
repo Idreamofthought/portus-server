@@ -69,7 +69,7 @@ import {
   confirmStripeCheckout,
   handleStripeWebhook,
   verifyPayPalWebhookSignature,
-  creditPayment
+  handlePayPalWebhookEvent
 } from "./payments.js";
 import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
@@ -1054,13 +1054,10 @@ app.post(
         return res.status(400).json({ error: "Invalid webhook signature" });
       }
 
-      setImmediate(() => {
-        creditPayment(req.body).catch((err) =>
-          console.error("PayPal creditPayment error:", err.message)
-        );
-      });
-
-      res.status(200).json({ received: true });
+      // Complete durable credit inside this try/catch before acknowledging.
+      // A 500 lets PayPal retry; no exception escapes into an unguarded timer.
+      const result = handlePayPalWebhookEvent(req.body);
+      res.status(200).json({ received: true, ...result });
     } catch (err) {
       console.error("PayPal webhook error:", err.message);
       res.status(500).json({ error: "Internal server error" });
