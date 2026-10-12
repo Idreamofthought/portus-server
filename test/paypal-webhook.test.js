@@ -21,7 +21,7 @@ function request(url, body) {
   return new Promise((resolve, reject) => {
     const socket = new Duplex({ read() {}, write(_chunk, _encoding, done) { done(); } });
     Object.defineProperty(socket, 'remoteAddress', { value: '127.0.0.1' });
-    const req = new IncomingMessage(socket), payload = body === undefined ? '' : JSON.stringify(body);
+    const req = new IncomingMessage(socket), payload = body === undefined ? '' : typeof body === 'string' ? body : JSON.stringify(body);
     req.method = body === undefined ? 'GET' : 'POST'; req.url = url;
     req.headers = { host: 'localhost', 'paypal-transmission-id': 'dummy', ...(payload ? { 'content-type': 'application/json', 'content-length': String(Buffer.byteLength(payload)) } : {}) };
     const res = new ServerResponse(req); res.assignSocket(socket);
@@ -40,6 +40,24 @@ function providerVerification(valid) {
     throw new Error('Unexpected network request');
   };
 }
+
+test('verification postback preserves original event formatting and numeric spelling', async () => {
+  const originalFetch = globalThis.fetch;
+  const raw = '{ "event_type" : "CHECKOUT.ORDER.APPROVED", "number":1.00, "text":"\\u0061" }';
+  let verified = false;
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('/verify-webhook-signature')) {
+      assert.ok(options.body.endsWith(',"webhook_event":' + raw + '}'));
+      assert.equal(JSON.parse(options.body).webhook_event.text, 'a');
+      verified = true;
+    }
+    return providerVerification(true)(url, options);
+  };
+  try {
+    assert.equal((await request('/api/webhooks/paypal', raw)).status, 200);
+    assert.equal(verified, true);
+  } finally { globalThis.fetch = originalFetch; }
+});
 
 test('provider-verified webhook credits before acknowledgement and replay is harmless', async () => {
   const originalFetch = globalThis.fetch; globalThis.fetch = providerVerification(true);
@@ -70,7 +88,14 @@ test('failed verification never credits; processing failures return 500 without 
     assert.equal(db.prepare('SELECT consumed FROM pending_orders WHERE order_id=?').get(f.orderId).consumed, 0);
     assert.equal((await request('/api/webhooks/paypal', f.event)).status, 200);
     assert.equal((await request('/api/webhooks/paypal', { event_type: 'CHECKOUT.ORDER.APPROVED' })).status, 200);
-    assert.equal((await request('/api/webhooks/paypal', { event_type: 'PAYMENT.CAPTURE.COMPLETED' })).status, 500);
+    for (const event of [
+      { event_type: 'PAYMENT.CAPTURE.COMPLETED' },
+      { ...f.event, resource: { ...f.event.resource, supplementary_data: { related_ids: { order_id: 'EXTERNAL-ORDER' } } } }
+    ]) {
+      const ignored = await request('/api/webhooks/paypal', event);
+      assert.equal(ignored.status, 200);
+      assert.equal(JSON.parse(ignored.body).ignored, true);
+    }
     assert.equal((await request('/health')).status, 200);
   } finally { globalThis.fetch = originalFetch; }
 });
