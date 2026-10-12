@@ -53,18 +53,56 @@ export async function createPayPalOrder({ userId, productId, withdrawalConsent, 
   return { id: orderId, url: approval };
 }
 
-export async function capturePayPalOrder({ userId, orderId }) {
+export async function capturePayPalOrder({ userId, orderId }, client = getPayPalClient()) {
   const pending = db.prepare(`SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal' AND user_id=?`).get(orderId, userId);
   if (!pending) throw new Error("unknown order");
   if (pending.consumed) return { ok: true, duplicate: true };
   const request = new paypal.orders.OrdersCaptureRequest(orderId);
   request.requestBody({});
-  const result = await getPayPalClient().execute(request);
+  let result;
+  try {
+    result = await client.execute(request);
+  } catch (captureError) {
+    // Capture may have succeeded before the connection or local credit failed.
+    // Retrieve its authoritative result instead of trying to charge again.
+    try {
+      result = await client.execute(new paypal.orders.OrdersGetRequest(orderId));
+      if (result.result?.status !== "COMPLETED") throw captureError;
+    } catch { throw captureError; }
+  }
   const capture = result.result;
-  if (capture.status !== "COMPLETED") throw new Error("payment not completed");
-  const capturedAmount = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
-  const capturedCurrency = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.currency_code;
-  return creditPayment({ pending, eventId: capture.id, capturedAmount, capturedCurrency });
+  const units = capture?.purchase_units;
+  const captures = units?.[0]?.payments?.captures;
+  if (capture?.id !== orderId || capture?.status !== "COMPLETED" || units?.length !== 1 || captures?.length !== 1 || captures[0]?.status !== "COMPLETED") {
+    throw new Error("payment not completed");
+  }
+  return creditPayPalCapture(pending, captures[0]);
+}
+
+function creditPayPalCapture(pending, capture) {
+  if (!capture || typeof capture.id !== "string" || !capture.id || capture.status !== "COMPLETED") throw new Error("invalid PayPal capture");
+  if (pending.consumed) return { credited: false, duplicate: true };
+  try {
+    return creditPayment({ pending, eventId: `paypal:${capture.id}`, capturedAmount: capture.amount?.value, capturedCurrency: capture.amount?.currency_code });
+  } catch (error) {
+    if (!db.prepare('SELECT consumed FROM pending_orders WHERE order_id=?').get(pending.order_id)?.consumed) {
+      recordAuditEvent({ userId: pending.user_id, eventType: 'payment_captured_not_credited',
+        metadata: { orderId: pending.order_id, captureId: capture.id, reason: error.message } });
+    }
+    throw error;
+  }
+}
+
+// Call only after PayPal has verified the webhook signature. Match captures to
+// our stored order; never accept a user, price or duration from the event.
+export function handlePayPalWebhookEvent(event) {
+  if (event?.event_type !== "PAYMENT.CAPTURE.COMPLETED") return { ignored: true };
+  const capture = event.resource;
+  const orderId = capture?.supplementary_data?.related_ids?.order_id;
+  if (typeof orderId !== "string" || !orderId) throw new Error("missing PayPal order");
+  const pending = db.prepare("SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal'").get(orderId);
+  if (!pending) throw new Error("unknown PayPal order");
+  return creditPayPalCapture(pending, capture);
 }
 
 export async function createStripeCheckout({ userId, productId, withdrawalConsent, siteUrl }) {
