@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { db } from "./database2.js";
 import freeAccess from "./data/free_access.json" with { type: "json" };
 import { ROUTES } from "./routes-config.js";
+import { secureCookies } from "./runtime-security.js";
 
 const freeAccessEmails = new Set(
   [
@@ -20,7 +21,7 @@ export function hasFreeAccess(userId) {
 
 export function issueCsrfCookie(res) {
   const token = crypto.randomBytes(32).toString("hex");
-  res.cookie("csrf", token, { httpOnly: false, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  res.cookie("csrf", token, { httpOnly: false, sameSite: "lax", secure: secureCookies(), path: "/" });
   return token;
 }
 
