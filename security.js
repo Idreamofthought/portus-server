@@ -10,11 +10,15 @@ export const LOGIN_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
 
 // IPs are stored only as salted hashes so the audit trail cannot be trivially
 // reversed into a location history.
-const IP_HASH_SALT = process.env.IP_HASH_SALT || "portus-audit-salt";
+// A configured key survives restarts; the random fallback remains private but
+// deliberately cannot correlate audit IPs between process lifetimes.
+const IP_HASH_SALT = process.env.IP_HASH_SALT || (process.env.JWT_SECRET
+  ? crypto.createHmac("sha256", process.env.JWT_SECRET).update("portus-audit-ip-v1").digest("hex")
+  : crypto.randomBytes(32).toString("hex"));
 
 export function hashIp(ip) {
   if (!ip) return null;
-  return crypto.createHash("sha256").update(`${IP_HASH_SALT}:${ip}`).digest("hex").slice(0, 32);
+  return crypto.createHmac("sha256", IP_HASH_SALT).update(String(ip)).digest("hex").slice(0, 32);
 }
 
 export function hashEmail(email) {
