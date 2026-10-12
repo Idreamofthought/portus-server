@@ -225,7 +225,9 @@ app.post(
 );
 
 // JSON body (for normal APIs & PayPal)
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "1mb", verify: (req, _res, buffer) => {
+  if (req.path === "/api/webhooks/paypal") req.rawPayPalBody = buffer.toString("utf8");
+} }));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
@@ -1048,7 +1050,7 @@ app.post(
   webhookLimiter,
   async (req, res) => {
     try {
-      const isValid = await verifyPayPalWebhookSignature(req.headers, req.body);
+      const isValid = await verifyPayPalWebhookSignature(req.headers, req.rawPayPalBody);
       if (!isValid) {
         console.warn("PayPal webhook signature invalid");
         return res.status(400).json({ error: "Invalid webhook signature" });

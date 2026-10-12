@@ -99,9 +99,9 @@ export function handlePayPalWebhookEvent(event) {
   if (event?.event_type !== "PAYMENT.CAPTURE.COMPLETED") return { ignored: true };
   const capture = event.resource;
   const orderId = capture?.supplementary_data?.related_ids?.order_id;
-  if (typeof orderId !== "string" || !orderId) throw new Error("missing PayPal order");
+  if (typeof orderId !== "string" || !orderId) return { ignored: true, reason: "no order" };
   const pending = db.prepare("SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal'").get(orderId);
-  if (!pending) throw new Error("unknown PayPal order");
+  if (!pending) return { ignored: true, reason: "unknown order" };
   return creditPayPalCapture(pending, capture);
 }
 
@@ -235,7 +235,10 @@ export function creditPayment({ pending, eventId, capturedAmount, capturedCurren
 }
 
 export async function verifyPayPalWebhookSignature(headers, body) {
-  if (!process.env.PAYPAL_WEBHOOK_ID) return false;
+  if (!process.env.PAYPAL_WEBHOOK_ID || typeof body !== "string" || !body) return false;
+  // Embed the original JSON without changing whitespace, escapes or numbers.
+  // It has already passed Express's JSON parser; never interpolate arbitrary text.
+  JSON.parse(body);
   const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
   const tokenResp = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, { method:"POST", headers:{ Authorization:`Basic ${auth}`, "Content-Type":"application/x-www-form-urlencoded" }, body:"grant_type=client_credentials" });
   if (!tokenResp.ok) return false;
@@ -245,8 +248,8 @@ export async function verifyPayPalWebhookSignature(headers, body) {
     body: JSON.stringify({
       transmission_id: headers["paypal-transmission-id"], transmission_time: headers["paypal-transmission-time"],
       cert_url: headers["paypal-cert-url"], auth_algo: headers["paypal-auth-algo"], transmission_sig: headers["paypal-transmission-sig"],
-      webhook_id: process.env.PAYPAL_WEBHOOK_ID, webhook_event: body
-    })
+      webhook_id: process.env.PAYPAL_WEBHOOK_ID
+    }).slice(0, -1) + ',"webhook_event":' + body + '}'
   });
   if (!resp.ok) return false;
   const data = await resp.json();
