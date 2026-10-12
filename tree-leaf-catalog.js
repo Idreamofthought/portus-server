@@ -1,6 +1,17 @@
 // Generated from the 250-post category master and supplemented by newer writing.
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
+  {"title":"Cooking corner: Rimfall soup","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"rimfall-soup","source":"writing/opinions/rimfall-soup.html"},
+  {"title":"Cooking Corner: Barbecue tips and treats","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"barbecue-tips-and-treats","source":"writing/opinions/barbecue-tips-and-treats.html"},
+  {"title":"Cooking Corner: Great A'Tuin Cake","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"great-atuin-cake","source":"writing/opinions/great-atuin-cake.html"},
+  {"title":"Cooking Corner: Goulash","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"goulash","source":"writing/opinions/goulash.html"},
+  {"title":"Cooking Corner: Dibbler's meat pies","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"dibblers-meat-pies","source":"writing/opinions/dibblers-meat-pies.html"},
+  {"title":"Cooking Corner: Chicken Chop Suey","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"chicken-chop-suey","source":"writing/opinions/chicken-chop-suey.html"},
+  {"title":"Cooking Corner: Klatchian Curry","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"klatchian-curry","source":"writing/opinions/klatchian-curry.html"},
+  {"title":"Cooking Corner: Slumgullet","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"slumgullet","source":"writing/opinions/slumgullet.html"},
+  {"title":"Cooking Corner: Soul Cakes","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"soul-cakes","source":"writing/opinions/soul-cakes.html"},
+  {"title":"Cooking Corner: Discworld menu","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"discworld-menu","source":"writing/opinions/discworld-menu.html"},
+  {"title":"I Was Here When It Was All Code","branch":"prose","category":"Personal · Discworld MUD","slug":"i-was-here-when-it-was-all-code","source":"writing/prose/i-was-here-when-it-was-all-code.html","published":"2026-10-12"},
   {"title": "Qui nous vend des remèdes miracles ?", "branch": "politics", "category": "Tribune · Médias et démocratie · Français", "slug": "qui-nous-vend-des-remedes-miracles", "source": "writing/opinions/qui-nous-vend-des-remedes-miracles.html", "published": "2026-10-10"},
   {"title": "Who Is Selling the Snake Oil?", "branch": "politics", "category": "Opinion · Media & democracy · English", "slug": "who-is-selling-the-snake-oil", "source": "writing/opinions/who-is-selling-the-snake-oil.html", "published": "2026-10-10"},
 
