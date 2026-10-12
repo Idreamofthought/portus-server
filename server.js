@@ -356,6 +356,7 @@ app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
 <header class="tree-header"><p class="eyebrow">${displayCount} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>
 <section class="leaf-tools" aria-label="Find a leaf"><label for="leaf-search">Search this branch</label><input id="leaf-search" type="search" placeholder="Type a title or word"><label for="leaf-sort">Sort</label><select id="leaf-sort"><option value="az">A–Z</option><option value="za">Z–A</option></select><output id="leaf-count">${displayCount} leaves</output></section>
 <section id="leaf-list" class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section><p id="leaf-empty" class="leaf-empty" hidden>No leaves match that search.</p>
+${req.params.branch === "poems" ? "<section class=\"tree-container\" aria-labelledby=\"poetry-connections\"><h2 id=\"poetry-connections\">Connections</h2><p><a href=\"https://maisondelapoesie-nantes.com/\" target=\"_blank\" rel=\"noopener noreferrer\">Maison de la Poésie de Nantes</a> — contemporary poetry, readings and workshops in Nantes.</p></section>" : req.params.branch === "art" ? '<p><a href="/writing/discworld-mud/cooking/">Discworld MUD Cooking Corner →</a></p>' : ""}
 <footer><a href="/tree/">The Great Tree</a><a href="/writing/">Catalogue</a></footer></main><script src="/tree/js/leaves.js" defer></script></body></html>`);
 });
 
