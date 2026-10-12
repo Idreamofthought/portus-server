@@ -21,6 +21,9 @@ import {
 import {
   normalizeEmail,
   validCredentials,
+  validPassword,
+  PASSWORD_REQUIREMENTS,
+  getJwtSecret,
   hashToken,
   issueAuthCookie,
   authenticateRequest,
@@ -82,6 +85,7 @@ const HEARTBEAT_MAX_GAP_MS = 30_000;
 
 export function startServer(port = PORT) {
   if (app.locals.server) return app.locals.server;
+  getJwtSecret();
   app.locals.server = app.listen(port, () => {
     console.log("Server running on port", port);
   });
@@ -467,7 +471,7 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
   if (!validCredentials(email, password))
     return res
       .status(400)
-      .json({ error: "invalid email or password (min 8 characters)" });
+      .json({ error: `Invalid email or password. ${PASSWORD_REQUIREMENTS}` });
 
   const passwordHash = await hashPassword(password);
 
@@ -511,7 +515,7 @@ app.post("/api/login", loginLimiter, authLimiter, requireCsrf, async (req, res) 
   const password = req.body.password;
 
   if (!validCredentials(email, password))
-    return res.status(400).json({ error: "invalid credentials" });
+    return res.status(400).json({ error: `Invalid credentials. ${PASSWORD_REQUIREMENTS}` });
 
   if (isLoginLocked(email)) {
     recordAuditEvent({ eventType: "login_locked_out", ip: req.ip });
@@ -680,11 +684,9 @@ app.post("/api/reset-password", passwordResetLimiter, async (req, res) => {
 
   if (
     typeof token !== "string" ||
-    typeof password !== "string" ||
-    password.length < 8 ||
-    password.length > 200
+    !validPassword(password)
   )
-    return res.status(400).json({ error: "invalid request" });
+    return res.status(400).json({ error: `Invalid request. ${PASSWORD_REQUIREMENTS}` });
 
   const row = db
     .prepare(`SELECT * FROM password_reset_tokens WHERE token_hash=?`)
@@ -696,16 +698,21 @@ app.post("/api/reset-password", passwordResetLimiter, async (req, res) => {
   const hash = await hashPassword(password);
 
   const tx = db.transaction(() => {
+    // Hashing yields to other requests. Claim inside this transaction so only
+    // one request can use the token, even after parallel password hashes.
+    const claim = db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE token_hash=? AND used=0 AND expires_at>?`)
+      .run(row.token_hash, Date.now());
+    if (claim.changes !== 1) return false;
     db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(
       hash,
       row.user_id
     );
-    db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE token_hash=?`)
-      .run(row.token_hash);
+    db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE user_id=?`).run(row.user_id);
     revokeAllSessions(row.user_id);
+    return true;
   });
 
-  tx();
+  if (!tx()) return res.status(400).json({ error: "invalid or expired token" });
   recordAuditEvent({
     userId: row.user_id,
     eventType: "password_reset_completed",
@@ -727,11 +734,9 @@ app.post(
 
     if (
       typeof oldPassword !== "string" ||
-      typeof newPassword !== "string" ||
-      newPassword.length < 8 ||
-      newPassword.length > 200
+      !validPassword(newPassword)
     )
-      return res.status(400).json({ error: "invalid password" });
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
 
     const user = db
       .prepare(`SELECT password_hash FROM users WHERE id=?`)
@@ -740,12 +745,19 @@ app.post(
     if (!user || !(await verifyPassword(oldPassword, user.password_hash)))
       return res.status(400).json({ error: "current password is incorrect" });
 
-    db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(
-      await hashPassword(newPassword),
-      req.user.uid
-    );
-
-    revokeAllSessions(req.user.uid);
+    const replacementHash = await hashPassword(newPassword);
+    const changed = db.transaction(() => {
+      // A password reset or session revocation during hashing wins over this
+      // older request; it must not overwrite the newly secured password.
+      const update = db.prepare(`UPDATE users SET password_hash=? WHERE id=? AND password_hash=?
+        AND EXISTS (SELECT 1 FROM sessions WHERE id=? AND user_id=? AND expires_at>?)`)
+        .run(replacementHash, req.user.uid, user.password_hash, req.sessionId, req.user.uid, Date.now());
+      if (update.changes !== 1) return false;
+      revokeAllSessions(req.user.uid);
+      db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE user_id=?`).run(req.user.uid);
+      return true;
+    })();
+    if (!changed) return res.status(409).json({ error: "Account credentials changed; sign in again before retrying." });
     recordAuditEvent({
       userId: req.user.uid,
       eventType: "password_changed",
