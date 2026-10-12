@@ -39,6 +39,7 @@ import {
   requireVerified,
   requirePaid,
   hasFreeAccess,
+  playAccess,
   authLimiter,
   loginLimiter,
   passwordResetLimiter,
@@ -81,7 +82,6 @@ export const app = express();
 const PORT = Number(process.env.PORT || 8080);
 const SITE_URL = process.env.SITE_URL || "https://www.idreamofthought.org";
 const MAX_SAVE_BYTES = 512 * 1024;
-const HEARTBEAT_MAX_GAP_MS = 30_000;
 
 export function startServer(port = PORT) {
   if (app.locals.server) return app.locals.server;
@@ -810,17 +810,7 @@ app.get("/api/access", authenticateRequest, (req, res) => {
     });
   }
 
-  const row = db
-    .prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`)
-    .get(req.user.uid);
-
-  const seconds = Math.max(0, Math.floor(row?.remaining_seconds || 0));
-
-  res.json({
-    remainingSeconds: seconds,
-    canPlay: seconds > 0,
-    accessExpiresAt: Date.now() + seconds * 1000
-  });
+  res.json(playAccess.read(req.user.uid));
 });
 
 // Heartbeat
@@ -834,52 +824,12 @@ app.post("/api/access/heartbeat", requireCsrf, authenticateRequest, generalApiLi
     });
   }
 
-  const now = Date.now();
-  let remaining;
-
-  const tx = db.transaction(() => {
-    let row = db
-      .prepare(
-        `SELECT remaining_seconds,last_active_at FROM time_tracking WHERE user_id=?`
-      )
-      .get(req.user.uid);
-
-    if (!row) {
-      db.prepare(
-        `INSERT INTO time_tracking (user_id,remaining_seconds,last_active_at,updated_at) VALUES (?,0,?,?)`
-      ).run(req.user.uid, now, now);
-      remaining = 0;
-      return;
-    }
-
-    let elapsed = row.last_active_at ? now - row.last_active_at : 0;
-
-    if (elapsed > HEARTBEAT_MAX_GAP_MS) elapsed = 0;
-
-    const debit = Math.max(0, Math.floor(elapsed / 1000));
-
-    remaining = Math.max(0, row.remaining_seconds - debit);
-
-    db.prepare(
-      `UPDATE time_tracking SET remaining_seconds=?,last_active_at=?,updated_at=? WHERE user_id=?`
-    ).run(remaining, now, now, req.user.uid);
-  });
-
-  tx();
-
-  res.json({
-    remainingSeconds: remaining,
-    canPlay: remaining > 0,
-    accessExpiresAt: now + remaining * 1000
-  });
+  res.json(playAccess.grant(req.user.uid, { renew: true }));
 });
 
 // Stop access
 app.post("/api/access/stop", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
-  db.prepare(
-    `UPDATE time_tracking SET last_active_at=NULL,updated_at=? WHERE user_id=?`
-  ).run(Date.now(), req.user.uid);
-
+  playAccess.stop(req.user.uid);
   res.json({ ok: true });
 });
 
