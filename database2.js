@@ -173,6 +173,10 @@ CREATE INDEX IF NOT EXISTS login_attempts_email_time ON login_attempts(email_has
 `);
 
 const userColumns = db.prepare(`PRAGMA table_info(users)`).all();
+if (!db.prepare('PRAGMA table_info(time_tracking)').all().some(column => column.name === 'play_until')) {
+  db.exec('ALTER TABLE time_tracking ADD COLUMN play_until INTEGER NOT NULL DEFAULT 0');
+}
+
 if (!userColumns.some((column) => column.name === "stripe_customer_id")) {
   db.exec(`ALTER TABLE users ADD COLUMN stripe_customer_id TEXT`);
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_id ON users(stripe_customer_id)`);

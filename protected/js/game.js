@@ -1475,6 +1475,7 @@ function renderTradePanel(){
 
 /* ---------------- PAYWALL / SESSION ---------------- */
 let accessExpiresAt = 0;
+let balanceExpiresAt = 0;
 let tickInterval = null;
 let sessionInterval = null;
 let currentUser = null; // {email, captainName}
@@ -1553,7 +1554,8 @@ async function refreshFromServer(){
         startPlaying();
         return;
       }
-      accessExpiresAt = Date.now()+((heartbeat.remainingSeconds || 0)*1000);
+      accessExpiresAt = Date.now()+(heartbeat.playWindowMs || 0);
+      balanceExpiresAt = Date.now()+((heartbeat.remainingSeconds || 0)*1000);
       startPlaying();
     }
     else pausePlaying();
@@ -1596,8 +1598,9 @@ async function heartbeatAccess(){
       document.getElementById('timeline').textContent = '';
       return;
     }
-    accessExpiresAt = Date.now()+((a.remainingSeconds || 0)*1000);
-    if(!a.canPlay) pausePlaying();
+    accessExpiresAt = Date.now()+(a.playWindowMs || 0);
+    balanceExpiresAt = Date.now()+((a.remainingSeconds || 0)*1000);
+    if(!a.canPlay || !a.playWindowMs) pausePlaying();
   }
   catch(e){ console.warn('access heartbeat failed',e); }
 }
@@ -1607,12 +1610,12 @@ function checkSession(){
     document.getElementById('timeline').textContent = '';
     return;
   }
-  const msLeft = accessExpiresAt - Date.now();
-  if(msLeft <= 0){ pausePlaying(); return; }
+  if(accessExpiresAt <= Date.now()){ pausePlaying(); return; }
+  const msLeft = Math.max(0, balanceExpiresAt - Date.now());
   const mins = Math.floor(msLeft/60000), secs = Math.floor((msLeft%60000)/1000);
   document.getElementById('timeline').textContent = `⏳ ${mins}:${secs.toString().padStart(2,'0')} left`;
 }
-setInterval(()=>{ if(currentUser) heartbeatAccess(); }, 10000);
+setInterval(()=>{ if(currentUser && tickInterval) heartbeatAccess(); }, 3000);
 
 document.getElementById('signupBtn').onclick = async ()=>{
   try{

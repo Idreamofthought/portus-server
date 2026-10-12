@@ -4,6 +4,9 @@ import { db } from "./database2.js";
 import freeAccess from "./data/free_access.json" with { type: "json" };
 import { ROUTES } from "./routes-config.js";
 import { secureCookies } from "./runtime-security.js";
+import { createPlayAccess } from "./play-access.js";
+
+export const playAccess = createPlayAccess(db);
 
 const freeAccessEmails = new Set(
   [
@@ -48,8 +51,8 @@ export function requireVerified(req, res, next) {
 export function requirePaid(req, res, next) {
   if (hasFreeAccess(req.user.uid)) return next();
 
-  const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(req.user.uid);
-  if (!row || row.remaining_seconds <= 0) {
+  const access = playAccess.grant(req.user.uid);
+  if (access.playWindowMs <= 0) {
     if (wantsHTML(req)) return res.redirect(`${ROUTES.portus}?paid=required`);
     return res.status(403).json({ error: "no paid time" });
   }

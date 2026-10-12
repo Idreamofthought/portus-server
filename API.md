@@ -120,9 +120,20 @@ Returns remaining paid play time and whether the account can play.
 
 Keeps an active game session alive and consumes server-authoritative play time.
 
+Time is prepaid in windows of at most 10 seconds, shared by all tabs for the account.
+`remainingSeconds` includes the unused part of the current window and unreserved balance.
+`playWindowMs` and `accessExpiresAt` describe the current prepaid window, not the entire balance.
+Heartbeat renewals top up the window using the server clock and an atomic database transaction.
+Missing heartbeats cannot grant free windows. The client pauses when its current window expires.
+Protected game routes also reserve or reuse a paid window. The simulation and saves remain
+client-authoritative; this is access accounting, not protection against modifying the local game.
+
 ### `POST /api/access/stop`
 
 Stops the active play session without logging out.
+
+Any unused part of the current prepaid window is forfeited (at most 10 seconds).
+Other tabs share the same window; they must obtain another paid window to continue.
 
 ### `POST /api/save`
 
