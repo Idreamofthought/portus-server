@@ -21,7 +21,10 @@ test('HTTP access checks do not spend time; heartbeats and protected routes shar
   const initial = await session.request('GET', '/api/access');
   expect(initial.body.remainingSeconds).toBe(30);
   expect(initial.body.playWindowMs).toBe(0);
-  const results = await Promise.all(Array.from({ length: 8 }, () => session.postCsrf('/api/access/heartbeat', { now: 0, elapsed: 0 })));
+  const csrfToken = await session.withCsrf();
+  const results = await Promise.all(Array.from({ length: 8 }, () => session.request('POST', '/api/access/heartbeat', {
+    body: { now: 0, elapsed: 0 }, headers: { 'X-CSRF-Token': csrfToken }
+  })));
   for (const result of results) {
     expect(result.status).toBe(200);
     expect(result.body.playWindowMs).toBeGreaterThan(0);
@@ -50,3 +53,4 @@ test('a prepaid final window is usable at zero balance, then expired server acce
   expect(heartbeat.body.canPlay).toBe(false);
   expect(heartbeat.body.playWindowMs).toBe(0);
 });
+
