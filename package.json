@@ -28,7 +28,10 @@
     "stripe": "^16.9.0"
   },
   "overrides": {
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^4.3.2"
+    }
   },
   "devDependencies": {
     "jest": "^30.5.1"
