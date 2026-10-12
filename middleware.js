@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { db } from "./database2.js";
-import freeAccess from "./data/free_access.json" with { type: "json" };
 import { ROUTES } from "./routes-config.js";
 import { secureCookies } from "./runtime-security.js";
 import { createPlayAccess } from "./play-access.js";
@@ -9,10 +8,7 @@ import { createPlayAccess } from "./play-access.js";
 export const playAccess = createPlayAccess(db);
 
 const freeAccessEmails = new Set(
-  [
-    ...(freeAccess.emails || []),
-    ...(process.env.FREE_ACCESS_EMAILS || "").split(",")
-  ]
+  (process.env.FREE_ACCESS_EMAILS || "").split(",")
     .map((email) => String(email).trim().toLowerCase())
     .filter(Boolean)
 );
