@@ -11,7 +11,8 @@ test("public HTTPS sets Secure even when NODE_ENV is missing", () => {
 
 test("development JWT defaults cannot leak into public deployments", () => {
   for (const env of [{}, { JWT_SECRET: "test-secret" }, { JWT_SECRET: "short" },
-    { NODE_ENV: "production", JWT_SECRET: "replace-with-a-long-random-secret" }]) {
+    { NODE_ENV: "production", JWT_SECRET: "replace-with-a-long-random-secret" },
+    { JWT_SECRET: "REPLACE_WITH_A_LONG_RANDOM_SECRET" }]) {
     assert.throws(() => jwtSecret(env), /random secret/);
   }
   assert.equal(jwtSecret({ NODE_ENV: "test" }), "test-secret");
