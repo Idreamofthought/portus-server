@@ -73,6 +73,7 @@ import {
 } from "./payments.js";
 import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
+import { renderWritingArchive } from "./writing-archive.js";
 import { TREE_LEAVES, TREE_BRANCHES, TREE_CROSS_BRANCHES } from "./tree-leaf-catalog.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -231,6 +232,9 @@ app.use(express.json({ limit: "1mb", verify: (req, _res, buffer) => {
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+// Historical posts and bookmarks used this game address.
+app.get("/game.html", (_req, res) => res.redirect(301, ROUTES.game));
+
 // ============================================================
 // STATIC FILES
 // ============================================================
@@ -288,7 +292,7 @@ app.get("/tree/leaves/:branch/:slug.html", generalApiLimiter, (req, res, next) =
   const sourcePath = path.join(__dirname, "public", leaf.source);
   let html;
   try {
-    html = fs.readFileSync(sourcePath, "utf8");
+    html = renderWritingArchive(fs.readFileSync(sourcePath, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") return next();
     return next(error);
