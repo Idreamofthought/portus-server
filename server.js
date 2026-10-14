@@ -1073,7 +1073,7 @@ app.post("/api/save", requireCsrf, authenticateRequest, generalApiLimiter, (req,
   if (typeof json !== "string") {
     return res.status(400).json({ error: "invalid_save" });
   }
-  if (json.length > MAX_SAVE_BYTES) {
+  if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
   }
 

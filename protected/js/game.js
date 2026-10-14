@@ -1,3 +1,4 @@
+import { migrateSave, validateSave } from "/game-assets/save-validation.js";
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
 import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
 import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
@@ -2110,6 +2111,10 @@ function getState(){
     buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
   };
 }
+let importedDiscoveries = null;
+function getPortableState(){
+  return importedDiscoveries ? {...getState(),offlineDiscoveries:importedDiscoveries} : getState();
+}
 function encodeState(s){
   return btoa(unescape(encodeURIComponent(JSON.stringify(s))));
 }
@@ -2118,8 +2123,15 @@ function decodeState(code){
   catch(e){ return null; }
 }
 function applyState(s){
+  // Validate before changing the town, selection, discoveries or visible UI.
+  try {
+    s = migrateSave(s);
+    if(!validateSave(s).ok){ showToast('That save code looks invalid'); return; }
+  } catch {
+    showToast('That save code looks invalid'); return;
+  }
   dismissVoice();
-  if(!s || s.v!==1 || !s.grid || !s.buildings){ showToast('That save code looks invalid'); return; }
+  importedDiscoveries = s.offlineDiscoveries || null;
   // Saves predating a resource omit its key entirely; zero-fill so the arithmetic
   // below can't turn into NaN.
   const zeroedResources = Object.fromEntries([...FOOD_KEYS, ...GENERAL_KEYS].map(k=>[k,0]));
@@ -2160,7 +2172,7 @@ function applyState(s){
 document.getElementById('captainInput').oninput = e=> captainName = e.target.value;
 document.getElementById('genSaveBtn').onclick = ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
-  const code = encodeState(getState());
+  const code = encodeState(getPortableState());
   document.getElementById('saveOut').value = code;
   showToast('Game Saved. Save code generated — copy it now');
   playTone('click');
@@ -2176,7 +2188,7 @@ document.getElementById('cloudSaveBtn').onclick = async ()=>{
   if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
   if(!currentUser){ showToast('Log in first to save to your account'); return; }
   try{
-    const state = getState();
+    const state = getPortableState();
     await api('/api/save', {
       method:'POST',
       body: JSON.stringify({ state: JSON.stringify(state), captain: state.captain })
