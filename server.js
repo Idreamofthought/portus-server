@@ -448,6 +448,9 @@ app.get("/cgv", generalApiLimiter, (_req, res) =>
 app.get("/privacy", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/privacy.html"))
 );
+app.get("/ai-use", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/ai-use.html"))
+);
 app.get("/cookies", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cookies.html"))
 );
