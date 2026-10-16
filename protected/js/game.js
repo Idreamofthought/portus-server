@@ -1384,6 +1384,9 @@ function renderRecipePanel(){
     list.appendChild(btn);
   });
 }
+// Keep panels outside the scrolling map so focusing a trade control cannot
+// scroll their heading and close button out of view.
+document.querySelectorAll('.sidepanel').forEach(panel=>document.getElementById('main').appendChild(panel));
 document.querySelectorAll('.menuBtn').forEach(btn=>{
   btn.onclick = ()=>{
     playTone('click');
