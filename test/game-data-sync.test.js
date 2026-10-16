@@ -10,7 +10,7 @@ import { BUILDING_IDS, TECH_BONUS_KEYS, RESOURCE_KEYS, TERRAIN_CODES, DEPOSIT_CO
 const gameJsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/js/game.js");
 
 function extractScript() {
-  return fs.readFileSync(gameJsPath, "utf8");
+  return fs.readFileSync(gameJsPath, "utf8").replace(/\r\n/g, "\n");
 }
 
 // Splits an object-literal body on top-level commas only, so nested calls

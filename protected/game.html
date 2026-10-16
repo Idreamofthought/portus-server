@@ -53,7 +53,7 @@
     <span id="timeline"></span>
     <span id="tickline"></span>
     <button id="musicToggle" class="musicToggle" type="button" aria-pressed="false">Music: Off</button>
-    <button id="voicesToggle" class="musicToggle" type="button" aria-pressed="true" title="Turn optional settlement suggestions off">Voices: On</button>
+    <button id="voicesToggle" class="musicToggle" type="button" aria-pressed="true" title="Turn settlement guidance off">Guidance: On</button>
   </div>
 
   <div id="cropbar">
@@ -78,15 +78,6 @@
       </div>
     </aside>
     <div id="worldMood" aria-live="polite"></div>
-    <aside id="settlementVoice" hidden aria-labelledby="voiceTitle">
-      <p id="voiceSpeaker" class="voiceKicker"></p>
-      <h2 id="voiceTitle"></h2>
-      <p id="voiceText"></p>
-      <div class="voiceActions">
-        <button id="voiceFollow" type="button">Explore the idea</button>
-        <button id="voiceLater" type="button">Perhaps later</button>
-      </div>
-    </aside>
     <div id="mapwrap">
       <canvas id="canvas"></canvas>
       <div id="minimapWrap" aria-label="Settlement minimap">
@@ -124,6 +115,13 @@
         <div class="panelHead">
           <span>Research — <b id="rpCount">0</b> available</span>
           <button class="closeP">✕</button>
+        </div>
+        <div id="researchPlanner" class="panelBody">
+          <p class="pnote">Clay → pottery → scrolls → research. Keep your Scribe and Library supplied.</p>
+          <div id="researchSetup" aria-label="Buildings for research"></div>
+          <label for="researchPath">What would you like to develop?</label>
+          <select id="researchPath"><option value="">All discoveries</option></select>
+          <p id="researchPathNote" class="pnote"></p>
         </div>
         <div id="researchList"></div>
       </div>
@@ -238,7 +236,25 @@
     </div>
 
     <div id="panel">
-      <div id="firstActionGuide" aria-live="polite">Portus. A town by the sea. Your people await your guidance.</div>
+      <section id="firstActionGuide" aria-label="Settlement guidance">
+        <aside id="settlementVoice" hidden aria-labelledby="voiceTitle">
+          <p id="voiceSpeaker" class="voiceKicker">The Gods suggest…</p>
+          <div aria-live="polite" aria-atomic="true">
+            <h2 id="voiceTitle"></h2>
+            <p id="voiceText"></p>
+          </div>
+          <div class="voiceActions">
+            <button id="voiceFollow" type="button">Explore the idea</button>
+            <button id="voiceLater" type="button">Another idea</button>
+          </div>
+        </aside>
+        <button id="guidanceRestore" type="button" hidden>Show suggestions again</button>
+      </section>
+      <div id="buildingSearchBox">
+        <label for="buildingSearch">Find a building</label>
+        <input id="buildingSearch" type="search" placeholder="Name, goods or research…" autocomplete="off">
+        <p id="buildingSearchCount" role="status"></p>
+      </div>
       <div id="buildingList"></div>
       <div id="buildPreview">
         <div id="buildPreviewTitle">No building selected</div>

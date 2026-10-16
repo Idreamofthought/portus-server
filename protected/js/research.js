@@ -30,11 +30,18 @@ export const TECHS = [
   {id:'brewing', name:'Brewing & Viticulture', desc:'Unlocks the Winery, Brewery, and Meadery', cost:18, tier:2, requires:['irrigation'], effects:{}},
   {id:'dairyfarming', name:'Dairy Farming', desc:'Unlocks the Dairy', cost:18, tier:3, requires:['animalhusbandry'], effects:{}},
   {id:'tanning', name:'Tanning & Weaving', desc:'Unlocks the Tanner, Leatherworker, and Quilt Maker', cost:20, tier:3, requires:['animalhusbandry'], effects:{}},
-  {id:'confectionery', name:'Confectionery', desc:'Unlocks the Candlemaker and bakery cake recipes', cost:22, tier:3, requires:['orcharding'], effects:{}},
+  {id:'confectionery', name:'Confectionery', desc:'Unlocks the Candlemaker and Sugar House', cost:22, tier:3, requires:['orcharding'], effects:{}},
   // Defence and monuments
   {id:'armscrafting', name:'Arms Crafting', desc:'Unlocks the Armourer', cost:20, tier:3, requires:['metallurgy'], effects:{}},
   {id:'castlebuilding', name:'Castle Building', desc:'Unlocks the Fort', cost:34, tier:3, requires:['fortification'], effects:{}},
   {id:'monumentalarchitecture', name:'Monumental Architecture', desc:'Unlocks Grand and Monumental Temples', cost:30, tier:3, requires:['masonry'], effects:{}},
+  // Tier 4 joins branches so established towns have longer-term ambitions.
+  {id:'canalengineering', name:'Canal Engineering', desc:'+20% field yield and +100 food storage', cost:44, tier:4, requires:['engineering','granaryscience'], effects:{techBonus:{field:1.2},cap:{food:100}}},
+  {id:'tradenetworks', name:'Trade Networks', desc:'+20% trade income and +100 general storage', cost:46, tier:4, requires:['maritimetrade','carpentry'], effects:{techBonus:{trade:1.2},cap:{general:100}}},
+  {id:'mastercraft', name:'Master Craftspeople', desc:'+20% foundry refining and +15% woodcutter output', cost:46, tier:4, requires:['engineering','tanning'], effects:{techBonus:{foundry:1.2,wood:1.15}}},
+  {id:'academy', name:'Academy of Scholars', desc:'+25% Library research and +4 happiness', cost:48, tier:4, requires:['greatlibrary','engineering'], effects:{techBonus:{research:1.25},techHappinessBonus:4}},
+  {id:'defencestrategy', name:'Defence Strategy', desc:'+6 military capacity and +15% raid strength', cost:50, tier:4, requires:['siegecraft','castlebuilding'], effects:{military:{cap:6},techBonus:{raid:1.15}}},
+  {id:'sacredcity', name:'Sacred City', desc:'+8 happiness and +50 general storage', cost:48, tier:4, requires:['monumentalarchitecture','philosophy'], effects:{techHappinessBonus:8,cap:{general:50}}},
 ];
 
 export function techName(id){
@@ -44,4 +51,50 @@ export function techName(id){
 
 export function techRequirementsMet(tech, unlockedTechs){
   return (tech.requires||[]).every(id=>unlockedTechs.has(id));
+}
+
+export const RESEARCH_PATHS = [
+  {id:'food',name:'Food & farming',targets:['canalengineering','dairyfarming','confectionery'],why:'Grow more food, preserve harvests and develop dairy and sweet foods.'},
+  {id:'industry',name:'Industry & crafts',targets:['mastercraft','armscrafting'],why:'Refine metals, work hides and equip your workshops and soldiers.'},
+  {id:'trade',name:'Trade & sailing',targets:['tradenetworks'],why:'Improve trade income and make room for goods.'},
+  {id:'research',name:'Knowledge & learning',targets:['academy'],why:'Increase research from Libraries and improve civic happiness.'},
+  {id:'army',name:'Army & defence',targets:['defencestrategy','armscrafting','engineering'],why:'Unlock walls, towers, equipment, forts and greater military capacity.'},
+  {id:'spirituality',name:'Spirituality',targets:['sacredcity','confectionery'],why:'Support candle production, build larger temples and lift civic happiness.'}
+];
+
+export const TECH_PURPOSE = {
+  woodcraft:'Useful once a Woodcutter is supplying timber.',
+  masonry:'Improves your Quarry and leads to walls, towers and larger temples.',
+  irrigation:'Unlocks Fields: choose wheat, olives, chickpeas, grapes, barley or sugarcane.',
+  metallurgy:'Unlocks the Blacksmith and Bronzesmith; a Foundry needs mined ore.',
+  seafaring:'Improves fish from Fisherman’s Huts and Docks, then leads to better trade.',
+  claycraft:'Improves clay supply for pottery, scribes and research.',
+  scholarship:'Needs an operating Library supplied with scrolls from a Scribe.',
+  animalhusbandry:'Pastures supply meat, milk and hides; Chicken Coops also supply feathers. The Butcher needs game and salt.',
+  orcharding:'Orchards supply fruit. Jam also needs sugar from a Sugar House, unlocked by Confectionery.',
+  brewing:'Fields supply grapes and barley; Beekeepers supply honey for mead.',
+  dairyfarming:'Supply milk from Cow or Goat Pastures; cheese also needs salt.',
+  tanning:'Hides → Tanner → Leatherworker. Chicken feathers → Quilt Maker.',
+  confectionery:'Beekeeper wax → Candlemaker → Temple. Field sugarcane → Sugar House → Jam Maker or cake recipes.',
+  armscrafting:'Supply bronze from a Foundry and tools to forge weapons and armour.',
+  fortification:'Unlocks Walls and Guard Towers; keep stone and tools available.',
+  castlebuilding:'Forts need substantial stone, timber, tools and workers.',
+  monumentalarchitecture:'Larger temples need marble, refined gold and a steady candle supply.',
+  engineering:'Unlocks Flood Defences and Moats; place them near water.',
+  siegecraft:'Unlocks Traps and improves raids; it does not create troops automatically.'
+};
+
+// Prerequisites appear before descendants; shared requirements appear once.
+export function researchPath(targets){
+  const result = [], seen = new Set();
+  function visit(id){
+    if(seen.has(id)) return;
+    seen.add(id);
+    const tech = TECHS.find(t=>t.id===id);
+    if(!tech) return;
+    (tech.requires||[]).forEach(visit);
+    result.push(tech);
+  }
+  targets.forEach(visit);
+  return result;
 }
