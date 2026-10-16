@@ -61,7 +61,7 @@ export function settlementAdvice({buildings=[], res={}, pop={count:6,capacity:10
     const voice = settlementVoice(building.id, [...built], building.crop);
     if(voice) build(voice.next,voice.title,voice.text);
   }
-  if(!built.has('market')) build('market','Make use of surplus','A Market automatically sells surplus goods. It keeps a buffer of 30 of each food and 20 of each other resource; check your supplies before expanding trade.');
+  if(!built.has('market')) build('market','Make use of surplus','A Market lets you trade every good and automatically sell surplus. Set a food reserve in Trade and keep materials for your next buildings.');
   if(!built.has('barracks')) build('barracks','Prepare a town guard','Barracks make room for soldiers. Recruits cost tools and leave civilian jobs, so grow your workforce before enlisting.');
   if(!unlockedTechs.has('irrigation') && built.has('library')) add('research-farming','Diversify the food supply','Agriculture unlocks Fields. Follow the Food & farming path to improve yields and food storage.',{tech:'irrigation'});
   if(!built.has('temple')) build('temple','Make a place for devotion','A Small Temple lifts happiness. First secure refined gold for construction and candles for its shrine.');

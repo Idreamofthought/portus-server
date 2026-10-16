@@ -15,6 +15,7 @@ import { createPortusMusic } from '/music.js';
 import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
 import { marshTargets, marshPlacementAllowed, advanceMarshLesson } from '/game-assets/marsh-lesson.js';
 import { settlementAdvice } from '/game-assets/progression.js';
+import { DEFAULT_MARKET_POLICY, completeTradeGoods, foodTurns, saleQuote, sellableSurplus, automaticSales, storageRoom } from '/game-assets/market.js';
 
 const openBuildingGroups = new Set();
 let buildingQuery = '';
@@ -23,7 +24,7 @@ let researchRenderKey = '';
 let focusedTech = null;
 
 let selectedCrop = 'wheat';
-const TRADE_GOODS = [
+const TRADE_GOODS = completeTradeGoods([
   { id: 'wood', label: 'Wood', buyCost: 4, sellValue: 1 },
   { id: 'stone', label: 'Stone', buyCost: 5, sellValue: 1 },
   { id: 'clay', label: 'Clay', buyCost: 4, sellValue: 1 },
@@ -48,7 +49,12 @@ const TRADE_GOODS = [
   { id: 'wine', label: 'Wine', buyCost: 14, sellValue: 5 },
   { id: 'beer', label: 'Beer', buyCost: 9, sellValue: 3 },
   { id: 'mead', label: 'Mead', buyCost: 13, sellValue: 4 }
-];
+],RESOURCE_INFO);
+
+let marketPolicy={...DEFAULT_MARKET_POLICY};
+let tradeQuery='';
+let tradeQuantity='1';
+let pendingSale=null;
 
 /* ---------------- TRADE DEMAND ---------------- */
 // buy = base*(1 + demand*X), sell = base*(1 + demand*Y). X > Y and buyCost >
@@ -397,14 +403,9 @@ function tick(){
       return;
     }
     if(def.special==='market'){
-      GENERAL_KEYS.concat(FOOD_KEYS).forEach(k=>{
-        let buffer = FOOD_KEYS.includes(k) ? 30 : 20;
-        let surplus = res[k] - buffer;
-        if(surplus > 0){
-          let sold = Math.min(surplus, 2*laborRatio);
-          res[k] -= sold;
-          tradeIncome += sold * (PRICES[k]||0.5) * techBonus.trade;
-        }
+      automaticSales(res,pop.count,marketPolicy,2*laborRatio).forEach(({id,amount})=>{
+        res[id]-=amount;
+        tradeIncome+=amount*(PRICES[id]||0.5)*techBonus.trade;
       });
       return;
     }
@@ -1179,7 +1180,7 @@ function handleBuildingTap(tile){
     }
     return;
   }
-  if(building.id === 'tradingpost'){
+  if(['market','tradingpost'].includes(building.id)){
     openPanel('tradePanel');
     playTone('click');
   } else if(def && def.recipes){
@@ -1424,7 +1425,7 @@ function focusResearch(id){
   renderResearchPanel();
   openPanel('researchPanel');
   const row=document.getElementById(`tech-${id}`);
-  row?.scrollIntoView({block:'nearest'});
+  if(row) document.getElementById('researchPanel').scrollTop=Math.max(0,row.offsetTop-40);
   (row?.querySelector('button:not(:disabled)') || row)?.focus({preventScroll:true});
 }
 function renderResearchPanel(){
@@ -1527,54 +1528,139 @@ function renderCodexPanel(){
   });
 }
 
+document.getElementById('marketAutoSell').onchange=event=>{
+  marketPolicy.autoSell=event.target.checked;
+  renderTradePanel();
+};
+document.getElementById('marketFoodReserve').onchange=event=>{
+  marketPolicy.foodReserveTurns=Number(event.target.value);
+  renderTradePanel();
+};
+document.getElementById('tradeSearch').oninput=event=>{
+  tradeQuery=event.target.value.trim().toLowerCase();
+  renderTradePanel();
+};
+document.getElementById('marketGoodsReserve').oninput=document.getElementById('marketGoodsReserve').onchange=event=>{
+  if(event.type==='input' && event.target.value==='') return;
+  const reserve=Number(event.target.value);
+  if(!Number.isSafeInteger(reserve)||reserve<0||reserve>100000){
+    event.target.value=String(marketPolicy.generalReserve);
+    showToast('Choose a reserve between 0 and 100000'); return;
+  }
+  marketPolicy.generalReserve=reserve;
+  renderTradePanel();
+};
+document.getElementById('tradeQuantity').onchange=event=>{
+  tradeQuantity=event.target.value;
+  renderTradePanel();
+};
+document.getElementById('marketCancelSale').onclick=()=>{
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+};
+document.getElementById('marketConfirmSale').onclick=()=>{
+  if(!pendingSale) return;
+  const {id,amount}=pendingSale;
+  const good=TRADE_GOODS.find(good=>good.id===id);
+  sellAtMarket(good,amount,true);
+};
+function sellAtMarket(good,amount,confirmed=false){
+  // Recheck access, stock, food and price at the final click, including after ticks.
+  if(!placedBuildings.some(b=>['market','tradingpost'].includes(b.id))){ showToast('Build a Market or Trading Post first'); return; }
+  const quote=saleQuote(res,good.id,amount,pop.count,marketPolicy);
+  if(!quote.ok){ pendingSale=null; document.getElementById('marketSaleWarning').hidden=true; showToast(quote.error); return; }
+  if(quote.warning && !confirmed){
+    pendingSale={id:good.id,amount};
+    document.getElementById('marketSaleText').textContent=`Sell ${amount} ${good.label}? ${quote.warning}`;
+    document.getElementById('marketSaleWarning').hidden=false;
+    document.getElementById('marketConfirmSale').disabled=false;
+    document.getElementById('tradePanel').scrollTop=Math.max(0,document.getElementById('marketSaleWarning').offsetTop-40);
+    document.getElementById('marketCancelSale').focus({preventScroll:true});
+    return;
+  }
+  const income=sellPriceOf(good)*amount;
+  res[good.id]-=amount;
+  coin+=income;
+  tradeDemand[good.id]=clampDemand(tradeDemand[good.id]-0.05*amount);
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+  showToast(`Sold ${amount} ${good.label} for ${income} coin`);
+  renderRes();
+}
 function renderTradePanel(){
   const list = document.getElementById('tradeList');
   if(!list) return;
   list.replaceChildren();
-  const hasTradingPost = placedBuildings.some((b)=>b.id==='tradingpost');
-  if(!hasTradingPost){
+  const hasMarket = placedBuildings.some(b=>['market','tradingpost'].includes(b.id));
+  document.getElementById('marketControls').hidden=!hasMarket;
+  if(!hasMarket){
     const empty = document.createElement('p');
     empty.className = 'pnote';
-    empty.textContent = 'Build a Trading Post to buy and sell rare goods.';
+    empty.textContent = 'Build a Market or Trading Post to buy and sell goods.';
     list.appendChild(empty);
     return;
   }
 
+  const turns=foodTurns(res,pop.count);
+  const status=document.getElementById('marketFoodStatus');
+  status.textContent=`Food stores: ${Math.floor(totalFood())} · ${Number.isFinite(turns)?`about ${Math.floor(turns)} turns without new production`:'no citizens to feed'}. Reserve: ${marketPolicy.foodReserveTurns} turns.`;
+  status.classList.toggle('foodWarning',turns<Math.max(1,marketPolicy.foodReserveTurns));
+  const reserveSelect=document.getElementById('marketFoodReserve');
+  if(![...reserveSelect.options].some(option=>Number(option.value)===marketPolicy.foodReserveTurns)){
+    const option=document.createElement('option'); option.value=String(marketPolicy.foodReserveTurns); option.textContent=`${marketPolicy.foodReserveTurns} turns`; reserveSelect.appendChild(option);
+  }
+  reserveSelect.value=String(marketPolicy.foodReserveTurns);
+  document.getElementById('marketAutoSell').checked=marketPolicy.autoSell;
+  document.getElementById('marketGoodsReserve').value=String(marketPolicy.generalReserve);
+  if(pendingSale){
+    const good=TRADE_GOODS.find(good=>good.id===pendingSale.id);
+    const quote=saleQuote(res,good.id,pendingSale.amount,pop.count,marketPolicy);
+    document.getElementById('marketSaleText').textContent=quote.ok?`Sell ${pendingSale.amount} ${good.label}? ${quote.warning||'Your food supply has recovered; you can confirm or keep the food.'}`:quote.error;
+    document.getElementById('marketConfirmSale').disabled=!quote.ok;
+  } else document.getElementById('marketConfirmSale').disabled=false;
+
   const legend = document.createElement('div');
   legend.className = 'trade-legend';
-  legend.innerHTML = '<span>Good</span><span>Stock</span><span>Buy</span><span>Sell</span>';
+  legend.innerHTML = '<span>Good / stock</span><span>Buy one</span><span>Sell</span>';
   list.appendChild(legend);
 
-  TRADE_GOODS.forEach((good)=>{
+  const goods=TRADE_GOODS.filter(good=>`${good.label} ${good.id}`.toLowerCase().includes(tradeQuery));
+  if(!goods.length){ const empty=document.createElement('p'); empty.className='pnote'; empty.textContent='No goods match this search.'; list.appendChild(empty); }
+  goods.forEach((good)=>{
     const row = document.createElement('div');
     row.className = 'trade-row';
     const stock = Math.floor(res[good.id] || 0);
     const buyPrice = buyPriceOf(good);
     const sellPrice = sellPriceOf(good);
+    const amount=tradeQuantity==='all'?stock:Number(tradeQuantity);
+    const surplus=Math.floor(sellableSurplus(res,good.id,pop.count,marketPolicy));
     const [demandText, demandClass] = demandLabel(good);
     row.innerHTML = `
-      <span class="good">${good.label}<small class="${demandClass}">${demandText}</small></span>
-      <span class="stock">${stock}</span>
-      <button class="actionbtn secondary trade-buy" data-good="${good.id}">${buyPrice}🪙</button>
-      <button class="actionbtn trade-sell" data-good="${good.id}">+${sellPrice}🪙</button>
+      <span class="good">${good.label} · ${stock}<small class="${demandClass}">${demandText}</small></span>
+      <button class="actionbtn secondary trade-buy" data-good="${good.id}" aria-label="Buy 1 ${good.label} for ${buyPrice} coin" ${coin<buyPrice||storageRoom(res,cap,good.id)<1?'disabled':''}>${buyPrice}🪙</button>
+      <span class="trade-sales">
+        <button class="actionbtn trade-sell" data-good="${good.id}" ${amount<=0||stock<amount?'disabled':''}>Sell ${amount} · +${sellPrice*amount}🪙</button>
+        <button class="actionbtn secondary trade-surplus" ${surplus<=0?'disabled':''}>Sell surplus (${surplus})</button>
+      </span>
     `;
     row.querySelector('.trade-buy').onclick = ()=>{
       const price = buyPriceOf(good);
       if(coin < price){ showToast('Not enough coin'); return; }
+      if(!placedBuildings.some(b=>['market','tradingpost'].includes(b.id))){ showToast('Build a Market or Trading Post first'); return; }
+      if(storageRoom(res,cap,good.id)<1){ showToast('Storage is full — make room before buying'); return; }
       coin -= price;
       addRes(good.id, 1);
       tradeDemand[good.id] = clampDemand(tradeDemand[good.id] + 0.06);
       showToast(`Bought ${good.label} for ${price} coin`);
       renderRes();
     };
+    row.querySelector('.trade-buy').title=storageRoom(res,cap,good.id)<1 ? 'Storage full — make room before buying' : coin<buyPrice ? 'Not enough coin' : `Buy one ${good.label}`;
     row.querySelector('.trade-sell').onclick = ()=>{
-      if((res[good.id] || 0) < 1){ showToast(`No ${good.label} to sell`); return; }
-      const price = sellPriceOf(good);
-      res[good.id] -= 1;
-      coin += price;
-      tradeDemand[good.id] = clampDemand(tradeDemand[good.id] - 0.05);
-      showToast(`Sold ${good.label} for ${price} coin`);
-      renderRes();
+      sellAtMarket(good,tradeQuantity==='all'?Math.floor(res[good.id]||0):Number(tradeQuantity));
+    };
+    row.querySelector('.trade-surplus').onclick=()=>{
+      const available=Math.floor(sellableSurplus(res,good.id,pop.count,marketPolicy));
+      sellAtMarket(good,available);
     };
     list.appendChild(row);
   });
@@ -2206,7 +2292,7 @@ function getState(){
   return {
     v:1,
     captain: captainName,
-    res, cap, pop, happiness, boats, coin, research,
+    res, cap, pop, happiness, boats, coin, research, marketPolicy,
     unlockedTechs: Array.from(unlockedTechs),
     techBonus, techHappinessBonus,
     questsCompleted: Array.from(questsCompleted),
@@ -2238,6 +2324,11 @@ function applyState(s){
   }
   dismissVoice();
   adviceSnoozedUntil.clear();
+  marketPolicy={...s.marketPolicy};
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+  document.getElementById('marketAutoSell').checked=marketPolicy.autoSell;
+  document.getElementById('marketFoodReserve').value=String(marketPolicy.foodReserveTurns);
   importedDiscoveries = s.offlineDiscoveries || null;
   // Saves predating a resource omit its key entirely; zero-fill so the arithmetic
   // below can't turn into NaN.

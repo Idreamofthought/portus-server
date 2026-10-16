@@ -1,7 +1,8 @@
 # Player guidance and research paths
 
-This release addresses the first stage of the Breluce playtest feedback: players
-need a next step, an easier building catalogue, and a reason to research.
+This release addresses the first two stages of the Breluce playtest feedback:
+players need a next step, an easier building catalogue, a reason to research,
+and markets that expose goods and protect food reserves.
 
 ## Guidance
 
@@ -16,7 +17,7 @@ builds or buys anything automatically. “Another idea” defers that suggestion
 24 turns (one minute at normal speed). The Guidance toggle hides suggestions;
 turning it on or loading a settlement resets deferred ideas. The existing local
 settlement-voices preference remains compatible. Guidance pauses during the marsh
-lesson. Existing saves need no new fields.
+lesson. The guidance itself adds no save fields.
 
 ## Building catalogue
 
@@ -42,10 +43,30 @@ effects. They do not introduce tactical soldiers, health simulation or buildings
 that the game does not yet support. Existing prerequisites and completed research
 are preserved. The Confectionery description now matches its actual unlocks.
 
+## Market follow-up
+
+Markets and Trading Posts now provide manual access to every tracked good, including
+fish, with search and sales of one unit, ten units or all stock. Markets can still
+sell automatically; a checkbox pauses this. Automatic sales and “Sell surplus”
+retain 30 of each food and the shared population-sized food reserve, as well as
+the chosen amount of each other good (20 by default). The shared reserve is allocated once across goods and is
+rechecked by every Market, so several Markets cannot each spend the same reserve.
+
+Manual food sales below the chosen reserve require a visible warning and a
+separate “Sell anyway” action. Cancel leaves stock and coins untouched; confirming
+rechecks stock and market access at that moment. Food coverage is stated in turns
+without new production rather than promising survival despite unknown harvests.
+Buying checks available space before charging the player.
+
+Market policy travels in manual and cloud saves. Older saves receive safe defaults;
+invalid policy fields are rejected. The shared client/server validator must ship
+with this update so new saves are accepted by the server. A running older game
+does not understand the new policy field.
+
 ## Following stages
 
-The playtest also calls for real transport reach, food reserves and a complete
-market, fibre production for weaving, warned directional invasions with tactical
+The playtest also calls for real transport reach,
+fibre production for weaving, warned directional invasions with tactical
 defence, rival settlements with peaceful trade, and district zoom with visible
 deliveries. Those require changes to the economy, map and save contract and are
 not implemented in this release. Their research unlocks should be added alongside

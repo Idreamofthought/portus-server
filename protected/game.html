@@ -193,6 +193,32 @@
           <span>Trade</span>
           <button class="closeP">✕</button>
         </div>
+        <div id="marketControls" class="panelBody">
+          <p id="marketFoodStatus" class="pnote" aria-live="polite"></p>
+          <label><input id="marketAutoSell" type="checkbox" checked> Market sells surplus automatically</label>
+          <label for="marketFoodReserve">Keep food for this many turns</label>
+          <select id="marketFoodReserve">
+            <option value="0">0 — warn before emptying food stores</option>
+            <option value="12">12 turns</option>
+            <option value="24" selected>24 turns</option>
+            <option value="48">48 turns</option>
+            <option value="96">96 turns</option>
+          </select>
+          <label for="marketGoodsReserve">Keep this much of each other good</label>
+          <input id="marketGoodsReserve" type="number" min="0" max="100000" step="1" value="20">
+          <p class="pnote">Automatic sales also keep at least 30 of each food. These controls apply to all your Markets. Trading Posts trade manually.</p>
+          <label for="tradeSearch">Find goods</label>
+          <input id="tradeSearch" type="search" placeholder="Fish, tools, pottery…" autocomplete="off">
+          <label for="tradeQuantity">Quantity to sell</label>
+          <select id="tradeQuantity"><option value="1">1</option><option value="10">10</option><option value="all">All stock</option></select>
+          <p class="pnote">Purchases buy one unit at a time. “Sell surplus” always keeps your reserves.</p>
+          <section id="marketSaleWarning" hidden aria-labelledby="marketSaleTitle">
+            <strong id="marketSaleTitle">Food supply warning</strong>
+            <p id="marketSaleText" role="alert"></p>
+            <button id="marketConfirmSale" type="button">Sell anyway</button>
+            <button id="marketCancelSale" type="button">Keep the food</button>
+          </section>
+        </div>
         <div id="tradeList" class="panelBody"></div>
       </div>
 

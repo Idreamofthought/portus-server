@@ -307,6 +307,15 @@
   .trade-row .d-wanted{color:#b07a2a;}
   .trade-row .d-scarce{color:#b8452c;}
   .trade-row button{margin:0; padding:5px 4px; font-size:10.5px; text-align:center;}
+  #tradePanel{width:min(380px,calc(100% - 20px));}
+  #marketControls[hidden],#marketSaleWarning[hidden]{display:none;}
+  #marketControls label{display:block; margin:8px 0 4px; font-size:11px;}
+  #marketControls select,#marketGoodsReserve,#tradeSearch{width:100%; padding:7px; border:1px solid #a99a78; border-radius:6px; color:var(--ink); background:#fffdf7;}
+  #marketFoodStatus.foodWarning{color:#8a3a1c; font-weight:600;}
+  #marketSaleWarning{padding:10px; margin-top:10px; border:2px solid #a43b1d; border-radius:7px; background:#fff0df; font-size:12px;}
+  #marketSaleWarning button{padding:7px; margin:4px 3px 0 0; border:1px solid #8a7547; border-radius:6px; cursor:pointer;}
+  .trade-row,.trade-legend{grid-template-columns:minmax(80px,1fr) 52px 130px; gap:5px;}
+  .trade-sales{display:flex; flex-direction:column; gap:4px;}
   #chronicle{
     font-size:10px; color:#6b5f4a; max-height:110px; overflow-y:auto; line-height:1.5;
   }
