@@ -22,6 +22,7 @@ test('portable saves survive authenticated cloud round trips; invalid updates pr
     const session=new Session(`http://127.0.0.1:${server.address().port}`);
     issueAuthCookie({cookie:(name,value)=>session.cookies.set(name,value)},Number(uid));
     const save=validSave();
+    save.marketPolicy={autoSell:false,foodReserveTurns:96,generalReserve:20};
     save.offlineDiscoveries={rolls:['mining:1'],artifacts:['star_reader'],fragments:{old_tablet:1},unlocked:['artifacts/star-reader']};
     const upload=await session.postCsrf('/api/save',{state:JSON.stringify(save)});
     assert.equal(upload.status,200);

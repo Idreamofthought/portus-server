@@ -1,5 +1,7 @@
+import { DEFAULT_MARKET_POLICY } from './market.js';
+
 const SAVE_KEYS = new Set([
-  "v", "captain", "res", "cap", "pop", "happiness", "boats", "coin", "research",
+  "v", "captain", "res", "cap", "pop", "happiness", "boats", "coin", "research", "marketPolicy",
   "unlockedTechs", "techBonus", "techHappinessBonus", "questsCompleted", "military",
   "droughtTicksLeft", "tickCount", "civicMilestones", "townMemory", "taxRate", "scenarioId", "scenarioState", "grid", "buildings"
 ]);
@@ -73,6 +75,7 @@ export function migrateSave(state) {
   if (state.v === 1 && !Object.hasOwn(migrated, "tickCount")) migrated.tickCount = 0;
   if (state.v === 1 && !Object.hasOwn(migrated, "civicMilestones")) migrated.civicMilestones = [];
   if (state.v === 1 && !Object.hasOwn(migrated, "townMemory")) migrated.townMemory = [];
+  if (state.v === 1 && !Object.hasOwn(migrated, "marketPolicy")) migrated.marketPolicy = {...DEFAULT_MARKET_POLICY};
 
   if (isPlainObject(state.res)) {
     const res = { ...state.res };
@@ -140,6 +143,12 @@ function validOfflineDiscoveries(value) {
 
 export function validateSave(value) {
   if (!isPlainObject(value)) return invalid();
+  if (!Object.hasOwn(value, "marketPolicy")) value={...value,marketPolicy:{...DEFAULT_MARKET_POLICY}};
+  const policy=value.marketPolicy;
+  if (!exactKeys(policy,new Set(["autoSell","foodReserveTurns","generalReserve"])) ||
+      typeof policy.autoSell!=="boolean" || !Number.isInteger(policy.foodReserveTurns) ||
+      policy.foodReserveTurns<0 || policy.foodReserveTurns>2400 ||
+      !Number.isSafeInteger(policy.generalReserve) || policy.generalReserve<0 || policy.generalReserve>100000) return invalid();
   if (Object.hasOwn(value, "offlineDiscoveries")) {
     if (!validOfflineDiscoveries(value.offlineDiscoveries)) return invalid();
     const { offlineDiscoveries, ...settlement } = value;

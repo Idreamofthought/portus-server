@@ -1,7 +1,8 @@
 import { migrateSave, validateSave } from "/game-assets/save-validation.js";
 import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
-import { BUILDINGS, BLD_BY_ID, CATS } from '/game-assets/buildings.js';
-import { TECHS, techName, techRequirementsMet } from '/game-assets/research.js';
+import { BUILDINGS, BLD_BY_ID } from '/game-assets/buildings.js';
+import { BUILDING_GROUPS, buildingGroup, matchesBuilding } from '/game-assets/building-navigation.js';
+import { TECHS, techName, techRequirementsMet, RESEARCH_PATHS, TECH_PURPOSE, researchPath } from '/game-assets/research.js';
 import { FOOD_KEYS, GENERAL_KEYS, RESOURCE_GROUPS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom, maintenanceBill } from '/game-assets/resources.js';
 import { QUESTS } from '/game-assets/quests.js';
 import { SCENARIOS } from '/game-assets/scenarios.js';
@@ -13,10 +14,17 @@ import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presen
 import { createPortusMusic } from '/music.js';
 import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
 import { marshTargets, marshPlacementAllowed, advanceMarshLesson } from '/game-assets/marsh-lesson.js';
-import { settlementVoice } from '/game-assets/settlement-voices.js';
+import { settlementAdvice } from '/game-assets/progression.js';
+import { DEFAULT_MARKET_POLICY, completeTradeGoods, foodTurns, saleQuote, sellableSurplus, automaticSales, storageRoom } from '/game-assets/market.js';
+
+const openBuildingGroups = new Set();
+let buildingQuery = '';
+let selectedResearchPath = '';
+let researchRenderKey = '';
+let focusedTech = null;
 
 let selectedCrop = 'wheat';
-const TRADE_GOODS = [
+const TRADE_GOODS = completeTradeGoods([
   { id: 'wood', label: 'Wood', buyCost: 4, sellValue: 1 },
   { id: 'stone', label: 'Stone', buyCost: 5, sellValue: 1 },
   { id: 'clay', label: 'Clay', buyCost: 4, sellValue: 1 },
@@ -41,7 +49,12 @@ const TRADE_GOODS = [
   { id: 'wine', label: 'Wine', buyCost: 14, sellValue: 5 },
   { id: 'beer', label: 'Beer', buyCost: 9, sellValue: 3 },
   { id: 'mead', label: 'Mead', buyCost: 13, sellValue: 4 }
-];
+],RESOURCE_INFO);
+
+let marketPolicy={...DEFAULT_MARKET_POLICY};
+let tradeQuery='';
+let tradeQuantity='1';
+let pendingSale=null;
 
 /* ---------------- TRADE DEMAND ---------------- */
 // buy = base*(1 + demand*X), sell = base*(1 + demand*Y). X > Y and buyCost >
@@ -121,9 +134,10 @@ try { voicesEnabled = localStorage.getItem(voicesKey) !== 'false'; } catch { /* 
 const voicesToggle = document.getElementById('voicesToggle');
 const voiceCard = document.getElementById('settlementVoice');
 let activeVoice = null;
+const adviceSnoozedUntil = new Map();
 function dismissVoice(){ voiceCard.hidden = true; activeVoice = null; }
 function updateVoicesToggle(){
-  voicesToggle.textContent = voicesEnabled ? 'Voices: On' : 'Voices: Off';
+  voicesToggle.textContent = voicesEnabled ? 'Guidance: On' : 'Guidance: Off';
   voicesToggle.setAttribute('aria-pressed', String(voicesEnabled));
   voicesToggle.title = voicesEnabled ? 'Turn settlement suggestions off' : 'Turn settlement suggestions on';
 }
@@ -132,38 +146,56 @@ voicesToggle.onclick = () => {
   try { localStorage.setItem(voicesKey, String(voicesEnabled)); } catch { /* Preference lasts for this visit. */ }
   if(!voicesEnabled) dismissVoice();
   updateVoicesToggle();
+  adviceSnoozedUntil.clear();
+  renderGuidance();
 };
-document.getElementById('voiceLater').onclick = dismissVoice;
+document.getElementById('voiceLater').onclick = ()=>{
+  if(activeVoice) adviceSnoozedUntil.set(activeVoice.id,tickCount+24);
+  dismissVoice();
+  renderGuidance();
+};
+document.getElementById('guidanceRestore').onclick = ()=>{
+  adviceSnoozedUntil.clear();
+  renderGuidance();
+};
 document.getElementById('voiceFollow').onclick = () => {
   if(!activeVoice) return;
-  const next = BLD_BY_ID[activeVoice.next];
-  dismissVoice();
-  if(next.requiresTech && !unlockedTechs.has(next.requiresTech)) {
-    openPanel('researchPanel');
-    showToast(`Research ${techName(next.requiresTech)} to unlock ${next.name}`);
-  } else {
-    selectBuild(null);
-    selectBuild(next.id);
-    showToast(`Find a place for ${next.name} when you are ready`);
-  }
+  const action = activeVoice.action;
+  if(action.building){
+    const next = BLD_BY_ID[action.building];
+    if(next.requiresTech && !unlockedTechs.has(next.requiresTech)) focusResearch(next.requiresTech);
+    else {
+      closeAllPanels();
+      selectBuild(null);
+      selectBuild(next.id);
+      showToast(`Find a place for ${next.name} when you are ready`);
+    }
+  } else if(action.tech) focusResearch(action.tech);
+  else if(action.panel) openPanel(action.panel);
 };
-updateVoicesToggle();
-function offerSettlementVoice(building){
-  if(!voicesEnabled || marshPrologue || !voiceCard.hidden) return;
-  const seenId = `voice-${building.id}`;
-  if(civicMilestones.has(seenId)) return;
-  const voice = settlementVoice(building.id, placedBuildings.map(b=>b.id), building.crop);
-  if(!voice) return;
-  civicMilestones.add(seenId); // Saved with the town; neither response changes the economy.
-  activeVoice = voice;
-  document.getElementById('voiceSpeaker').textContent = `A voice from Portus · ${voice.speaker}`;
-  document.getElementById('voiceTitle').textContent = voice.title;
-  document.getElementById('voiceText').textContent = voice.text;
-  const next = BLD_BY_ID[voice.next];
-  document.getElementById('voiceFollow').textContent = next.requiresTech && !unlockedTechs.has(next.requiresTech)
-    ? `Explore ${techName(next.requiresTech)}` : `Explore ${next.name}`;
+function renderGuidance(){
+  const container = document.getElementById('firstActionGuide');
+  container.hidden = !voicesEnabled || !!marshPrologue;
+  if(container.hidden){ dismissVoice(); return; }
+  const suggestions = settlementAdvice({buildings:placedBuildings,res,pop,military,happiness,cap,unlockedTechs,researchGoal:selectedResearchPath});
+  const next = suggestions.find(item=>(adviceSnoozedUntil.get(item.id)||0)<=tickCount);
+  document.getElementById('guidanceRestore').hidden = !!next;
+  if(!next){ dismissVoice(); return; }
+  const changed = activeVoice?.id!==next.id || activeVoice?.text!==next.text;
+  activeVoice = next;
+  container.classList.toggle('urgent',next.urgent);
+  if(changed){
+    document.getElementById('voiceSpeaker').textContent = next.urgent ? 'The Gods warn…' : 'The Gods suggest…';
+    document.getElementById('voiceTitle').textContent = next.title;
+    document.getElementById('voiceText').textContent = next.text;
+  }
+  const target = BLD_BY_ID[next.action.building];
+  document.getElementById('voiceFollow').textContent = target
+    ? (target.requiresTech && !unlockedTechs.has(target.requiresTech) ? `Find ${techName(target.requiresTech)}` : `Find ${target.name}`)
+    : next.action.tech ? `Find ${techName(next.action.tech)}` : 'Explore';
   voiceCard.hidden = false;
 }
+updateVoicesToggle();
 function updateWorldMood(){
   if(marshPrologue) return;
   const phase=['morning','day','dusk','night'][Math.floor((tickCount%144)/36)];
@@ -371,14 +403,9 @@ function tick(){
       return;
     }
     if(def.special==='market'){
-      GENERAL_KEYS.concat(FOOD_KEYS).forEach(k=>{
-        let buffer = FOOD_KEYS.includes(k) ? 30 : 20;
-        let surplus = res[k] - buffer;
-        if(surplus > 0){
-          let sold = Math.min(surplus, 2*laborRatio);
-          res[k] -= sold;
-          tradeIncome += sold * (PRICES[k]||0.5) * techBonus.trade;
-        }
+      automaticSales(res,pop.count,marketPolicy,2*laborRatio).forEach(({id,amount})=>{
+        res[id]-=amount;
+        tradeIncome+=amount*(PRICES[id]||0.5)*techBonus.trade;
       });
       return;
     }
@@ -855,6 +882,7 @@ function renderRes(){
   renderGoalsPanel();
   updateTaxPanel();
   renderTradePanel();
+  renderGuidance();
 }
 
 /* ---------------- UI: BUILD PANEL ---------------- */
@@ -885,14 +913,27 @@ function renderPanel(){
   demoBtn.onclick = () => selectBuild('demolish');
   list.appendChild(demoBtn);
 
-  CATS.forEach(cat=>{
-    const label=document.createElement('div');
-    label.className='catlabel'; label.textContent=cat;
-    list.appendChild(label);
-    BUILDINGS.filter(b=>b.cat===cat && !b.upgradeOnly).forEach(b=>{
+  let matchCount = 0;
+  BUILDING_GROUPS.forEach(group=>{
+    const buildings = BUILDINGS.filter(b=>buildingGroup(b)===group.id && !b.upgradeOnly && matchesBuilding(b,buildingQuery,techName));
+    if(!buildings.length) return;
+    matchCount += buildings.length;
+    const section = document.createElement('details');
+    section.className = 'buildingGroup';
+    section.dataset.group = group.id;
+    section.open = !!buildingQuery || openBuildingGroups.has(group.id);
+    const label=document.createElement('summary');
+    label.textContent=`${group.icon} ${group.name} (${buildings.length})`;
+    section.appendChild(label);
+    section.ontoggle = ()=>{
+      if(buildingQuery || !section.isConnected) return;
+      if(section.open) openBuildingGroups.add(group.id);
+      else openBuildingGroups.delete(group.id);
+    };
+    buildings.forEach(b=>{
       const btn=document.createElement('button');
       const locked = b.requiresTech && !unlockedTechs.has(b.requiresTech);
-      btn.className='bldbtn'+(locked?' locked':''); btn.dataset.id=b.id;
+      btn.className='bldbtn'+(locked?' locked':'')+(selectedBuild===b.id?' selected':''); btn.dataset.id=b.id;
       const resourceCost = Object.entries(b.cost).map(([k,v])=>`${v} ${k}`).join(', ');
       const costStr = resourceCost + (b.coinCost ? `, ${b.coinCost} coin` : '');
       const desc = b.desc || '';
@@ -904,11 +945,33 @@ function renderPanel(){
            <div class="cost">${unlockNote || costStr}</div>
          </span>`;
       if(desc) btn.title = desc;
-      btn.onclick = ()=> locked ? showToast(`Research ${techName(b.requiresTech)} first`) : selectBuild(b.id);
-      list.appendChild(btn);
+      btn.onclick = ()=> locked ? focusResearch(b.requiresTech) : selectBuild(b.id);
+      section.appendChild(btn);
     });
+    list.appendChild(section);
   });
+  document.getElementById('buildingSearchCount').textContent = buildingQuery ? `${matchCount} matching buildings` : '';
+  if(!matchCount){
+    const empty=document.createElement('p');
+    empty.className='pnote buildingEmpty';
+    empty.textContent='No buildings found. Try a name, material or research topic.';
+    list.appendChild(empty);
+  }
+}
 
+document.getElementById('buildingSearch').oninput = event=>{
+  buildingQuery = event.target.value;
+  renderPanel();
+};
+function revealBuilding(id){
+  const group = buildingGroup(BLD_BY_ID[id]);
+  openBuildingGroups.add(group);
+  buildingQuery = '';
+  document.getElementById('buildingSearch').value = '';
+  renderPanel();
+  const button = document.querySelector(`.bldbtn[data-id="${id}"]`);
+  button?.scrollIntoView({block:'nearest'});
+  button?.focus({preventScroll:true});
 }
 
 function updateBuildPreview(id){
@@ -934,6 +997,7 @@ function updateBuildPreview(id){
 
 function selectBuild(id){
   selectedBuild = (selectedBuild===id) ? null : id;
+  if(selectedBuild && selectedBuild!=='demolish' && (buildingQuery || !openBuildingGroups.has(buildingGroup(BLD_BY_ID[selectedBuild])))) revealBuilding(selectedBuild);
   document.querySelectorAll('.bldbtn').forEach(el=> el.classList.toggle('selected', el.dataset.id===selectedBuild));
   document.getElementById('cancelBtn').style.display = selectedBuild ? 'block':'none';
   document.getElementById('cropbar').style.display = selectedBuild==='fields' ? 'flex':'none';
@@ -1116,7 +1180,7 @@ function handleBuildingTap(tile){
     }
     return;
   }
-  if(building.id === 'tradingpost'){
+  if(['market','tradingpost'].includes(building.id)){
     openPanel('tradePanel');
     playTone('click');
   } else if(def && def.recipes){
@@ -1227,14 +1291,7 @@ function placeAt({x,y}){
   showToast(buildMessage);
   if(marshPrologue) progressMarshLesson(b);
   playTone('build');
-  const guide = document.getElementById('firstActionGuide');
-  if(def.id === 'house' && guide){
-    guide.textContent = 'Your first home is placed. Now gather wood and shape the town.';
-    guide.classList.add('complete');
-    document.querySelectorAll('.bldbtn').forEach(btn=>btn.classList.remove('guided'));
-  }
   render(); renderRes(); updateWorldMood();
-  offerSettlementVoice(b);
 }
 
 /* ---------------- MENU PANELS ---------------- */
@@ -1327,6 +1384,9 @@ function renderRecipePanel(){
     list.appendChild(btn);
   });
 }
+// Keep panels outside the scrolling map so focusing a trade control cannot
+// scroll their heading and close button out of view.
+document.querySelectorAll('.sidepanel').forEach(panel=>document.getElementById('main').appendChild(panel));
 document.querySelectorAll('.menuBtn').forEach(btn=>{
   btn.onclick = ()=>{
     playTone('click');
@@ -1341,12 +1401,53 @@ document.querySelectorAll('.closeP').forEach(btn=>{
   btn.onclick = ()=> closeAllPanels();
 });
 
+const pathSelect = document.getElementById('researchPath');
+RESEARCH_PATHS.forEach(path=>{
+  const option=document.createElement('option');
+  option.value=path.id; option.textContent=path.name;
+  pathSelect.appendChild(option);
+});
+pathSelect.onchange = ()=>{
+  selectedResearchPath=pathSelect.value;
+  focusedTech=null;
+  renderResearchPanel();
+  renderGuidance();
+};
+['claypit','potter','scribe','library'].forEach(id=>{
+  const button=document.createElement('button');
+  button.type='button'; button.textContent=BLD_BY_ID[id].name;
+  button.onclick=()=>{ closeAllPanels(); selectBuild(null); selectBuild(id); };
+  document.getElementById('researchSetup').appendChild(button);
+});
+function focusResearch(id){
+  const belongs=path=>researchPath(path.targets).some(tech=>tech.id===id);
+  const path=RESEARCH_PATHS.find(path=>path.id===selectedResearchPath && belongs(path)) || RESEARCH_PATHS.find(belongs);
+  selectedResearchPath=path?.id||'';
+  pathSelect.value=selectedResearchPath;
+  focusedTech=id;
+  renderResearchPanel();
+  openPanel('researchPanel');
+  const row=document.getElementById(`tech-${id}`);
+  if(row) document.getElementById('researchPanel').scrollTop=Math.max(0,row.offsetTop-40);
+  (row?.querySelector('button:not(:disabled)') || row)?.focus({preventScroll:true});
+}
 function renderResearchPanel(){
   document.getElementById('rpCount').textContent = Math.floor(research);
+  const key=JSON.stringify([Math.floor(research),res.scrolls>0,[...unlockedTechs],selectedResearchPath,focusedTech]);
+  if(researchRenderKey===key) return;
+  researchRenderKey=key;
   const list = document.getElementById('researchList');
+  const focusId=list.contains(document.activeElement) ? document.activeElement.closest('.tech')?.id : null;
+  const scrollTop=document.getElementById('researchPanel').scrollTop;
   list.innerHTML='';
-  [1,2,3].forEach(tierNum=>{
-    const tierTechs = TECHS.filter(t=>t.tier===tierNum);
+  const path=RESEARCH_PATHS.find(path=>path.id===selectedResearchPath);
+  const pathTechs=path ? researchPath(path.targets) : TECHS;
+  const remaining=pathTechs.filter(tech=>!unlockedTechs.has(tech.id));
+  document.getElementById('researchPathNote').textContent = path
+    ? `${path.why} ${pathTechs.length-remaining.length}/${pathTechs.length} discoveries completed; ${remaining.reduce((sum,tech)=>sum+tech.cost,0)} points still needed.`
+    : 'Choose a path for a focused list. Each discovery shows its prerequisites, benefits and buildings.';
+  [...new Set(pathTechs.map(tech=>tech.tier))].sort((a,b)=>a-b).forEach(tierNum=>{
+    const tierTechs = pathTechs.filter(t=>t.tier===tierNum);
     if(!tierTechs.length) return;
     const label=document.createElement('div');
     label.className='catlabel'; label.textContent=`Tier ${tierNum}`;
@@ -1355,16 +1456,23 @@ function renderResearchPanel(){
       const done = unlockedTechs.has(t.id);
       const reqMet = techRequirementsMet(t, unlockedTechs);
       const row=document.createElement('div');
-      row.className='tech'+(done?' done':'');
+      row.id=`tech-${t.id}`;
+      row.tabIndex=-1;
+      row.className='tech'+(done?' done':'')+(focusedTech===t.id?' researchFocus':'');
       const reqLine = (!done && t.requires && t.requires.length)
-        ? `<div class="tdesc">Requires: ${t.requires.map(techName).join(', ')}</div>` : '';
+        ? `<div class="tdesc">Requires: ${t.requires.map(id=>`${unlockedTechs.has(id)?'✓ ':''}${techName(id)}`).join(', ')}</div>` : '';
       const scrollCostNote = res.scrolls > 0 ? ' (1 scroll if available)' : '';
+      const unlocks=BUILDINGS.filter(b=>b.requiresTech===t.id).map(b=>b.name);
+      const canResearch=!done && reqMet && research>=t.cost;
+      const buttonText=done ? '✓ Researched' : !reqMet ? 'Research prerequisites first' : research<t.cost ? `Need ${Math.ceil(t.cost-research)} more points` : `Research — ${t.cost} pts${scrollCostNote}`;
       row.innerHTML =
         `<div class="tname">${t.name}</div>
-         <div class="tdesc">${t.desc}</div>
+         <div class="tdesc">${t.cost} points · ${t.desc}</div>
+         ${unlocks.length?`<div class="tdesc"><b>Buildings:</b> ${unlocks.join(', ')}</div>`:''}
+         ${TECH_PURPOSE[t.id]?`<div class="tdesc">${TECH_PURPOSE[t.id]}</div>`:''}
          ${reqLine}
-         <button ${done||!reqMet? 'disabled':''}>${done? '✓ Researched' : 'Unlock — '+t.cost+' pts'+scrollCostNote}</button>`;
-      if(!done && reqMet){
+         <button ${canResearch?'':'disabled'}>${buttonText}</button>`;
+      if(canResearch){
         row.querySelector('button').onclick = ()=>{
           if(research < t.cost){
             showToast('Not enough research points');
@@ -1386,6 +1494,8 @@ function renderResearchPanel(){
       list.appendChild(row);
     });
   });
+  document.getElementById('researchPanel').scrollTop=scrollTop;
+  if(focusId) document.getElementById(focusId)?.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
 }
 
 function renderCodexPanel(){
@@ -1421,54 +1531,139 @@ function renderCodexPanel(){
   });
 }
 
+document.getElementById('marketAutoSell').onchange=event=>{
+  marketPolicy.autoSell=event.target.checked;
+  renderTradePanel();
+};
+document.getElementById('marketFoodReserve').onchange=event=>{
+  marketPolicy.foodReserveTurns=Number(event.target.value);
+  renderTradePanel();
+};
+document.getElementById('tradeSearch').oninput=event=>{
+  tradeQuery=event.target.value.trim().toLowerCase();
+  renderTradePanel();
+};
+document.getElementById('marketGoodsReserve').oninput=document.getElementById('marketGoodsReserve').onchange=event=>{
+  if(event.type==='input' && event.target.value==='') return;
+  const reserve=Number(event.target.value);
+  if(!Number.isSafeInteger(reserve)||reserve<0||reserve>100000){
+    event.target.value=String(marketPolicy.generalReserve);
+    showToast('Choose a reserve between 0 and 100000'); return;
+  }
+  marketPolicy.generalReserve=reserve;
+  renderTradePanel();
+};
+document.getElementById('tradeQuantity').onchange=event=>{
+  tradeQuantity=event.target.value;
+  renderTradePanel();
+};
+document.getElementById('marketCancelSale').onclick=()=>{
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+};
+document.getElementById('marketConfirmSale').onclick=()=>{
+  if(!pendingSale) return;
+  const {id,amount}=pendingSale;
+  const good=TRADE_GOODS.find(good=>good.id===id);
+  sellAtMarket(good,amount,true);
+};
+function sellAtMarket(good,amount,confirmed=false){
+  // Recheck access, stock, food and price at the final click, including after ticks.
+  if(!placedBuildings.some(b=>['market','tradingpost'].includes(b.id))){ showToast('Build a Market or Trading Post first'); return; }
+  const quote=saleQuote(res,good.id,amount,pop.count,marketPolicy);
+  if(!quote.ok){ pendingSale=null; document.getElementById('marketSaleWarning').hidden=true; showToast(quote.error); return; }
+  if(quote.warning && !confirmed){
+    pendingSale={id:good.id,amount};
+    document.getElementById('marketSaleText').textContent=`Sell ${amount} ${good.label}? ${quote.warning}`;
+    document.getElementById('marketSaleWarning').hidden=false;
+    document.getElementById('marketConfirmSale').disabled=false;
+    document.getElementById('tradePanel').scrollTop=Math.max(0,document.getElementById('marketSaleWarning').offsetTop-40);
+    document.getElementById('marketCancelSale').focus({preventScroll:true});
+    return;
+  }
+  const income=sellPriceOf(good)*amount;
+  res[good.id]-=amount;
+  coin+=income;
+  tradeDemand[good.id]=clampDemand(tradeDemand[good.id]-0.05*amount);
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+  showToast(`Sold ${amount} ${good.label} for ${income} coin`);
+  renderRes();
+}
 function renderTradePanel(){
   const list = document.getElementById('tradeList');
   if(!list) return;
   list.replaceChildren();
-  const hasTradingPost = placedBuildings.some((b)=>b.id==='tradingpost');
-  if(!hasTradingPost){
+  const hasMarket = placedBuildings.some(b=>['market','tradingpost'].includes(b.id));
+  document.getElementById('marketControls').hidden=!hasMarket;
+  if(!hasMarket){
     const empty = document.createElement('p');
     empty.className = 'pnote';
-    empty.textContent = 'Build a Trading Post to buy and sell rare goods.';
+    empty.textContent = 'Build a Market or Trading Post to buy and sell goods.';
     list.appendChild(empty);
     return;
   }
 
+  const turns=foodTurns(res,pop.count);
+  const status=document.getElementById('marketFoodStatus');
+  status.textContent=`Food stores: ${Math.floor(totalFood())} · ${Number.isFinite(turns)?`about ${Math.floor(turns)} turns without new production`:'no citizens to feed'}. Reserve: ${marketPolicy.foodReserveTurns} turns.`;
+  status.classList.toggle('foodWarning',turns<Math.max(1,marketPolicy.foodReserveTurns));
+  const reserveSelect=document.getElementById('marketFoodReserve');
+  if(![...reserveSelect.options].some(option=>Number(option.value)===marketPolicy.foodReserveTurns)){
+    const option=document.createElement('option'); option.value=String(marketPolicy.foodReserveTurns); option.textContent=`${marketPolicy.foodReserveTurns} turns`; reserveSelect.appendChild(option);
+  }
+  reserveSelect.value=String(marketPolicy.foodReserveTurns);
+  document.getElementById('marketAutoSell').checked=marketPolicy.autoSell;
+  document.getElementById('marketGoodsReserve').value=String(marketPolicy.generalReserve);
+  if(pendingSale){
+    const good=TRADE_GOODS.find(good=>good.id===pendingSale.id);
+    const quote=saleQuote(res,good.id,pendingSale.amount,pop.count,marketPolicy);
+    document.getElementById('marketSaleText').textContent=quote.ok?`Sell ${pendingSale.amount} ${good.label}? ${quote.warning||'Your food supply has recovered; you can confirm or keep the food.'}`:quote.error;
+    document.getElementById('marketConfirmSale').disabled=!quote.ok;
+  } else document.getElementById('marketConfirmSale').disabled=false;
+
   const legend = document.createElement('div');
   legend.className = 'trade-legend';
-  legend.innerHTML = '<span>Good</span><span>Stock</span><span>Buy</span><span>Sell</span>';
+  legend.innerHTML = '<span>Good / stock</span><span>Buy one</span><span>Sell</span>';
   list.appendChild(legend);
 
-  TRADE_GOODS.forEach((good)=>{
+  const goods=TRADE_GOODS.filter(good=>`${good.label} ${good.id}`.toLowerCase().includes(tradeQuery));
+  if(!goods.length){ const empty=document.createElement('p'); empty.className='pnote'; empty.textContent='No goods match this search.'; list.appendChild(empty); }
+  goods.forEach((good)=>{
     const row = document.createElement('div');
     row.className = 'trade-row';
     const stock = Math.floor(res[good.id] || 0);
     const buyPrice = buyPriceOf(good);
     const sellPrice = sellPriceOf(good);
+    const amount=tradeQuantity==='all'?stock:Number(tradeQuantity);
+    const surplus=Math.floor(sellableSurplus(res,good.id,pop.count,marketPolicy));
     const [demandText, demandClass] = demandLabel(good);
     row.innerHTML = `
-      <span class="good">${good.label}<small class="${demandClass}">${demandText}</small></span>
-      <span class="stock">${stock}</span>
-      <button class="actionbtn secondary trade-buy" data-good="${good.id}">${buyPrice}🪙</button>
-      <button class="actionbtn trade-sell" data-good="${good.id}">+${sellPrice}🪙</button>
+      <span class="good">${good.label} · ${stock}<small class="${demandClass}">${demandText}</small></span>
+      <button class="actionbtn secondary trade-buy" data-good="${good.id}" aria-label="Buy 1 ${good.label} for ${buyPrice} coin" ${coin<buyPrice||storageRoom(res,cap,good.id)<1?'disabled':''}>${buyPrice}🪙</button>
+      <span class="trade-sales">
+        <button class="actionbtn trade-sell" data-good="${good.id}" ${amount<=0||stock<amount?'disabled':''}>Sell ${amount} · +${sellPrice*amount}🪙</button>
+        <button class="actionbtn secondary trade-surplus" ${surplus<=0?'disabled':''}>Sell surplus (${surplus})</button>
+      </span>
     `;
     row.querySelector('.trade-buy').onclick = ()=>{
       const price = buyPriceOf(good);
       if(coin < price){ showToast('Not enough coin'); return; }
+      if(!placedBuildings.some(b=>['market','tradingpost'].includes(b.id))){ showToast('Build a Market or Trading Post first'); return; }
+      if(storageRoom(res,cap,good.id)<1){ showToast('Storage is full — make room before buying'); return; }
       coin -= price;
       addRes(good.id, 1);
       tradeDemand[good.id] = clampDemand(tradeDemand[good.id] + 0.06);
       showToast(`Bought ${good.label} for ${price} coin`);
       renderRes();
     };
+    row.querySelector('.trade-buy').title=storageRoom(res,cap,good.id)<1 ? 'Storage full — make room before buying' : coin<buyPrice ? 'Not enough coin' : `Buy one ${good.label}`;
     row.querySelector('.trade-sell').onclick = ()=>{
-      if((res[good.id] || 0) < 1){ showToast(`No ${good.label} to sell`); return; }
-      const price = sellPriceOf(good);
-      res[good.id] -= 1;
-      coin += price;
-      tradeDemand[good.id] = clampDemand(tradeDemand[good.id] - 0.05);
-      showToast(`Sold ${good.label} for ${price} coin`);
-      renderRes();
+      sellAtMarket(good,tradeQuantity==='all'?Math.floor(res[good.id]||0):Number(tradeQuantity));
+    };
+    row.querySelector('.trade-surplus').onclick=()=>{
+      const available=Math.floor(sellableSurplus(res,good.id,pop.count,marketPolicy));
+      sellAtMarket(good,available);
     };
     list.appendChild(row);
   });
@@ -2100,7 +2295,7 @@ function getState(){
   return {
     v:1,
     captain: captainName,
-    res, cap, pop, happiness, boats, coin, research,
+    res, cap, pop, happiness, boats, coin, research, marketPolicy,
     unlockedTechs: Array.from(unlockedTechs),
     techBonus, techHappinessBonus,
     questsCompleted: Array.from(questsCompleted),
@@ -2131,6 +2326,12 @@ function applyState(s){
     showToast('That save code looks invalid'); return;
   }
   dismissVoice();
+  adviceSnoozedUntil.clear();
+  marketPolicy={...s.marketPolicy};
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+  document.getElementById('marketAutoSell').checked=marketPolicy.autoSell;
+  document.getElementById('marketFoodReserve').value=String(marketPolicy.foodReserveTurns);
   importedDiscoveries = s.offlineDiscoveries || null;
   // Saves predating a resource omit its key entirely; zero-fill so the arithmetic
   // below can't turn into NaN.
@@ -2230,10 +2431,10 @@ function marshNarration(title,text,task){
   document.getElementById('marshStoryTask').textContent=task;
   document.getElementById('legend').textContent=task;
   const nextId=({wood:'sawmill',stone:'quarry',clay:'claypit',roads:'road'})[marshPrologue?.phase];
+  if(nextId) revealBuilding(nextId);
   document.querySelectorAll('.bldbtn').forEach(button=>{
     button.classList.toggle('lesson-next',button.dataset.id===nextId);
   });
-  if(nextId) document.querySelector(`.bldbtn[data-id="${nextId}"]`)?.scrollIntoView({block:'nearest'});
 }
 function marshSound(kind){
   if(!marshPrologue?.sound) return;
@@ -2289,7 +2490,7 @@ function startMarshPrologue(){
   selectBuild(null);
   marshNarration('The reedbank',
     'Grain waits by the mill. Beyond it, the first trees lean over wet ground. The settlers need timber before the rain returns.',
-    'Choose Production → 🪓 Woodcutter, then click the green marked grass beside the forest. Woodcutters need nearby trees.');
+    'Choose Raw materials → 🪓 Woodcutter, then click the green marked grass beside the forest. Woodcutters need nearby trees.');
   const wrap=document.getElementById('mapwrap');
   wrap.scrollTo({left:Math.max(0,cx*TS-wrap.clientWidth/2),top:Math.max(0,cy*TS-wrap.clientHeight/2),behavior:'smooth'});
   logEvent('🌫️ On the reedbank, a mill waited for a road and the first trees were felled.');
@@ -2304,18 +2505,18 @@ function progressMarshLesson(building){
     selectBuild(null);
     marshNarration('The first timber',
       'Axes sound at the edge of the reeds. The wood is cut, but no cart can reach the store. Across the clearing, stone shows through the earth.',
-      'Choose Production → Quarry, then click the marked mountain seam. A Quarry needs stone terrain.');
+      'Choose Raw materials → Quarry, then click the marked mountain seam. A Quarry needs stone terrain.');
   } else if(cue==='stone'){
     marshSound('stone');
     selectBuild(null);
     marshNarration('Stone in the ground',
       'The quarry opens. The coloured dot nearby marks a clay deposit; deposits show where certain buildings can be placed.',
-      'Choose Production → Claypit, then click the marked clay dot. Claypits must sit directly on clay.');
+      'Choose Raw materials → Claypit, then click the marked clay dot. Claypits must sit directly on clay.');
   } else if(cue==='clay'){
     selectBuild(null);
     marshNarration('Clay beneath the grass',
       'The claypit opens. Other coloured dots mark other deposits, each with its own matching extractor. Work still needs a route to storage.',
-      'Choose Infrastructure → Road, then click the three amber tiles to connect the mill, Woodcutter, and Quarry to storage.');
+      'Choose Trade & transport → Road, then click the three amber tiles to connect the mill, Woodcutter, and Quarry to storage.');
   } else if(cue==='road'){
     marshSound('road');
     const done=lesson.targets.roads.filter(([x,y])=>grid[y][x].building?.id==='road').length;
@@ -2553,12 +2754,3 @@ document.getElementById('creditsCloseBtn').onclick = ()=>{
 createPortusMusic(document.getElementById('musicBtn'));
 createPortusMusic(document.getElementById('musicToggle'));
 titleOverlay.style.display = 'flex';
-
-setTimeout(()=>{
-  const houseButton = document.querySelector('.bldbtn[data-id="house"]');
-  const guide = document.getElementById('firstActionGuide');
-  if(houseButton && guide && !placedBuildings.some(b=>b.id==='house')){
-    houseButton.classList.add('guided');
-    guide.textContent = 'Portus. A town by the sea. Your people await your guidance. Select House, then choose a tile. Place your first home.';
-  }
-}, 500);

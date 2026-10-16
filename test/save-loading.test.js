@@ -14,6 +14,7 @@ function harness(){
   const context={migrateSave,validateSave,desktopMode:false,importedDiscoveries:null,
     res:{wood:123},FOOD_KEYS:['wheat'],GENERAL_KEYS:['wood'],remembered:new Set(),techBonus:{},grid:[],
     document:{getElementById:()=>({value:''})},dismissVoice:()=>events.push('dismiss'),
+    adviceSnoozedUntil:new Map([['build-library',24]]),
     showToast:message=>events.push(message),setGrid(g){context.grid=g;},
     render(){},renderRes(){},renderPanel(){},renderCodexPanel(){},updateWorldMood(){},playTone(){},logEvent(){}};
   vm.createContext(context);vm.runInContext(loader,context);
@@ -33,6 +34,7 @@ test('actual loader rejects malformed saves before changing any live state',()=>
     assert.doesNotThrow(()=>context.applyState(candidate));
     assert.equal(context.res,original);assert.equal(context.res.wood,123);
     assert.equal(context.grid.length,0);assert.equal(context.importedDiscoveries,null);
+    assert.equal(context.adviceSnoozedUntil.size,1,'invalid saves must preserve current advice');
     assert.deepEqual(events,['That save code looks invalid']);
   }
 });
@@ -45,6 +47,7 @@ test('actual loader migrates valid older saves and preserves portable discoverie
   assert.equal(context.res.yoghurt,0);assert.equal(context.tickCount,0);
   assert.equal(context.grid.length,30);assert.equal(context.grid[0][0].building.id,'house');
   assert.equal(context.importedDiscoveries,candidate.offlineDiscoveries);
+  assert.equal(context.adviceSnoozedUntil.size,0,'loaded towns get fresh guidance');
   assert.equal(events[0],'dismiss');
   // Execute the real export helper as well: browser exports retain desktop data.
   const portable=source.slice(source.indexOf('function getPortableState(){'),source.indexOf('function encodeState(s){'));
