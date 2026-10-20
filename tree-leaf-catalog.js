@@ -2,6 +2,7 @@
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
   {"title":"Condamner les violences sans faire le jeu des extrêmes","branch":"politics","category":"Essai · Politique et société · Français","slug":"condamner-les-violences-sans-faire-le-jeu-des-extremes","source":"writing/opinions/condamner-les-violences-sans-faire-le-jeu-des-extremes.html","published":"2026-10-19"},
+  {"title":"France Needs a Call for Calm, Not Scapegoats","branch":"politics","category":"Opinion · Politics & Society · English","slug":"france-needs-a-call-for-calm","source":"writing/opinions/france-needs-a-call-for-calm.html","published":"2026-10-20"},
   {"title":"Cooking corner: Rimfall soup","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"rimfall-soup","source":"writing/opinions/rimfall-soup.html"},
   {"title":"Cooking Corner: Barbecue tips and treats","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"barbecue-tips-and-treats","source":"writing/opinions/barbecue-tips-and-treats.html"},
   {"title":"Cooking Corner: Great A'Tuin Cake","branch":"art","category":"Culture · Discworld MUD · Cooking by Dobbin","slug":"great-atuin-cake","source":"writing/opinions/great-atuin-cake.html"},
