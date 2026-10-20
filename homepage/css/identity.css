@@ -373,4 +373,5 @@ footer a { color: var(--moss-deep); text-decoration: none; }
 }
 @media (max-width: 500px) {
   .branch-grid { grid-template-columns: 1fr; }
+  .home-title-word { display: inline-block; white-space: nowrap; font-size: clamp(1.65rem, 8vw, 2.3rem); letter-spacing: -0.045em; }
 }
