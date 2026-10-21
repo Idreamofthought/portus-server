@@ -1,0 +1,75 @@
+// Resource state helpers, extracted from protected/game.html.
+// Pure functions taking res/cap explicitly (rather than closing over
+// game.html's globals) so this module has no dependency on game state shape
+// beyond the objects passed in.
+
+export const FOOD_KEYS = ['wheat','olives','chickpeas','grapes','barley','fish','deer','bread','meat','milk','eggs','fruit','honeyCake','fruitCake','dairyCake'];
+export const GENERAL_KEYS = ['wood','stone','clay','pottery','tools','goldOre','silverOre','copperOre','gold','silver','copper','scrolls','flour','oliveOil','salt','marble','tin','bronze','honey','wax','sugarcane','sugar','feathers','hide','leather','butter','cheese','cream','yoghurt','jam','candles','quilts','leatherGoods','statues','weapons','armour','wine','beer','mead'];
+
+export const RESOURCE_GROUPS = [
+  { label:'Food', keys:['wheat','flour','bread','olives','oliveOil','chickpeas','grapes','barley','fish','deer','meat','milk','eggs','fruit','honeyCake','fruitCake','dairyCake'] },
+  { label:'Raw', keys:['wood','stone','clay','goldOre','silverOre','copperOre','marble','tin','salt','honey','wax','sugarcane','feathers','hide'] },
+  { label:'Crafted', keys:['pottery','tools','gold','silver','copper','bronze','scrolls','sugar','leather','butter','cheese','cream','yoghurt','jam','candles','quilts','leatherGoods','statues','weapons','armour','wine','beer','mead'] }
+];
+
+export const PRICES = {
+  wood:0.4, stone:0.5, clay:0.4, pottery:1.4, tools:2, scrolls:1.8,
+  goldOre:3, silverOre:2, copperOre:1.4, gold:8, silver:5, copper:3,
+  wheat:0.7, olives:1.1, chickpeas:0.9, grapes:1.0, barley:0.8, fish:0.7, deer:1.3, bread:1.6,
+  flour:1.1, oliveOil:2.4, salt:1.8, marble:3.8, tin:3.2, bronze:5.6, honey:2.4, wax:3.6,
+  sugarcane:0.6, sugar:1.5, feathers:0.9, hide:1.1, leather:2.6, butter:1.8, cheese:2.2, cream:1.6, yoghurt:1.9,
+  jam:2.4, candles:2.8, quilts:4.2, leatherGoods:5.4, statues:6.5, weapons:4.5, armour:5.2,
+  wine:3.2, beer:2.2, mead:3.0,
+  meat:1.6, milk:0.9, eggs:1.0, fruit:0.9, honeyCake:3.4, fruitCake:3.4, dairyCake:3.4
+};
+
+export function createResources(){
+  return {
+    wood:60, stone:30, clay:0, pottery:0, tools:10,
+    goldOre:0, silverOre:0, copperOre:0, gold:0, silver:0, copper:0,
+    wheat:0, olives:0, chickpeas:0, grapes:0, barley:0, fish:0, deer:0, bread:0, scrolls:0,
+    flour:0, oliveOil:0, salt:0, marble:0, tin:0, bronze:0, honey:0, wax:0,
+    sugarcane:0, sugar:0, feathers:0, hide:0, leather:0, butter:0, cheese:0, cream:0, yoghurt:0, jam:0,
+    candles:0, quilts:0, leatherGoods:0, statues:0, weapons:0, armour:0,
+    wine:0, beer:0, mead:0,
+    meat:0, milk:0, eggs:0, fruit:0, honeyCake:0, fruitCake:0, dairyCake:0
+  };
+}
+
+export function totalFood(res){ return FOOD_KEYS.reduce((s,k)=>s+res[k],0); }
+
+export function addResTo(res, cap, key, amt){
+  if(FOOD_KEYS.includes(key)){
+    let room = cap.food - totalFood(res);
+    res[key] += Math.max(0, Math.min(amt, room));
+  } else {
+    let room = cap.general - GENERAL_KEYS.reduce((s,k)=>s+res[k],0) + res[key];
+    res[key] = Math.min(res[key]+amt, cap.general);
+  }
+}
+
+export function missingInputsFrom(res, consume, scale = 1){
+  if(!consume) return [];
+  return Object.entries(consume)
+    .map(([key, amount]) => ({
+      key,
+      required: amount * scale,
+      available: Number(res[key] || 0)
+    }))
+    .filter(({ required, available }) => available < required);
+}
+
+export function canAffordFrom(res, cost){
+  return Object.entries(cost).every(([k,v]) => (res[k]||0) >= v);
+}
+
+export function payFrom(res, cost){
+  Object.entries(cost).forEach(([k,v]) => res[k] -= v);
+}
+
+export function maintenanceBill(buildings){
+  const roofs = buildings.filter(b=>['house','farmerhut','fisherhut'].includes(b.id)).length * 2;
+  const floodWorks = buildings.filter(b=>b.id==='floodbarrier').length * 3;
+  const services = buildings.filter(b=>['sewer','police','fire','doctor','dentist','school'].includes(b.id)).length;
+  return { roofs, floodWorks, services, total:roofs+floodWorks+services };
+}

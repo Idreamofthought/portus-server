@@ -1,12 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSave } from "../save-validation.js";
+import { validateSave, RESOURCE_KEYS } from "../save-validation.js";
 
-const resourceKeys = [
-  "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
-  "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
-  "deer", "bread", "scrolls", "flour", "oliveOil", "salt"
-];
+const resourceKeys = [...RESOURCE_KEYS];
 
 function validSave() {
   return {
@@ -20,13 +16,18 @@ function validSave() {
     coin: 20,
     research: 0,
     unlockedTechs: [],
-    techBonus: { field: 1, quarry: 1, fish: 1, foundry: 1, trade: 1 },
+    techBonus: { field: 1, quarry: 1, fish: 1, foundry: 1, trade: 1, wood: 1, clay: 1, raid: 1, research: 1 },
+    techHappinessBonus: 0,
+    questsCompleted: [],
     military: { soldiers: 0, cap: 0 },
     droughtTicksLeft: 0,
+    tickCount: 0,
+    civicMilestones: [],
+    townMemory: [],
     taxRate: 0,
     scenarioId: null,
     scenarioState: { disastersSurvived: 0, failed: false },
-    grid: Array.from({ length: 20 }, () => Array.from({ length: 30 }, () => ({ terrain: "grass", deposit: null }))),
+    grid: Array.from({ length: 30 }, () => Array.from({ length: 44 }, () => ({ terrain: "grass", deposit: null }))),
     buildings: [{ id: "house", x: 0, y: 0 }]
   };
 }
@@ -39,6 +40,14 @@ test("accepts a completed scenario save", () => {
   const save = validSave();
   save.scenarioState.completed = true;
   assert.deepEqual(validateSave(save), { ok: true });
+});
+
+test("accepts a remembered loss and rejects oversized memories", () => {
+  const save = validSave();
+  save.townMemory = [{ id: "loss-20", title: "Those we lost", content: "One resident died." }];
+  assert.deepEqual(validateSave(save), { ok: true });
+  save.townMemory[0].content = "x".repeat(601);
+  assert.equal(validateSave(save).ok, false);
 });
 
 test("rejects unknown top-level fields", () => {
@@ -78,7 +87,7 @@ test("rejects unknown, out-of-bounds, sea, and overlapping buildings", () => {
   unknown.buildings[0].id = "fake";
   assert.equal(validateSave(unknown).ok, false);
   const outOfBounds = validSave();
-  outOfBounds.buildings[0].x = 30;
+  outOfBounds.buildings[0].x = 44;
   assert.equal(validateSave(outOfBounds).ok, false);
   const sea = validSave();
   sea.grid[0][0].terrain = "sea";

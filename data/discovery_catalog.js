@@ -3,7 +3,8 @@ export const ACTIVITY_DISCOVERY_CHANCES = Object.freeze({
   fishing: 0.04,
   mining: 0.05,
   farming: 0.03,
-  clay_pit: 0.04
+  clay_pit: 0.04,
+  quest: 0.5
 });
 
 export const ARTIFACTS = Object.freeze([
@@ -22,6 +23,13 @@ export const ARCHAEOLOGICAL_FINDS = Object.freeze([
   { id: "lost-engineers-kit", title: "Lost Engineer's Kit", fragments: 6, codexEntry: "geology/lost-engineers-kit" },
   { id: "whispering-mask", title: "Whispering Mask", fragments: 3, codexEntry: "rituals/whispering-mask" },
   { id: "first-navigators-map", title: "First Navigator's Map", fragments: 7, codexEntry: "sky/first-navigators-map" }
+]);
+
+export const FOUNDATION_CODEX_ENTRIES = Object.freeze([
+  "history/portus",
+  "peoples/town",
+  "sea/gifts",
+  "archive/old-archive"
 ]);
 
 export const RARITY_WEIGHTS = Object.freeze([

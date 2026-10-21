@@ -1,8 +1,11 @@
 import { assertEmailConfig, configuredSender, emailConfigError, resend } from "./resend.js";
 
 async function sendEmail(options) {
-  if (emailConfigError && process.env.NODE_ENV !== "production") {
-    console.warn("Email delivery skipped in non-production environment:", emailConfigError);
+  // CI/test envs set well-formed but fake Resend credentials to satisfy SDK
+  // init, so config presence alone can't gate real sends here — NODE_ENV=test
+  // must always skip the network call.
+  if (process.env.NODE_ENV === "test" || (emailConfigError && process.env.NODE_ENV !== "production")) {
+    console.warn("Email delivery skipped in non-production environment:", emailConfigError || "NODE_ENV=test");
     return { skipped: true, data: null, error: null };
   }
 

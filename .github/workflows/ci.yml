@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -26,11 +26,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
       - name: Check server syntax
         run: npm run check
 
       - name: Run tests
         run: npm test
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          # Dummy values, not real credentials: these are only required for local
+          # SDK initialization and webhook-signature validation in CI. No network
+          # calls are made to Stripe, PayPal, or Resend during the test run.
+          STRIPE_SECRET_KEY: sk_test_ci_dummy_not_real
+          STRIPE_WEBHOOK_SECRET: whsec_ci_dummy_not_real
+          PAYPAL_CLIENT_ID: paypal_ci_dummy_client_id
+          PAYPAL_CLIENT_SECRET: paypal_ci_dummy_client_secret
+          PAYPAL_WEBHOOK_ID: wh_1234567890_ci_dummy
+          RESEND_API_KEY: re_ci_dummy_not_real
+          EMAIL_FROM: Portus CI <ci@example.com>
 
       - name: Validate repository structure
         run: npm run validate:structure
@@ -43,7 +60,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Railway CLI
         run: npm install --global @railway/cli

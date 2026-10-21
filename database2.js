@@ -17,6 +17,8 @@ db.pragma(process.env.NODE_ENV === "test" ? "journal_mode = DELETE" : "journal_m
 // Retention for webhook deduplication and in-flight order bookkeeping.
 const PAYMENT_RECORD_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 export const ACCOUNT_RETENTION_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+export const AUDIT_RETENTION_MS = 400 * 24 * 60 * 60 * 1000;
+export const LOGIN_ATTEMPT_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified INTEGER DEFAULT 0,
   captain_name TEXT DEFAULT '',
   stripe_customer_id TEXT UNIQUE,
+  role TEXT NOT NULL DEFAULT 'user',
   created_at INTEGER NOT NULL,
   deleted_at INTEGER
 );
@@ -65,6 +68,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   customer_id TEXT,
   checkout_session_id TEXT,
   payment_intent_id TEXT,
+  withdrawal_consent INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
@@ -97,6 +101,7 @@ CREATE TABLE IF NOT EXISTS pending_orders (
   minutes INTEGER NOT NULL,
   amount TEXT NOT NULL,
   currency TEXT NOT NULL,
+  withdrawal_consent INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   consumed INTEGER DEFAULT 0,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -135,15 +140,52 @@ CREATE TABLE IF NOT EXISTS player_discovery_rolls (
   PRIMARY KEY(user_id, activity, turn_number),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Security audit trail. user_id is nulled rather than cascaded on account
+-- deletion so the record of an event survives while being de-identified.
+CREATE TABLE IF NOT EXISTS audit_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  event_type TEXT NOT NULL,
+  ip_hash TEXT,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Keyed by hashed email so lockout behaves identically for accounts that do
+-- not exist, preventing account enumeration.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email_hash TEXT NOT NULL,
+  ip_hash TEXT,
+  attempted_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS purchases_user_id ON purchases(user_id);
+CREATE INDEX IF NOT EXISTS processed_payment_events_created_at ON processed_payment_events(created_at);
+CREATE INDEX IF NOT EXISTS pending_orders_created_at ON pending_orders(created_at);
+CREATE INDEX IF NOT EXISTS audit_events_user_created ON audit_events(user_id, created_at);
+CREATE INDEX IF NOT EXISTS audit_events_created_at ON audit_events(created_at);
+CREATE INDEX IF NOT EXISTS login_attempts_email_time ON login_attempts(email_hash, attempted_at);
 `);
 
 const userColumns = db.prepare(`PRAGMA table_info(users)`).all();
+if (!db.prepare('PRAGMA table_info(time_tracking)').all().some(column => column.name === 'play_until')) {
+  db.exec('ALTER TABLE time_tracking ADD COLUMN play_until INTEGER NOT NULL DEFAULT 0');
+}
+
 if (!userColumns.some((column) => column.name === "stripe_customer_id")) {
   db.exec(`ALTER TABLE users ADD COLUMN stripe_customer_id TEXT`);
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_id ON users(stripe_customer_id)`);
 }
 if (!userColumns.some((column) => column.name === "deleted_at")) {
   db.exec(`ALTER TABLE users ADD COLUMN deleted_at INTEGER`);
+}
+if (!userColumns.some((column) => column.name === "role")) {
+  db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);
 }
 
 const purchaseColumns = db.prepare(`PRAGMA table_info(purchases)`).all();
@@ -172,17 +214,25 @@ if (purchasesCascadesFromUsers) {
         customer_id TEXT,
         checkout_session_id TEXT,
         payment_intent_id TEXT,
+        withdrawal_consent INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         FOREIGN KEY(user_id) REFERENCES users(id)
       );
       INSERT INTO purchases_new SELECT
         id, user_id, provider, product_id, minutes, amount, currency,
-        customer_id, checkout_session_id, payment_intent_id, created_at
+        customer_id, checkout_session_id, payment_intent_id, 0, created_at
       FROM purchases;
       DROP TABLE purchases;
       ALTER TABLE purchases_new RENAME TO purchases;
     `);
   })();
+}
+
+for (const table of ["purchases", "pending_orders"]) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some(column => column.name === "withdrawal_consent")) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN withdrawal_consent INTEGER NOT NULL DEFAULT 0`);
+  }
 }
 
 export function cleanupExpired() {
@@ -193,6 +243,8 @@ export function cleanupExpired() {
   const paymentRecordCutoff = now - PAYMENT_RECORD_RETENTION_MS;
   db.prepare(`DELETE FROM processed_payment_events WHERE created_at < ?`).run(paymentRecordCutoff);
   db.prepare(`DELETE FROM pending_orders WHERE created_at < ?`).run(paymentRecordCutoff);
+  db.prepare(`DELETE FROM login_attempts WHERE attempted_at < ?`).run(now - LOGIN_ATTEMPT_RETENTION_MS);
+  db.prepare(`DELETE FROM audit_events WHERE created_at < ?`).run(now - AUDIT_RETENTION_MS);
 
   const accountRetentionCutoff = now - ACCOUNT_RETENTION_MS;
   db.transaction(() => {

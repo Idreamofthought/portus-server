@@ -45,8 +45,13 @@ async function postWebhook(payload, signatureHeader) {
 maybe("Stripe webhook \u2014 signed test events (no real Stripe checkout needed)", () => {
   const cleanupEmails = [];
   afterEach(() => {
+    // purchases intentionally don't cascade-delete with users (financial
+    // audit records survive account deletion), so remove them first.
     while (cleanupEmails.length) {
-      db.prepare(`DELETE FROM users WHERE email=?`).run(cleanupEmails.pop());
+      const email = cleanupEmails.pop();
+      const user = db.prepare(`SELECT id FROM users WHERE email=?`).get(email);
+      if (user) db.prepare(`DELETE FROM purchases WHERE user_id=?`).run(user.id);
+      db.prepare(`DELETE FROM users WHERE email=?`).run(email);
     }
   });
 
