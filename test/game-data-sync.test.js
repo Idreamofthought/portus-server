@@ -10,7 +10,7 @@ import { BUILDING_IDS, TECH_BONUS_KEYS, RESOURCE_KEYS, TERRAIN_CODES, DEPOSIT_CO
 const gameJsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/js/game.js");
 
 function extractScript() {
-  return fs.readFileSync(gameJsPath, "utf8");
+  return fs.readFileSync(gameJsPath, "utf8").replace(/\r\n/g, "\n");
 }
 
 // Splits an object-literal body on top-level commas only, so nested calls
@@ -33,12 +33,9 @@ function splitTopLevel(str) {
   return parts;
 }
 
-test("protected/js/buildings.js ids match save-validation BUILDING_IDS", () => {
-  const buildingsJsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../protected/js/buildings.js");
-  const buildingsJs = fs.readFileSync(buildingsJsPath, "utf8");
-  const buildingsMatch = buildingsJs.match(/export const BUILDINGS = \[([\s\S]*?)\n\];/);
-  assert.ok(buildingsMatch, "expected a BUILDINGS array in protected/js/buildings.js");
-  const ids = [...buildingsMatch[1].matchAll(/\{id:'([a-zA-Z0-9]+)'/g)].map((m) => m[1]);
+test("protected/js/buildings.js ids match save-validation BUILDING_IDS", async () => {
+  const { BUILDINGS } = await import("../protected/js/buildings.js");
+  const ids = BUILDINGS.map((building) => building.id);
   assert.ok(ids.length > 0, "expected at least one building id");
   assert.deepEqual(new Set(ids), BUILDING_IDS);
 });
@@ -64,6 +61,20 @@ test("protected/js/map.js grid dimensions match save-validation COLS/ROWS", () =
 test("protected/js/resources.js FOOD_KEYS/GENERAL_KEYS match save-validation RESOURCE_KEYS", async () => {
   const { FOOD_KEYS, GENERAL_KEYS } = await import("../protected/js/resources.js");
   assert.deepEqual(new Set([...FOOD_KEYS, ...GENERAL_KEYS]), RESOURCE_KEYS);
+});
+
+test("trade and production resources/buildings are defined and tracked in validation", async () => {
+  const { RESOURCE_KEYS, BUILDING_IDS } = await import("../save-validation.js");
+  assert.ok(RESOURCE_KEYS.has("marble"));
+  assert.ok(RESOURCE_KEYS.has("tin"));
+  assert.ok(RESOURCE_KEYS.has("honey"));
+  assert.ok(RESOURCE_KEYS.has("wax"));
+  assert.ok(RESOURCE_KEYS.has("sugar"));
+  assert.ok(BUILDING_IDS.has("tinmine"));
+  assert.ok(BUILDING_IDS.has("marblequarry"));
+  assert.ok(BUILDING_IDS.has("beekeeper"));
+  assert.ok(BUILDING_IDS.has("sugarhouse"));
+  assert.ok(BUILDING_IDS.has("floodbarrier"));
 });
 
 test("protected/js/presentation.js covers every resource/terrain/deposit key", async () => {

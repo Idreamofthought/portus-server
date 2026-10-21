@@ -20,12 +20,12 @@
 - [ ] `FREE_ACCESS_EMAILS` contains comma-separated email addresses for free access; entries are trimmed and case-insensitive.
 - [ ] Railway logs show no startup, database, CSRF, or email errors.
 - [ ] The production domain serves HTTPS and redirects are correct.
-- [ ] A backup or recovery path exists for the production SQLite database.
+- [ ] Database backup/recovery: create a consistent SQLite online backup, keep a private copy outside Railway, and test a disposable restored copy. Confirm health, test login, saved-game read/write and paid-time accounting. See `docs/DATABASE-RECOVERY.md`.
 
 ## Deliberate launch trade-offs
 
-- `/api/save` is intentionally client-authoritative: the server authenticates the player, requires CSRF protection, and limits saves to 512 KB, but does not validate game resources, buildings, research, favour, warnings, or disasters. This is acceptable for the current slow, single-player game. Do not add leaderboards or scarcity-sensitive purchases without moving those rules server-side.
-- The CSP still permits `script-src 'unsafe-inline'` because `protected/game.html` contains inline scripts. Tighten it after those scripts are extracted, as tracked in `ROADMAP.md`.
+- `/api/save` authenticates the player, requires CSRF protection, limits saves to 512 KB and validates the save structure and supported values. Game simulation and progression remain client-authoritative; validation does not prove resources were earned. Do not add leaderboards or scarcity-sensitive purchases without moving those rules server-side.
+- Scripts are extracted from the game HTML. CSP permits scripts from the site and `https://plausible.io`, and does not permit inline scripts. Inline styles remain allowed.
 - Consumed or abandoned payment-order records and processed webhook IDs are pruned after one year by the daily cleanup job. Keep the retention window longer than the provider's expected webhook replay window if payment operations change.
 
 ## Soft-launch strategy

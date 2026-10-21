@@ -11,14 +11,14 @@ Buildings and systems should suggest meaning before they suggest optimization. A
 Disasters and warnings create decisions without turning the experience into panic. Problems should be legible, recoverable, and connected to the player's prior choices.
 
 ### Every Place Has a Texture
-The 24x24 tile grid is small enough to read at a glance but large enough to support districts, coastlines, resource pockets, and meaningful spacing. Terrain should affect what can be built and how a place feels.
+The 44-column by 30-row map is small enough to read at a glance but large enough to support districts, coastlines, resource pockets, and meaningful spacing. Terrain should affect what can be built and how a place feels.
 
 ### The World Answers Back
 Favour, codex discoveries, warnings, ambient sound, and building effects make the settlement feel responsive. Feedback should be symbolic as well as numerical.
 
 ## Current World
 
-The playable map is 50 columns by 33 rows with 24x24 tiles. The generator currently creates grassland, forest, mountains, sand, rivers, sea, and resource deposits.
+The playable map is 44 columns by 30 rows with 26x26-pixel tiles. The generator currently creates grassland, forest, mountains, sand, rivers, sea, and resource deposits.
 
 The player can place buildings when the selected building's terrain rule is satisfied and the tile is empty. Buildings may also require proximity to water, forest, or another building.
 
@@ -52,7 +52,7 @@ New buildings should fill a meaningful role or create a new adjacency decision. 
 
 ## Economy
 
-The current resource vocabulary is wood, stone, food, and gold. Future chains can add intermediate materials such as clay, pottery, tools, flour, bread, olives, oil, scrolls, fish, and ore, but each addition should answer three questions:
+The current resource vocabulary is defined in `protected/js/resources.js` and checked against the shared save validator. Existing chains include clay and pottery, ore and metalworking, wheat and bread, dairy, sugar and jam, and scrolls and research. Future additions should answer three questions:
 
 1. What human need or memory does it represent?
 2. What new decision does it create?

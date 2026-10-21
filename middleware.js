@@ -1,14 +1,14 @@
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { db } from "./database2.js";
-import freeAccess from "./data/free_access.json" with { type: "json" };
 import { ROUTES } from "./routes-config.js";
+import { secureCookies } from "./runtime-security.js";
+import { createPlayAccess } from "./play-access.js";
+
+export const playAccess = createPlayAccess(db);
 
 const freeAccessEmails = new Set(
-  [
-    ...(freeAccess.emails || []),
-    ...(process.env.FREE_ACCESS_EMAILS || "").split(",")
-  ]
+  (process.env.FREE_ACCESS_EMAILS || "").split(",")
     .map((email) => String(email).trim().toLowerCase())
     .filter(Boolean)
 );
@@ -20,7 +20,7 @@ export function hasFreeAccess(userId) {
 
 export function issueCsrfCookie(res) {
   const token = crypto.randomBytes(32).toString("hex");
-  res.cookie("csrf", token, { httpOnly: false, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  res.cookie("csrf", token, { httpOnly: false, sameSite: "lax", secure: secureCookies(), path: "/" });
   return token;
 }
 
@@ -47,8 +47,8 @@ export function requireVerified(req, res, next) {
 export function requirePaid(req, res, next) {
   if (hasFreeAccess(req.user.uid)) return next();
 
-  const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(req.user.uid);
-  if (!row || row.remaining_seconds <= 0) {
+  const access = playAccess.grant(req.user.uid);
+  if (access.playWindowMs <= 0) {
     if (wantsHTML(req)) return res.redirect(`${ROUTES.portus}?paid=required`);
     return res.status(403).json({ error: "no paid time" });
   }
@@ -56,8 +56,25 @@ export function requirePaid(req, res, next) {
 }
 
 export const jsonRateLimitHandler = (_req, res) => res.status(429).json({ error: "Too many requests — please wait a bit and try again." });
-export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 50, handler: jsonRateLimitHandler });
-export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, handler: jsonRateLimitHandler });
-export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 50, handler: jsonRateLimitHandler });
-export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, handler: jsonRateLimitHandler });
-export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: 500, handler: jsonRateLimitHandler });
+
+// Limits stay strict by default; the override exists so the integration suite
+// (all traffic from one address) and future ops tuning don't need code changes.
+function limitFromEnv(name, fallback) {
+  const configured = Number(process.env[name]);
+  return Number.isFinite(configured) && configured > 0 ? configured : fallback;
+}
+
+export const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: limitFromEnv("AUTH_RATE_LIMIT_MAX", 50), handler: jsonRateLimitHandler });
+// Counts only failed logins, so shared/NAT addresses aren't penalised for normal
+// traffic. The per-account lockout in security.js is the precise control; this is
+// the backstop against one host spraying many accounts.
+export const loginLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: limitFromEnv("LOGIN_RATE_LIMIT_MAX", 100),
+  skipSuccessfulRequests: true,
+  handler: jsonRateLimitHandler
+});
+export const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: limitFromEnv("PASSWORD_RESET_RATE_LIMIT_MAX", 20), handler: jsonRateLimitHandler });
+export const checkoutLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: limitFromEnv("CHECKOUT_RATE_LIMIT_MAX", 50), handler: jsonRateLimitHandler });
+export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, max: limitFromEnv("WEBHOOK_RATE_LIMIT_MAX", 100), handler: jsonRateLimitHandler });
+export const generalApiLimiter = rateLimit({ windowMs: 60 * 1000, max: limitFromEnv("GENERAL_API_RATE_LIMIT_MAX", 500), handler: jsonRateLimitHandler });

@@ -3,6 +3,7 @@ title: Artifact and Archaeological Discovery
 type: progression_system
 related_codex: ../codex/artifacts/README.md
 related_spirits: ../codex/spirits/spirit_atlas.md
+related_categories: ../../docs/ARTIFACT-CATEGORIES.md
 ---
 
 # Artifact and Archaeological Discovery

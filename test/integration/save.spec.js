@@ -25,7 +25,7 @@ describe("save / load", () => {
     const save = validSaveFixture();
     save.coin = 42;
 
-    const saveRes = await session.postCsrf("/api/save", save);
+    const saveRes = await session.postCsrf("/api/save", { state: JSON.stringify(save), captain: save.captain });
     expect(saveRes.status).toBe(200);
     expect(saveRes.body.ok).toBe(true);
 
@@ -34,9 +34,26 @@ describe("save / load", () => {
     expect(loadRes.body.state.coin).toBe(42);
   });
 
+  test("a pre-expansion save is migrated rather than rejected", async () => {
+    const session = await loggedInSession("save-legacy", cleanupEmails);
+    const legacy = validSaveFixture();
+    // Simulate a save written before the economy expansion added these keys.
+    for (const key of ["wine", "beer", "mead", "barley", "statues"]) {
+      delete legacy.res[key];
+    }
+
+    const saveRes = await session.postCsrf("/api/save", { state: JSON.stringify(legacy), captain: legacy.captain });
+    expect(saveRes.status).toBe(200);
+
+    const loadRes = await session.request("GET", "/api/save");
+    expect(loadRes.status).toBe(200);
+    expect(loadRes.body.state.res.wine).toBe(0);
+    expect(loadRes.body.state.res.barley).toBe(0);
+  });
+
   test("save missing required keys is rejected as invalid_save", async () => {
     const session = await loggedInSession("save-missing", cleanupEmails);
-    const res = await session.postCsrf("/api/save", { resources: {} });
+    const res = await session.postCsrf("/api/save", { state: JSON.stringify({ resources: {} }) });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("invalid_save");
   });
@@ -46,7 +63,7 @@ describe("save / load", () => {
     const save = validSaveFixture();
     save.buildings = [{ id: "FAKE", x: 0, y: 0 }];
 
-    const res = await session.postCsrf("/api/save", save);
+    const res = await session.postCsrf("/api/save", { state: JSON.stringify(save), captain: save.captain });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("invalid_save");
   });
@@ -56,7 +73,7 @@ describe("save / load", () => {
     const csrfToken = await session.withCsrf();
     const oversizedPad = "a".repeat(550 * 1024);
     const res = await session.request("POST", "/api/save", {
-      body: { pad: oversizedPad },
+      body: { state: oversizedPad },
       headers: { "X-CSRF-Token": csrfToken }
     });
     expect(res.status).toBe(413);

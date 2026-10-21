@@ -6,7 +6,7 @@ export const TERRAIN_COLOR = {
   forest:'#4c6b3f', mountain:'#8c8577'
 };
 
-export const DEPOSIT_COLOR = { gold:'#d4a017', silver:'#c9c9c9', copper:'#b5651d', clay:'#8a4a1c', salt:'#f2f2f2' };
+export const DEPOSIT_COLOR = { gold:'#d4a017', silver:'#c9c9c9', copper:'#b5651d', clay:'#8a4a1c', salt:'#f2f2f2', marble:'#e3d7bb', tin:'#7a8ea0' };
 
 export const RESOURCE_INFO = {
   wood:'Wood: basic building material, produced by the Woodcutter.',
@@ -26,9 +26,41 @@ export const RESOURCE_INFO = {
   olives:'Olives: crop used to make olive oil.',
   oliveOil:'Olive oil: valuable food and trade good.',
   chickpeas:'Chickpeas: nourishing crop for the settlement.',
-  grapes:'Grapes: crop used for food and trade.',
+  grapes:'Grapes: crop used for food, wine, and trade.',
+  barley:'Barley: hardy crop grown in fields, brewed into beer.',
   salt:'Salt: coastal resource used in trade and preservation.',
   fish:'Fish: food gathered from the coast and rivers.',
   deer:'Deer: food gathered from nearby woodland.',
-  scrolls:'Scrolls: knowledge goods used by the Library.'
+  scrolls:'Scrolls: knowledge goods used by the Library and scholarly work.',
+  marble:'Marble: fine stone prized in prestigious buildings and statues.',
+  tin:'Tin: smelted metal used in alloys and trade routes.',
+  bronze:'Bronze: alloyed metal used for statuary and durable civic works.',
+  honey:'Honey: a sweet trade good gathered by beekeepers.',
+  wax:'Wax: a valuable crafting material, refined into candles.',
+  sugarcane:'Sugarcane: a sweet crop grown in fields, refined at the Sugar House.',
+  sugar:'Sugar: refined from sugarcane, used in jam and cakes.',
+  feathers:'Feathers: gathered from chickens, used by the Quilt Maker.',
+  hide:'Hide: raw animal skin, tanned into leather.',
+  leather:'Leather: tanned hide used by the Leatherworker.',
+  butter:'Butter: churned from milk at the Dairy, used by the Baker.',
+  cheese:'Cheese: churned from milk, prized for cakes and trade.',
+  cream:'Cream: churned from milk at the Dairy.',
+  yoghurt:'Yoghurt: churned from milk at the Dairy.',
+  jam:'Jam: fruit preserved with refined sugar, used by the Baker.',
+  candles:'Candles: rendered from wax, burned in Temples and traded.',
+  quilts:'Quilts: warm bedding crafted from feathers.',
+  leatherGoods:'Leather goods: crafted wares made from leather.',
+  statues:'Bronze statues: cast from copper and tin by the Bronzesmith.',
+  weapons:'Weapons: forged by the Armourer to arm your soldiers.',
+  armour:'Armour: forged by the Armourer to protect your soldiers.',
+  wine:'Wine: pressed from grapes at the Winery — a prized trade good.',
+  beer:'Beer: brewed from barley at the Brewery — the drink of the people.',
+  mead:'Mead: fermented from honey at the Meadery — sweet and strong.',
+  meat:'Meat: raised on pastures and processed by the Butcher.',
+  milk:'Milk: gathered from cows and goats.',
+  eggs:'Eggs: gathered from chickens, used by the Baker.',
+  fruit:'Fruit: grown in orchards, used for jam and cakes.',
+  honeyCake:'Honey Cake: a baked treat that lifts the town\'s spirits.',
+  fruitCake:'Fruit Cake: a baked treat that lifts the town\'s spirits.',
+  dairyCake:'Dairy Cake: a baked treat that lifts the town\'s spirits.'
 };

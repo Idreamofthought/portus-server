@@ -1,0 +1,343 @@
+Portus Project — Full Development History
+
+A complete, chronological record of the work done on the Portus project from its earliest beginnings to the present day.
+
+1. Origins of Portus
+
+Vision & Concept
+
+Initial idea: a poetic, atmospheric town‑by‑the‑sea simulation.
+
+Core themes: discovery, mystery, archaeology, fragments, lore.
+
+Early prototypes focused on mood, writing, and world identity.
+
+Early Game Structure
+
+Basic HTML/JS prototype.
+
+First Codex entries written.
+
+Initial resource system (wood, stone, fish).
+
+Early UI mockups for buildings and map.
+
+2. First Server Foundations
+
+Static Hosting
+
+Simple Express server serving static files.
+
+Basic routing for homepage and Portus landing page.
+
+No authentication, no database.
+
+Early Game Delivery
+
+/portus route created.
+
+Public assets served from /public.
+
+3. Authentication System Introduced
+
+Account Creation
+
+Added /api/signup with:
+
+Email normalization.
+
+Password hashing.
+
+SQLite user storage.
+
+Login System
+
+Implemented /api/login.
+
+Added dummy hash to prevent timing attacks.
+
+Added audit logging for login success/failure.
+
+Email Verification
+
+Token generation and hashing.
+
+Verification route /verify-email.
+
+Resend verification endpoint.
+
+4. Sessions & JWT
+
+Auth Cookies
+
+Secure, HTTP‑only cookie issued on login.
+
+Session table created.
+
+Session Revocation
+
+Added revokeSession and revokeAllSessions.
+
+Logout initially implemented with insecure payload decoding.
+
+Security Fix
+
+Logout rewritten to:
+
+Use authenticateRequest.
+
+Verify JWT signature.
+
+Require CSRF.
+
+Record audit event.
+
+5. CSRF Protection & Rate Limiting
+
+CSRF System
+
+CSRF cookie issued via /api/csrf-token.
+
+Middleware requireCsrf added.
+
+Rate Limiting
+
+Added:
+
+authLimiter
+
+loginLimiter
+
+passwordResetLimiter
+
+checkoutLimiter
+
+webhookLimiter
+
+generalApiLimiter
+
+6. Security Infrastructure
+
+Audit Logging
+
+Added recordAuditEvent for:
+
+Login attempts.
+
+Password changes.
+
+Logout.
+
+Payment events.
+
+Account deletion.
+
+Account Lockout
+
+Implemented failed login tracking.
+
+Added isLoginLocked and lockout audit events.
+
+CSP & Helmet
+
+Full Content Security Policy.
+
+Proxy trust configuration.
+
+7. Payment Integration
+
+Stripe
+
+Checkout creation.
+
+Checkout confirmation.
+
+Webhook handling.
+
+PayPal
+
+Order creation.
+
+Order capture.
+
+Webhook verification.
+
+Credit Application
+
+Unified creditPayment logic.
+
+Purchase records stored.
+
+8. Game Access System
+
+Time Tracking
+
+time_tracking table created.
+
+Heartbeat system added.
+
+Free access logic.
+
+Protected Routes
+
+/game gated behind:
+
+Authentication.
+
+Email verification.
+
+Payment.
+
+9. Discovery System
+
+Artifact Discovery
+
+Rarity rolls.
+
+Unique artifact selection.
+
+Codex unlocks.
+
+Archaeological Finds
+
+Fragment system.
+
+Assembly detection.
+
+Codex unlocks.
+
+Discovery Rolls
+
+Prevent duplicate rolls per turn.
+
+Store results in player_discovery_rolls.
+
+10. Codex System
+
+File‑Based Entries
+
+Markdown files stored under portus/codex/.
+
+readCodexEntry implemented.
+
+Foundation Entries
+
+Always unlocked.
+
+Combined with player unlocks.
+
+11. Save System
+
+Validation
+
+validateSave ensures integrity.
+
+migrateSave handles version upgrades.
+
+Storage
+
+Saves stored in SQLite.
+
+Size limit enforced.
+
+12. Account Deletion System
+
+Anonymization
+
+Email replaced with deleted-user-<id>-<timestamp>@deleted.idreamofthought.org.
+
+Password replaced with random hash.
+
+Cleanup
+
+Deletes:
+
+Sessions
+
+Verification tokens
+
+Password reset tokens
+
+Saves
+
+Time tracking
+
+Discoveries
+
+Codex unlocks
+
+Discovery rolls
+
+13. Homepage & Public Site
+
+Pages Added
+
+About
+
+Contact
+
+Identity
+
+Press Kit
+
+Writing
+
+Legal pages
+
+Legacy Redirects
+
+/tree → homepage.
+
+/portus-info → /portus/.
+
+14. Final Security Fixes & Improvements
+
+Logout Vulnerability Fixed
+
+Removed insecure base64 payload decoding.
+
+Now uses verified JWT via authenticateRequest.
+
+Full Audit Logging Coverage
+
+Logout added.
+
+Payment events standardized.
+
+CSRF Coverage
+
+All sensitive POST routes protected.
+
+15. Current State of the Project
+
+Portus now has:
+
+A complete authentication system.
+
+Full payment integration.
+
+Strong security posture.
+
+A rich discovery and codex system.
+
+A protected game environment.
+
+A polished public website.
+
+Clean, structured server architecture.
+
+The project has evolved from a small atmospheric idea into a fully‑featured, secure, production‑ready game backend.
+
+16. Next Steps (Optional)
+
+RBAC roles for future multiplayer.
+
+Webhooks for game events.
+
+Analytics dashboard.
+
+Multi‑save support.
+
+Seasonal events.
+
+This document captures the entire journey of the Portus project — from the first spark of the idea to the fully operational server you have today.

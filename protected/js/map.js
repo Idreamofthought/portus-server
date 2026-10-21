@@ -37,6 +37,8 @@ export function genMap(){
       if(r<0.09) grid[y][x].deposit='gold';
       else if(r<0.20) grid[y][x].deposit='silver';
       else if(r<0.36) grid[y][x].deposit='copper';
+      else if(r<0.48) grid[y][x].deposit='tin';
+      else if(r<0.60) grid[y][x].deposit='marble';
     }
   }
   // river from near mountains winding to sea

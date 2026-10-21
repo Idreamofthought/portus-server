@@ -5,8 +5,8 @@
 - Expand the player-facing Codex with the remaining artifact, disaster, geology, ritual, and sky entries.
 - Add focused tests for payment webhooks, entitlement checks, and Codex allowlisting.
 - Run the provider sandbox checks in `API.md`: Stripe Checkout plus webhook replay, then PayPal order, capture, and webhook replay. Keep provider credentials out of the repository.
-- Replace the remaining inline game styles and scripts where practical so the security policy can be tightened.
 - Keep the public Portus preview current as new game systems become playable.
+- Add browser smoke coverage for panel rendering, save/load, and protected-route startup (see Game modularization plan, step 4).
 
 ## Save validation
 
@@ -23,10 +23,10 @@
 
 ## Game modularization plan
 
-1. Extract the inline game code into `protected/game.js` without changing state names or save format.
-2. Split pure definitions and validation from rendering: buildings, research, map rules, save encoding, and UI panels.
-3. Replace implicit globals with explicit module imports and a small game-state object.
-4. Add browser smoke coverage for panel rendering, save/load, and protected-route startup before changing gameplay rules.
+1. **Done.** Inline game code extracted out of `protected/game.html` into `protected/js/game.js`, state names and save format unchanged.
+2. **Done.** Pure definitions and validation split from rendering: `army.js`, `blessings.js`, `buildings.js`, `disasters.js`, `map.js`, `presentation.js`, `quests.js`, `research.js`, `resources.js`, `scenarios.js` under `protected/js/`.
+3. **Done.** Implicit globals replaced with explicit ES module imports; stateful modules (`quests.js`, `disasters.js`, `scenarios.js`, `blessings.js`) take an explicit `ctx` object at the call site instead of closing over `game.html`'s state.
+4. **Not started.** Browser smoke coverage for panel rendering, save/load, and protected-route startup. `test/integration/save.spec.js` covers save/load at the API level, but nothing exercises the client panels or game boot in a browser yet. Do this before changing gameplay rules.
 
 ## Medium term
 

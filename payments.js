@@ -3,6 +3,7 @@ import paypal from "@paypal/checkout-server-sdk";
 import Stripe from "stripe";
 import { db } from "./database2.js";
 import { PRODUCTS, getProduct } from "./products.js";
+import { recordAuditEvent } from "./security.js";
 
 const PAYPAL_API_BASE = process.env.NODE_ENV === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -30,7 +31,8 @@ function getPayPalClient() {
   return new paypal.core.PayPalHttpClient(environment);
 }
 
-export async function createPayPalOrder({ userId, productId, siteUrl }) {
+export async function createPayPalOrder({ userId, productId, withdrawalConsent, siteUrl }) {
+  if (withdrawalConsent !== true) throw new Error("withdrawal consent is required before checkout");
   const product = getProduct(productId);
   if (!product) throw new Error("invalid product");
   const request = new paypal.orders.OrdersCreateRequest();
@@ -45,27 +47,66 @@ export async function createPayPalOrder({ userId, productId, siteUrl }) {
   });
   const result = await getPayPalClient().execute(request);
   const orderId = result.result.id;
-  db.prepare(`INSERT INTO pending_orders (order_id,provider,user_id,product_id,minutes,amount,currency,created_at) VALUES (?,?,?,?,?,?,?,?)`)
-    .run(orderId, "paypal", userId, product.id, product.minutes, product.amount, product.currency, Date.now());
+  db.prepare(`INSERT INTO pending_orders (order_id,provider,user_id,product_id,minutes,amount,currency,withdrawal_consent,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(orderId, "paypal", userId, product.id, product.minutes, product.amount, product.currency, 1, Date.now());
   const approval = result.result.links?.find(x => x.rel === "approve")?.href;
   return { id: orderId, url: approval };
 }
 
-export async function capturePayPalOrder({ userId, orderId }) {
+export async function capturePayPalOrder({ userId, orderId }, client = getPayPalClient()) {
   const pending = db.prepare(`SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal' AND user_id=?`).get(orderId, userId);
   if (!pending) throw new Error("unknown order");
   if (pending.consumed) return { ok: true, duplicate: true };
   const request = new paypal.orders.OrdersCaptureRequest(orderId);
   request.requestBody({});
-  const result = await getPayPalClient().execute(request);
+  let result;
+  try {
+    result = await client.execute(request);
+  } catch (captureError) {
+    // Capture may have succeeded before the connection or local credit failed.
+    // Retrieve its authoritative result instead of trying to charge again.
+    try {
+      result = await client.execute(new paypal.orders.OrdersGetRequest(orderId));
+      if (result.result?.status !== "COMPLETED") throw captureError;
+    } catch { throw captureError; }
+  }
   const capture = result.result;
-  if (capture.status !== "COMPLETED") throw new Error("payment not completed");
-  const capturedAmount = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
-  const capturedCurrency = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.currency_code;
-  return creditPayment({ pending, eventId: capture.id, capturedAmount, capturedCurrency });
+  const units = capture?.purchase_units;
+  const captures = units?.[0]?.payments?.captures;
+  if (capture?.id !== orderId || capture?.status !== "COMPLETED" || units?.length !== 1 || captures?.length !== 1 || captures[0]?.status !== "COMPLETED") {
+    throw new Error("payment not completed");
+  }
+  return creditPayPalCapture(pending, captures[0]);
 }
 
-export async function createStripeCheckout({ userId, productId, siteUrl }) {
+function creditPayPalCapture(pending, capture) {
+  if (!capture || typeof capture.id !== "string" || !capture.id || capture.status !== "COMPLETED") throw new Error("invalid PayPal capture");
+  if (pending.consumed) return { credited: false, duplicate: true };
+  try {
+    return creditPayment({ pending, eventId: `paypal:${capture.id}`, capturedAmount: capture.amount?.value, capturedCurrency: capture.amount?.currency_code });
+  } catch (error) {
+    if (!db.prepare('SELECT consumed FROM pending_orders WHERE order_id=?').get(pending.order_id)?.consumed) {
+      recordAuditEvent({ userId: pending.user_id, eventType: 'payment_captured_not_credited',
+        metadata: { orderId: pending.order_id, captureId: capture.id, reason: error.message } });
+    }
+    throw error;
+  }
+}
+
+// Call only after PayPal has verified the webhook signature. Match captures to
+// our stored order; never accept a user, price or duration from the event.
+export function handlePayPalWebhookEvent(event) {
+  if (event?.event_type !== "PAYMENT.CAPTURE.COMPLETED") return { ignored: true };
+  const capture = event.resource;
+  const orderId = capture?.supplementary_data?.related_ids?.order_id;
+  if (typeof orderId !== "string" || !orderId) return { ignored: true, reason: "no order" };
+  const pending = db.prepare("SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal'").get(orderId);
+  if (!pending) return { ignored: true, reason: "unknown order" };
+  return creditPayPalCapture(pending, capture);
+}
+
+export async function createStripeCheckout({ userId, productId, withdrawalConsent, siteUrl }) {
+  if (withdrawalConsent !== true) throw new Error("withdrawal consent is required before checkout");
   if (!stripe) throw new Error("Stripe is not configured");
   const product = getProduct(productId);
   if (!product) throw new Error("invalid product");
@@ -81,7 +122,7 @@ export async function createStripeCheckout({ userId, productId, siteUrl }) {
     }, quantity: 1 }],
     success_url: `${siteUrl}/purchase.html?provider=stripe&status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/purchase.html?provider=stripe&status=cancelled`,
-    metadata: { userId: String(userId), productId: product.id }
+    metadata: { userId: String(userId), productId: product.id, withdrawalConsent: "1", amount: product.amount, currency: product.currency }
   });
   return { url: session.url };
 }
@@ -94,6 +135,8 @@ export async function confirmStripeCheckout({ userId, sessionId }) {
   const sessionUserId = Number(session.metadata?.userId);
   const product = getProduct(session.metadata?.productId);
   if (sessionUserId !== userId || !product) throw new Error("invalid Stripe metadata");
+  const originalCurrency = session.metadata?.currency || "USD"; // Existing sessions predate the EUR switch.
+  const originalAmount = session.metadata?.amount || product.amount;
   return creditPayment({
     pending: {
       order_id: session.id,
@@ -101,8 +144,9 @@ export async function confirmStripeCheckout({ userId, sessionId }) {
       user_id: userId,
       product_id: product.id,
       minutes: product.minutes,
-      amount: product.amount,
-      currency: product.currency,
+      amount: originalAmount,
+      currency: originalCurrency,
+      withdrawal_consent: session.metadata?.withdrawalConsent === "1" ? 1 : 0,
       consumed: 0,
       customer_id: session.customer,
       checkout_session_id: session.id,
@@ -126,6 +170,8 @@ export async function handleStripeWebhook(rawBody, signature) {
   const userId = Number(session.metadata?.userId);
   const product = getProduct(session.metadata?.productId);
   if (!userId || !product) throw new Error("invalid Stripe metadata");
+  const originalCurrency = session.metadata?.currency || "USD";
+  const originalAmount = session.metadata?.amount || product.amount;
   return creditPayment({
     pending: {
       order_id: session.id,
@@ -133,8 +179,9 @@ export async function handleStripeWebhook(rawBody, signature) {
       user_id: userId,
       product_id: product.id,
       minutes: product.minutes,
-      amount: product.amount,
-      currency: product.currency,
+      amount: originalAmount,
+      currency: originalCurrency,
+      withdrawal_consent: session.metadata?.withdrawalConsent === "1" ? 1 : 0,
       consumed: 0,
       customer_id: session.customer,
       checkout_session_id: session.id,
@@ -164,19 +211,34 @@ export function creditPayment({ pending, eventId, capturedAmount, capturedCurren
       : { changes: 1 };
     if (pending.provider === "paypal" && claim.changes === 0) return;
     db.prepare(`INSERT INTO processed_payment_events (id,created_at) VALUES (?,?)`).run(eventId, Date.now());
-    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,customer_id,checkout_session_id,payment_intent_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, customerId || pending.customer_id || null, checkoutSessionId || pending.checkout_session_id || null, paymentIntentId || pending.payment_intent_id || null, Date.now());
+    db.prepare(`INSERT INTO purchases (id,user_id,provider,product_id,minutes,amount,currency,customer_id,checkout_session_id,payment_intent_id,withdrawal_consent,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(eventId, pending.user_id, pending.provider, pending.product_id, pending.minutes, pending.amount, pending.currency, customerId || pending.customer_id || null, checkoutSessionId || pending.checkout_session_id || null, paymentIntentId || pending.payment_intent_id || null, pending.withdrawal_consent ? 1 : 0, Date.now());
     const row = db.prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`).get(pending.user_id);
     if (row) db.prepare(`UPDATE time_tracking SET remaining_seconds=remaining_seconds+?,updated_at=?,last_active_at=NULL WHERE user_id=?`).run(pending.minutes*60, Date.now(), pending.user_id);
     else db.prepare(`INSERT INTO time_tracking (user_id,remaining_seconds,last_active_at,updated_at) VALUES (?,?,NULL,?)`).run(pending.user_id, pending.minutes*60, Date.now());
     credited = true;
   });
   tx();
+  if (credited) {
+    recordAuditEvent({
+      userId: pending.user_id,
+      eventType: "payment_credited",
+      metadata: {
+        provider: pending.provider,
+        productId: pending.product_id,
+        minutes: pending.minutes,
+        eventId
+      }
+    });
+  }
   return { credited };
 }
 
 export async function verifyPayPalWebhookSignature(headers, body) {
-  if (!process.env.PAYPAL_WEBHOOK_ID) return false;
+  if (!process.env.PAYPAL_WEBHOOK_ID || typeof body !== "string" || !body) return false;
+  // Embed the original JSON without changing whitespace, escapes or numbers.
+  // It has already passed Express's JSON parser; never interpolate arbitrary text.
+  JSON.parse(body);
   const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
   const tokenResp = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, { method:"POST", headers:{ Authorization:`Basic ${auth}`, "Content-Type":"application/x-www-form-urlencoded" }, body:"grant_type=client_credentials" });
   if (!tokenResp.ok) return false;
@@ -186,8 +248,8 @@ export async function verifyPayPalWebhookSignature(headers, body) {
     body: JSON.stringify({
       transmission_id: headers["paypal-transmission-id"], transmission_time: headers["paypal-transmission-time"],
       cert_url: headers["paypal-cert-url"], auth_algo: headers["paypal-auth-algo"], transmission_sig: headers["paypal-transmission-sig"],
-      webhook_id: process.env.PAYPAL_WEBHOOK_ID, webhook_event: body
-    })
+      webhook_id: process.env.PAYPAL_WEBHOOK_ID
+    }).slice(0, -1) + ',"webhook_event":' + body + '}'
   });
   if (!resp.ok) return false;
   const data = await resp.json();
