@@ -1,12 +1,12 @@
 import crypto from "crypto";
 import paypal from "@paypal/checkout-server-sdk";
-import Stripe from "stripe";
+import { createStripeClient } from "./stripe-client.js";
 import { db } from "./database2.js";
 import { PRODUCTS, getProduct } from "./products.js";
 import { recordAuditEvent } from "./security.js";
 
 const PAYPAL_API_BASE = process.env.NODE_ENV === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const stripe = process.env.STRIPE_SECRET_KEY ? createStripeClient(process.env.STRIPE_SECRET_KEY) : null;
 
 async function getStripeCustomer(userId) {
   const user = db.prepare(`SELECT email, stripe_customer_id FROM users WHERE id=?`).get(userId);
