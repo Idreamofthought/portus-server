@@ -1,12 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSave } from "../save-validation.js";
+import { validateSave, RESOURCE_KEYS } from "../save-validation.js";
 
-const resourceKeys = [
-  "wood", "stone", "clay", "pottery", "tools", "goldOre", "silverOre", "copperOre",
-  "gold", "silver", "copper", "wheat", "olives", "chickpeas", "grapes", "fish",
-  "deer", "bread", "scrolls", "flour", "oliveOil", "salt"
-];
+const resourceKeys = [...RESOURCE_KEYS];
 
 function validSave() {
   return {
@@ -25,6 +21,9 @@ function validSave() {
     questsCompleted: [],
     military: { soldiers: 0, cap: 0 },
     droughtTicksLeft: 0,
+    tickCount: 0,
+    civicMilestones: [],
+    townMemory: [],
     taxRate: 0,
     scenarioId: null,
     scenarioState: { disastersSurvived: 0, failed: false },
@@ -41,6 +40,14 @@ test("accepts a completed scenario save", () => {
   const save = validSave();
   save.scenarioState.completed = true;
   assert.deepEqual(validateSave(save), { ok: true });
+});
+
+test("accepts a remembered loss and rejects oversized memories", () => {
+  const save = validSave();
+  save.townMemory = [{ id: "loss-20", title: "Those we lost", content: "One resident died." }];
+  assert.deepEqual(validateSave(save), { ok: true });
+  save.townMemory[0].content = "x".repeat(601);
+  assert.equal(validateSave(save).ok, false);
 });
 
 test("rejects unknown top-level fields", () => {

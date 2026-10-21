@@ -4,16 +4,17 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Portus — Town Builder</title>
-  <meta name="description" content="Portus: build a mythic town by the sea in this browser-based town builder.">
+<title>Breluce — Town Builder</title>
+  <meta name="description" content="Breluce: build a mythic town by the sea in this browser-based town builder.">
 <link rel="stylesheet" href="/game-assets/game.css">
 </head>
 <body>
 <div id="app">
   <div id="paywall">
     <div id="paycard">
-      <h2 id="pwTitle">🏛️ Portus Pass</h2>
-      <p class="pdesc" id="pwDesc">Sign in, then buy a Portus pass to play.</p>
+      <h2 id="pwTitle">🏛️ Breluce Pass</h2>
+      <p class="pdesc" id="pwDesc">Sign in, then buy a Breluce pass to play.</p>
+      <p class="pdesc">Play time is reserved up to 10 seconds ahead, shared across your tabs. Closing the game or signing out may use the rest of that window. An internet connection is required to keep playing.</p>
 
       <div id="authBox">
         <input id="authEmail" type="email" placeholder="Email" autocomplete="username">
@@ -43,7 +44,7 @@
   </div>
 
   <header>
-    <h1>Portus <span>· a town by the sea</span></h1>
+    <h1>Breluce <span>· a town by the sea</span></h1>
   </header>
 
   <div id="resbar"></div>
@@ -51,6 +52,8 @@
     <span id="popline"></span>
     <span id="timeline"></span>
     <span id="tickline"></span>
+    <button id="musicToggle" class="musicToggle" type="button" aria-pressed="false">Music: Off</button>
+    <button id="voicesToggle" class="musicToggle" type="button" aria-pressed="true" title="Turn settlement guidance off">Guidance: On</button>
   </div>
 
   <div id="cropbar">
@@ -59,9 +62,22 @@
     <button data-crop="olives">🫒 Olives</button>
     <button data-crop="chickpeas">🌱 Chickpeas</button>
     <button data-crop="grapes">🍇 Grapes</button>
+    <button data-crop="barley">🌿 Barley</button>
+    <button data-crop="sugarcane">🎋 Sugarcane</button>
   </div>
 
   <div id="main">
+    <aside id="marshStory" hidden aria-live="polite">
+      <p class="marshKicker">A memory before Breluce</p>
+      <h2 id="marshStoryTitle">The reedbank</h2>
+      <p id="marshStoryText"></p>
+      <p id="marshStoryTask"></p>
+      <div class="marshActions">
+        <button id="marshSoundBtn" type="button" aria-pressed="false">Sound off</button>
+        <button id="marshLeaveBtn" type="button">Leave lesson</button>
+      </div>
+    </aside>
+    <div id="worldMood" aria-live="polite"></div>
     <div id="mapwrap">
       <canvas id="canvas"></canvas>
       <div id="minimapWrap" aria-label="Settlement minimap">
@@ -69,6 +85,7 @@
         <div id="minimapLabel">Settlement map</div>
       </div>
       <div id="toast"></div>
+      <div id="buildingTooltip" role="status" aria-live="polite"></div>
       <div id="legend">Tap a building, then tap the map to place it</div>
       <button id="cancelBtn">✕ Cancel</button>
 
@@ -79,6 +96,10 @@
         <button class="menuBtn" data-panel="armyPanel">⚔️ Army</button>
         <button class="menuBtn" data-panel="goalsPanel">🎯 Goals</button>
         <button class="menuBtn" data-panel="taxPanel">💰 Taxes</button>
+        <button class="menuBtn" data-panel="tradePanel">🪙 Trade</button>
+        <button class="menuBtn" data-panel="productionPanel">🔗 Production</button>
+        <button class="menuBtn" id="marshLessonMenu" type="button">🌫️ Marsh lesson</button>
+        <small class="marshMobileNote">Marsh lesson needs a larger screen. The main game is available here.</small>
         <button class="menuBtn" data-panel="savePanel">💾 Save</button>
       </div>
 
@@ -92,8 +113,15 @@
 
       <div id="researchPanel" class="sidepanel">
         <div class="panelHead">
-          <span>Research — <b id="rpCount">0</b> pts</span>
+          <span>Research — <b id="rpCount">0</b> available</span>
           <button class="closeP">✕</button>
+        </div>
+        <div id="researchPlanner" class="panelBody">
+          <p class="pnote">Clay → pottery → scrolls → research. Keep your Scribe and Library supplied.</p>
+          <div id="researchSetup" aria-label="Buildings for research"></div>
+          <label for="researchPath">What would you like to develop?</label>
+          <select id="researchPath"><option value="">All discoveries</option></select>
+          <p id="researchPathNote" class="pnote"></p>
         </div>
         <div id="researchList"></div>
       </div>
@@ -114,7 +142,7 @@
         <div class="panelBody">
           <p class="pnote">
             Soldiers are drawn from your population and stop working other jobs while enlisted.
-            Build Barracks to raise the cap.
+            Build Barracks to raise the cap. Town defence: <b id="defenseValue">0</b>.
           </p>
           <button id="recruitBtn" class="actionbtn">➕ Recruit soldier — 4 tools</button>
           <button id="disbandBtn" class="actionbtn secondary">➖ Disband soldier</button>
@@ -160,6 +188,56 @@
         </div>
       </div>
 
+      <div id="tradePanel" class="sidepanel">
+        <div class="panelHead">
+          <span>Trade</span>
+          <button class="closeP">✕</button>
+        </div>
+        <div id="marketControls" class="panelBody">
+          <p id="marketFoodStatus" class="pnote" aria-live="polite"></p>
+          <label><input id="marketAutoSell" type="checkbox" checked> Market sells surplus automatically</label>
+          <label for="marketFoodReserve">Keep food for this many turns</label>
+          <select id="marketFoodReserve">
+            <option value="0">0 — warn before emptying food stores</option>
+            <option value="12">12 turns</option>
+            <option value="24" selected>24 turns</option>
+            <option value="48">48 turns</option>
+            <option value="96">96 turns</option>
+          </select>
+          <label for="marketGoodsReserve">Keep this much of each other good</label>
+          <input id="marketGoodsReserve" type="number" min="0" max="100000" step="1" value="20">
+          <p class="pnote">Automatic sales also keep at least 30 of each food. These controls apply to all your Markets. Trading Posts trade manually.</p>
+          <label for="tradeSearch">Find goods</label>
+          <input id="tradeSearch" type="search" placeholder="Fish, tools, pottery…" autocomplete="off">
+          <label for="tradeQuantity">Quantity to sell</label>
+          <select id="tradeQuantity"><option value="1">1</option><option value="10">10</option><option value="all">All stock</option></select>
+          <p class="pnote">Purchases buy one unit at a time. “Sell surplus” always keeps your reserves.</p>
+          <section id="marketSaleWarning" hidden aria-labelledby="marketSaleTitle">
+            <strong id="marketSaleTitle">Food supply warning</strong>
+            <p id="marketSaleText" role="alert"></p>
+            <button id="marketConfirmSale" type="button">Sell anyway</button>
+            <button id="marketCancelSale" type="button">Keep the food</button>
+          </section>
+        </div>
+        <div id="tradeList" class="panelBody"></div>
+      </div>
+
+      <div id="recipePanel" class="sidepanel">
+        <div class="panelHead">
+          <span id="recipePanelTitle">Choose recipe</span>
+          <button class="closeP">✕</button>
+        </div>
+        <div id="recipeList" class="panelBody"></div>
+      </div>
+
+      <div id="productionPanel" class="sidepanel">
+        <div class="panelHead">
+          <span>Production chains</span>
+          <button class="closeP">✕</button>
+        </div>
+        <div id="productionGuide" class="panelBody"></div>
+      </div>
+
       <div id="savePanel" class="sidepanel">
         <div class="panelHead">
           <span>Save &amp; Load</span>
@@ -184,6 +262,25 @@
     </div>
 
     <div id="panel">
+      <section id="firstActionGuide" aria-label="Settlement guidance">
+        <aside id="settlementVoice" hidden aria-labelledby="voiceTitle">
+          <p id="voiceSpeaker" class="voiceKicker">The Gods suggest…</p>
+          <div aria-live="polite" aria-atomic="true">
+            <h2 id="voiceTitle"></h2>
+            <p id="voiceText"></p>
+          </div>
+          <div class="voiceActions">
+            <button id="voiceFollow" type="button">Explore the idea</button>
+            <button id="voiceLater" type="button">Another idea</button>
+          </div>
+        </aside>
+        <button id="guidanceRestore" type="button" hidden>Show suggestions again</button>
+      </section>
+      <div id="buildingSearchBox">
+        <label for="buildingSearch">Find a building</label>
+        <input id="buildingSearch" type="search" placeholder="Name, goods or research…" autocomplete="off">
+        <p id="buildingSearchCount" role="status"></p>
+      </div>
       <div id="buildingList"></div>
       <div id="buildPreview">
         <div id="buildPreviewTitle">No building selected</div>
@@ -197,23 +294,56 @@
   <footer id="legalFooter"
           style="position:fixed; bottom:0; left:0; right:0; z-index:1000; text-align:center;
                  font-size:9px; color:#c9bfa8; padding:3px; background:rgba(58,49,40,0.92);">
-    © 2026 [idreamofthought.org]. All rights reserved. ·
+    © 2026 Richard Jenkins (idreamofthought). All rights reserved. ·
     <a href="/terms.html" style="color:#d4a017;">Terms</a> ·
     <a href="/privacy.html" style="color:#d4a017;">Privacy</a>
   </footer>
 </div>
 
+<div id="titleOverlay" role="dialog" aria-labelledby="titleHeading">
+  <div id="titleCard">
+    <p class="titleKicker">A settlement remembered into existence</p>
+    <h2 id="titleHeading">Breluce</h2>
+    <p>A town by the sea. Your people await your guidance.</p>
+    <button id="newGameBtn" class="titleButton">New Game</button>
+    <button id="continueBtn" class="titleButton secondary">Continue</button>
+    <button id="titleCodexBtn" class="titleButton secondary">Codex</button>
+    <button id="musicBtn" class="titleButton secondary" type="button">Play Breluce music</button>
+    <button id="creditsBtn" class="titleButton secondary">Credits</button>
+    <div id="creditsPanel" hidden>
+      <strong>Breluce</strong><br>
+      Created by idreamofthought.org<br>
+      Built with HTML, CSS, JavaScript, and Web Audio<br>
+      Version 2.0
+      <button id="creditsCloseBtn" class="titleButton secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- gameplay is designed around the wider map-and-tools landscape layout -->
+<div id="orientationOverlay" role="status" aria-live="polite">
+  <div id="orientationCard">
+    <div class="orientationIcon" aria-hidden="true">↔</div>
+    <h2>Turn your phone sideways</h2>
+    <p>Breluce gives you more room to build in landscape view.</p>
+  </div>
+</div>
+
 <!-- tutorial overlay -->
 <div id="tutorialOverlay">
   <div id="tutorialCard">
-    <h2>Welcome to Portus</h2>
+    <h2>Welcome to Breluce</h2>
     <ol id="tutorialSteps">
       <li>Start by placing a <b>House</b> and a <b>Field</b> on the grass.</li>
       <li>Watch your <b>resources</b> and <b>population</b> grow in the bar at the top.</li>
       <li>Use <b>Research</b>, <b>Army</b>, <b>Goals</b>, <b>Taxes</b>, and <b>Save</b> from the menu on the map.</li>
-      <li>Survive disasters, grow your town, and complete a scenario.</li>
+      <li>Roads boost nearby production by 15%; a continuous road to storage or a market raises it to 20%. The optional marsh lesson lets you try a wood, stone, and grain chain.</li>
+      <li>Tap a House, Healer's Room, Doctor's House, or Gathering Circle to upgrade it in place.</li>
+      <li>Survive disasters, grow your town, and discover what your settlement remembers.</li>
     </ol>
-    <button id="tutorialCloseBtn">Got it — start building</button>
+    <button id="marshPrologueBtn" type="button">Start guided lesson: place buildings and read the map</button>
+    <button id="tutorialCloseBtn">Explore on my own</button>
+    <p class="marshMobileNote">The marsh lesson needs a larger screen. Choose “Got it” to play the main game on your phone.</p>
   </div>
 </div>
 
@@ -227,6 +357,16 @@
       <input type="checkbox" id="bubbleDontShow"> <span id="bubbleCheckLabel"></span>
     </label>
     <button id="bubbleNextBtn">Got it</button>
+  </div>
+</div>
+
+<!-- player-choice events: a decision that changes what happens next -->
+<div id="eventOverlay" role="dialog" aria-labelledby="eventTitle">
+  <div id="eventCard">
+    <p id="eventKicker">A decision is needed</p>
+    <h2 id="eventTitle"></h2>
+    <p id="eventText"></p>
+    <div id="eventChoices"></div>
   </div>
 </div>
 

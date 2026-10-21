@@ -5,3 +5,9 @@ node_modules/
 *.db-wal
 .DS_Store
 npm-debug.log*
+
+# Private imports and local administrative material
+/data/free_access.json
+*.wordpress.com.*.xml
+*.xlsx
+*.patch
