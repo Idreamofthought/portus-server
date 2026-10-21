@@ -1,0 +1,2756 @@
+import { migrateSave, validateSave } from "/game-assets/save-validation.js";
+import { COLS, ROWS, TS, grid, setGrid, rnd, genMap, inBounds, neighbors, nearTerrain, nearBuilding, nearDeposit } from '/game-assets/map.js';
+import { BUILDINGS, BLD_BY_ID } from '/game-assets/buildings.js';
+import { BUILDING_GROUPS, buildingGroup, matchesBuilding } from '/game-assets/building-navigation.js';
+import { TECHS, techName, techRequirementsMet, RESEARCH_PATHS, TECH_PURPOSE, researchPath } from '/game-assets/research.js';
+import { FOOD_KEYS, GENERAL_KEYS, RESOURCE_GROUPS, PRICES, createResources, totalFood as totalFoodOf, addResTo, missingInputsFrom, canAffordFrom, payFrom, maintenanceBill } from '/game-assets/resources.js';
+import { QUESTS } from '/game-assets/quests.js';
+import { SCENARIOS } from '/game-assets/scenarios.js';
+import { pickDisaster } from '/game-assets/disasters.js';
+import { RAID_TIERS, resolveRaid } from '/game-assets/army.js';
+import { GOD_MESSAGES } from '/game-assets/blessings.js';
+import { pickChoiceEvent } from '/game-assets/events.js';
+import { TERRAIN_COLOR, DEPOSIT_COLOR, RESOURCE_INFO } from '/game-assets/presentation.js';
+import { createPortusMusic } from '/music.js';
+import { roadNeighbours, connectedToStore, roadProductionBoost } from '/game-assets/road-network.js';
+import { marshTargets, marshPlacementAllowed, advanceMarshLesson } from '/game-assets/marsh-lesson.js';
+import { settlementAdvice } from '/game-assets/progression.js';
+import { DEFAULT_MARKET_POLICY, completeTradeGoods, foodTurns, saleQuote, sellableSurplus, automaticSales, storageRoom } from '/game-assets/market.js';
+
+const openBuildingGroups = new Set();
+let buildingQuery = '';
+let selectedResearchPath = '';
+let researchRenderKey = '';
+let focusedTech = null;
+
+let selectedCrop = 'wheat';
+const TRADE_GOODS = completeTradeGoods([
+  { id: 'wood', label: 'Wood', buyCost: 4, sellValue: 1 },
+  { id: 'stone', label: 'Stone', buyCost: 5, sellValue: 1 },
+  { id: 'clay', label: 'Clay', buyCost: 4, sellValue: 1 },
+  { id: 'tools', label: 'Tools', buyCost: 12, sellValue: 3 },
+  { id: 'wheat', label: 'Wheat', buyCost: 5, sellValue: 1 },
+  { id: 'copperOre', label: 'Copper Ore', buyCost: 7, sellValue: 2 },
+  { id: 'marble', label: 'Marble', buyCost: 12, sellValue: 4 },
+  { id: 'tin', label: 'Tin', buyCost: 10, sellValue: 3 },
+  { id: 'bronze', label: 'Bronze', buyCost: 15, sellValue: 5 },
+  { id: 'copper', label: 'Copper', buyCost: 9, sellValue: 3 },
+  { id: 'salt', label: 'Salt', buyCost: 6, sellValue: 2 },
+  { id: 'honey', label: 'Honey', buyCost: 8, sellValue: 3 },
+  { id: 'wax', label: 'Wax', buyCost: 9, sellValue: 3 },
+  { id: 'candles', label: 'Candles', buyCost: 11, sellValue: 4 },
+  { id: 'cheese', label: 'Cheese', buyCost: 9, sellValue: 3 },
+  { id: 'butter', label: 'Butter', buyCost: 7, sellValue: 2 },
+  { id: 'sugar', label: 'Sugar', buyCost: 7, sellValue: 2 },
+  { id: 'jam', label: 'Jam', buyCost: 10, sellValue: 3 },
+  { id: 'quilts', label: 'Quilts', buyCost: 16, sellValue: 6 },
+  { id: 'leatherGoods', label: 'Leather Goods', buyCost: 20, sellValue: 7 },
+  { id: 'statues', label: 'Bronze Statues', buyCost: 26, sellValue: 9 },
+  { id: 'wine', label: 'Wine', buyCost: 14, sellValue: 5 },
+  { id: 'beer', label: 'Beer', buyCost: 9, sellValue: 3 },
+  { id: 'mead', label: 'Mead', buyCost: 13, sellValue: 4 }
+],RESOURCE_INFO);
+
+let marketPolicy={...DEFAULT_MARKET_POLICY};
+let tradeQuery='';
+let tradeQuantity='1';
+let pendingSale=null;
+
+/* ---------------- TRADE DEMAND ---------------- */
+// buy = base*(1 + demand*X), sell = base*(1 + demand*Y). X > Y and buyCost >
+// sellValue keep the post's margin positive at every demand level.
+const DEMAND_BUY_SENSITIVITY = 0.8;
+const DEMAND_SELL_SENSITIVITY = 0.35;
+const tradeDemand = Object.fromEntries(TRADE_GOODS.map(g=>[g.id, 0.3 + Math.random()*0.4]));
+
+function clampDemand(value){ return Math.max(0, Math.min(1, value)); }
+
+function driftTradeDemand(){
+  TRADE_GOODS.forEach(good=>{
+    const wobble = (Math.random()-0.5)*0.09;
+    const meanReversion = (0.5 - tradeDemand[good.id])*0.03;
+    tradeDemand[good.id] = clampDemand(tradeDemand[good.id] + wobble + meanReversion);
+  });
+}
+
+function buyPriceOf(good){
+  return Math.max(1, Math.round(good.buyCost * (1 + tradeDemand[good.id]*DEMAND_BUY_SENSITIVITY)));
+}
+function sellPriceOf(good){
+  return Math.max(1, Math.round(good.sellValue * (1 + tradeDemand[good.id]*DEMAND_SELL_SENSITIVITY)));
+}
+function demandLabel(good){
+  const d = tradeDemand[good.id];
+  if(d < 0.25) return ['Glut', 'd-glut'];
+  if(d < 0.5) return ['Steady', 'd-steady'];
+  if(d < 0.75) return ['Wanted', 'd-wanted'];
+  return ['Scarce', 'd-scarce'];
+}
+
+/* ---------------- RESOURCES ---------------- */
+// FOOD_KEYS/GENERAL_KEYS/PRICES and the helper logic live in
+// protected/js/resources.js; these wrappers bind that logic to the local
+// mutable res/cap so existing call sites don't need to change.
+let res = createResources();
+let cap = { general:150, food:150 };
+let pop = { count:6, capacity:10 };
+let happiness = 55;
+let boats = 0;
+let tickCount = 0;
+let coin = 20;       // trade currency, not subject to storage cap
+let research = 0;    // banked research points, spent on techs
+let codexEntries = [];
+let townMemory = [];
+const remembered = new Set();
+function remember(id, title, content){
+  if(remembered.has(id)) return;
+  remembered.add(id);
+  townMemory.push({id, title, content});
+  townMemory = townMemory.slice(-100);
+  renderCodexPanel();
+}
+let military = { soldiers:0, cap:0 };
+let droughtTicksLeft = 0;
+// Seasonal protections won from choice events; runtime-only, not saved.
+let famineGuardTicks = 0;
+let fireGuardTicks = 0;
+let floodGuardTicks = 0;
+let divineFavourTicks = 0;
+let choiceEventOpen = false;
+let captainName = '';
+let eventLog = [];
+let discoveryRollInFlight = false;
+let taxRate = 0;      // coin per citizen per tick
+let scenarioId = null;
+let techHappinessBonus = 0;
+let questsCompleted = new Set();
+let buildingPops = [];
+let previousResourceValues = {};
+let civicMilestones = new Set();
+let marshPrologue = null;
+const voicesKey = 'portus_settlement_voices';
+let voicesEnabled = true;
+try { voicesEnabled = localStorage.getItem(voicesKey) !== 'false'; } catch { /* Private browsing may disable storage. */ }
+const voicesToggle = document.getElementById('voicesToggle');
+const voiceCard = document.getElementById('settlementVoice');
+let activeVoice = null;
+const adviceSnoozedUntil = new Map();
+function dismissVoice(){ voiceCard.hidden = true; activeVoice = null; }
+function updateVoicesToggle(){
+  voicesToggle.textContent = voicesEnabled ? 'Guidance: On' : 'Guidance: Off';
+  voicesToggle.setAttribute('aria-pressed', String(voicesEnabled));
+  voicesToggle.title = voicesEnabled ? 'Turn settlement suggestions off' : 'Turn settlement suggestions on';
+}
+voicesToggle.onclick = () => {
+  voicesEnabled = !voicesEnabled;
+  try { localStorage.setItem(voicesKey, String(voicesEnabled)); } catch { /* Preference lasts for this visit. */ }
+  if(!voicesEnabled) dismissVoice();
+  updateVoicesToggle();
+  adviceSnoozedUntil.clear();
+  renderGuidance();
+};
+document.getElementById('voiceLater').onclick = ()=>{
+  if(activeVoice) adviceSnoozedUntil.set(activeVoice.id,tickCount+24);
+  dismissVoice();
+  renderGuidance();
+};
+document.getElementById('guidanceRestore').onclick = ()=>{
+  adviceSnoozedUntil.clear();
+  renderGuidance();
+};
+document.getElementById('voiceFollow').onclick = () => {
+  if(!activeVoice) return;
+  const action = activeVoice.action;
+  if(action.building){
+    const next = BLD_BY_ID[action.building];
+    if(next.requiresTech && !unlockedTechs.has(next.requiresTech)) focusResearch(next.requiresTech);
+    else {
+      closeAllPanels();
+      selectBuild(null);
+      selectBuild(next.id);
+      showToast(`Find a place for ${next.name} when you are ready`);
+    }
+  } else if(action.tech) focusResearch(action.tech);
+  else if(action.panel) openPanel(action.panel);
+};
+function renderGuidance(){
+  const container = document.getElementById('firstActionGuide');
+  container.hidden = !voicesEnabled || !!marshPrologue;
+  if(container.hidden){ dismissVoice(); return; }
+  const suggestions = settlementAdvice({buildings:placedBuildings,res,pop,military,happiness,cap,unlockedTechs,researchGoal:selectedResearchPath});
+  const next = suggestions.find(item=>(adviceSnoozedUntil.get(item.id)||0)<=tickCount);
+  document.getElementById('guidanceRestore').hidden = !!next;
+  if(!next){ dismissVoice(); return; }
+  const changed = activeVoice?.id!==next.id || activeVoice?.text!==next.text;
+  activeVoice = next;
+  container.classList.toggle('urgent',next.urgent);
+  if(changed){
+    document.getElementById('voiceSpeaker').textContent = next.urgent ? 'The Gods warn…' : 'The Gods suggest…';
+    document.getElementById('voiceTitle').textContent = next.title;
+    document.getElementById('voiceText').textContent = next.text;
+  }
+  const target = BLD_BY_ID[next.action.building];
+  document.getElementById('voiceFollow').textContent = target
+    ? (target.requiresTech && !unlockedTechs.has(target.requiresTech) ? `Find ${techName(target.requiresTech)}` : `Find ${target.name}`)
+    : next.action.tech ? `Find ${techName(next.action.tech)}` : 'Explore';
+  voiceCard.hidden = false;
+}
+updateVoicesToggle();
+function updateWorldMood(){
+  if(marshPrologue) return;
+  const phase=['morning','day','dusk','night'][Math.floor((tickCount%144)/36)];
+  const has=id=>placedBuildings.some(b=>b.id===id);
+  const connected=placedBuildings.some(b=>BLD_BY_ID[b.id]?.produce && connectedToStore(grid,b));
+  const lines={
+    morning:has('sawmill') ? 'Morning: an axe sounds at the edge of the trees.' :
+      has('fields') ? 'Morning: the fields take the first light.' :
+      'Morning: the tide has left a line of salt on the shore.',
+    day:connected ? 'Day: carts carry the settlement’s work towards the store.' :
+      has('quarry') ? 'Day: stone waits at the quarry for a way into town.' :
+      'Day: footsteps mark paths that have no names yet.',
+    dusk:has('theatre') ? 'Dusk: voices rise from the theatre into the cooling air.' :
+      has('market') ? 'Dusk: traders count the day’s last exchanges.' :
+      'Dusk: smoke settles low among the unfinished houses.',
+    night:has('graveyard') && townMemory.some(entry=>entry.id.startsWith('loss-')) ?
+      'Night: a lantern burns beside the names the town remembers.' :
+      has('temple') ? 'Night: the shrine keeps one flame against the dark.' :
+      'Night: beyond the last roof, reeds move in the wind.'
+  };
+  document.getElementById('main').dataset.light=phase;
+  document.getElementById('worldMood').textContent=lines[phase];
+}
+
+const CIVIC_MESSAGES = {
+  bar:'🍺 Citizens celebrate as the first bar opens.',
+  sewer:'♻️ Citizens thank the gods as sewers begin cleaning the town.',
+  dentist:'🦷 Citizens sigh with relief as the first dentist opens.',
+  sugarhouse:'🧁 The first Sugar House opens; cane can finally become sugar.',
+  floodbarrier:'🌊 Workers raise the first flood defences along the water.',
+  school:'🏫 Children gather as the first school opens.',
+  doctor:'⚕️ The town welcomes its first doctor.',
+  market:'🛒 Traders crowd into the town’s first market.',
+  temple:'⛩️ The first temple bells sound across Portus.'
+};
+
+function payCivicMaintenance(){
+  if(tickCount === 0 || tickCount % 120 !== 0) return;
+  const {roofs:roofCost, floodWorks:floodCost, services:serviceCost, total:due} = maintenanceBill(placedBuildings);
+  if(due <= 0) return;
+  const paid = Math.min(coin, due);
+  coin -= paid;
+  if(paid < due) happiness = Math.max(0, happiness - Math.min(10, (due-paid)*0.5));
+  const shortfall = paid < due ? `; ${Math.ceil(due-paid)} coin deferred` : '';
+  logEvent(`🔨 Civic maintenance: ${roofCost} roofs, ${floodCost} flood works, ${serviceCost} services — ${Math.floor(paid)} coin paid${shortfall}.`);
+  showToast(`Maintenance cost: ${Math.floor(paid)} coin${shortfall}`);
+}
+
+const audioState = { context: null };
+function playTone(kind){
+  if(marshPrologue && !marshPrologue.sound) return;
+  try{
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContext) return;
+    audioState.context ||= new AudioContext();
+    const oscillator = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    const settings = {click:[440,0.035], build:[220,0.12], gather:[660,0.08]}[kind] || [440,0.05];
+    oscillator.frequency.value = settings[0];
+    oscillator.type = kind === 'build' ? 'triangle' : 'sine';
+    gain.gain.setValueAtTime(0.045, audioState.context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioState.context.currentTime + settings[1]);
+    oscillator.connect(gain).connect(audioState.context.destination);
+    oscillator.start();
+    oscillator.stop(audioState.context.currentTime + settings[1]);
+  } catch(e){ /* Audio is enhancement only. */ }
+}
+
+/* ---- Research / Tech tree ---- */
+// Tech definitions live in protected/js/research.js; techBonus/cap/military/
+// techHappinessBonus stay local mutable state, applied via applyTechEffects().
+const techBonus = { field:1, quarry:1, fish:1, foundry:1, trade:1, wood:1, clay:1, raid:1, research:1 };
+let unlockedTechs = new Set();
+
+function applyTechEffects(tech){
+  const eff = tech.effects || {};
+  if(eff.techBonus) Object.entries(eff.techBonus).forEach(([k,mult])=> techBonus[k]*=mult);
+  if(eff.cap) Object.entries(eff.cap).forEach(([k,amt])=> cap[k]+=amt);
+  if(eff.military) Object.entries(eff.military).forEach(([k,amt])=> military[k]+=amt);
+  if(eff.techHappinessBonus) techHappinessBonus += eff.techHappinessBonus;
+}
+
+function totalFood(){ return totalFoodOf(res); }
+function addRes(key, amt){ addResTo(res, cap, key, amt); }
+function canAfford(cost){ return canAffordFrom(res, cost); }
+function pay(cost){ payFrom(res, cost); }
+
+/* ---------------- BUILDINGS ---------------- */
+// Catalogue lives in protected/js/buildings.js; imported at the top of this script.
+
+let placedBuildings = []; // {id, x, y, crop?}
+let selectedBuild = null;
+
+
+/* ---------------- ECONOMY TICK ---------------- */
+function totalWorkersNeeded(){
+  return placedBuildings.reduce((s,b)=>s + (BLD_BY_ID[b.id].workers||0), 0);
+}
+
+function roadPreview(x,y){
+  const nearby = roadNeighbours(grid,x,y)
+    .map(([nx,ny])=>grid[ny][nx].building?.id)
+    .filter(id=>id && id!=='road');
+  if(nearby.includes('claypit') && nearby.includes('potter')) return 'This road serves the claypit and potter.';
+  if(nearby.length) return `This road serves ${[...new Set(nearby)].map(id=>BLD_BY_ID[id].name).join(' and ')}; adjacent producers gain 15%.`;
+  return 'Extend a road towards producers and a storage yard or market.';
+}
+
+function tick(){
+  if(marshPrologue) return;
+  tickCount++;
+  if(tickCount%36===0) updateWorldMood();
+  const needed = totalWorkersNeeded();
+  const civilianPop = Math.max(0, pop.count - military.soldiers);
+  const laborRatio = needed>0 ? Math.min(1, civilianPop/needed) : 1;
+
+  let tradeIncome = 0;
+
+  placedBuildings.forEach(b=>{
+    const def = BLD_BY_ID[b.id];
+    const roadBoost = roadProductionBoost(grid,b);
+    if(def.isField){
+      let farmBoost = nearBuilding(b.x,b.y,'farmerhut',2) ? 1.2 : 1;
+      let wellBoost = nearBuilding(b.x,b.y,'well',2) ? 1.15 : 1;
+      let droughtPenalty = droughtTicksLeft>0 ? 0.3 : 1;
+      addRes(b.crop || 'wheat', 1.4 * laborRatio * farmBoost * wellBoost * roadBoost * techBonus.field * droughtPenalty);
+      return;
+    }
+    if(def.special==='foundry'){
+      const selected = b.recipe || 'foundryAuto';
+      const pairs = selected === 'foundryAuto'
+        ? [['goldOre','gold'],['silverOre','silver'],['copperOre','copper']]
+        : selected === 'foundryGold' ? [['goldOre','gold']]
+        : selected === 'foundrySilver' ? [['silverOre','silver']]
+        : selected === 'foundryCopper' ? [['copperOre','copper']]
+        : [];
+      for(const [ore,bar] of pairs){
+        let amt = Math.min(1*laborRatio, res[ore]);
+        if(amt>0){ res[ore]-=amt; addRes(bar, amt*0.8*techBonus.foundry*roadBoost); }
+      }
+      const bronzeAmt = ['foundryAuto','foundryBronze'].includes(selected)
+        ? Math.min(1*laborRatio, res.tin, res.copper)
+        : 0;
+      if(bronzeAmt > 0){
+        res.tin -= bronzeAmt;
+        res.copper -= bronzeAmt;
+        addRes('bronze', bronzeAmt * 0.8 * techBonus.foundry * roadBoost);
+      }
+      return;
+    }
+    if(def.special==='boat'){
+      if(res.wood>=1){ res.wood -= 1*laborRatio; boats += 0.1*laborRatio; }
+      return;
+    }
+    if(def.special==='library'){
+      let amt = Math.min(1*laborRatio, res.scrolls);
+      let schoolBoost = placedBuildings.some(x=>x.id==='school') ? 1.2 : 1;
+      if(amt>0){ res.scrolls -= amt; research += amt*0.7*schoolBoost*techBonus.research; }
+      return;
+    }
+    if(def.special==='taxoffice'){
+      tradeIncome += taxRate * pop.count * laborRatio;
+      return;
+    }
+    if(def.special==='mint'){
+      const amt = Math.min(1*laborRatio, res.silver, res.copper);
+      if(amt>0){ res.silver -= amt; res.copper -= amt; tradeIncome += amt*6*techBonus.trade; }
+      return;
+    }
+    if(def.special==='dairy'){
+      // Player picks a single product from the recipe panel (defaults to the
+      // first option so an unconfigured Dairy still produces something).
+      const chosen = b.recipe || (def.recipes && def.recipes[0].id) || 'cheese';
+      const yieldMult = {butter:0.4, cheese:0.4, cream:0.35, yoghurt:0.45}[chosen] ?? 0.4;
+      const recipe = def.recipes.find(r=>r.id===chosen);
+      const extraInputs = recipe?.inputs || {};
+      const extrasReady = Object.entries(extraInputs).every(([key,amount])=>res[key] >= amount*laborRatio);
+      const amt = extrasReady ? Math.min(1.2*laborRatio, res.milk) : 0;
+      if(amt>0){
+        res.milk -= amt;
+        Object.entries(extraInputs).forEach(([key,amount])=>res[key]-=amount*laborRatio);
+        addRes(chosen, amt*yieldMult*roadBoost);
+      }
+      return;
+    }
+    if(def.special==='bakery'){
+      // Bread is always baked first from available flour.
+      const breadAmt = Math.min(1.5*laborRatio, res.flour);
+      if(breadAmt>0){ res.flour -= breadAmt; addRes('bread', breadAmt*0.85*roadBoost); }
+      // Any flour left over goes toward the single cake recipe the player
+      // picked from the recipe panel (defaults to the first cake so an
+      // unconfigured Baker still uses surplus flour instead of wasting it).
+      const chosenCake = b.recipe || (def.recipes && def.recipes[0].id);
+      const recipe = def.recipes && def.recipes.find(r=>r.id===chosenCake);
+      if(recipe){
+        const inputs = recipe.inputs || (recipe.needs ? {[recipe.needs]:1} : {});
+        const inputLimit = Object.entries(inputs).reduce((limit,[key,amount])=>Math.min(limit, (res[key]||0)/amount), Infinity);
+        const cakeAmt = Math.min(0.6*laborRatio, res.flour, inputLimit);
+        if(cakeAmt>0){
+          res.flour -= cakeAmt;
+          Object.entries(inputs).forEach(([key,amount])=>res[key]-=cakeAmt*amount);
+          addRes(recipe.id, cakeAmt*0.8*roadBoost);
+        }
+      }
+      return;
+    }
+    if(def.special==='market'){
+      automaticSales(res,pop.count,marketPolicy,2*laborRatio).forEach(({id,amount})=>{
+        res[id]-=amount;
+        tradeIncome+=amount*(PRICES[id]||0.5)*techBonus.trade;
+      });
+      return;
+    }
+    if(def.special==='caravan'){
+      tradeIncome += 1.2 * laborRatio * techBonus.trade * (1 + pop.count*0.02);
+      return;
+    }
+    if(def.consume){
+      const ok = Object.entries(def.consume).every(([k,v])=>res[k] >= v*laborRatio);
+      if(!ok) return;
+      Object.entries(def.consume).forEach(([k,v])=> res[k]=Math.max(0,res[k]-v*laborRatio));
+    }
+    if(def.produce){
+      Object.entries(def.produce).forEach(([k,v])=>{
+        let mult = 1;
+        if(k==='fish') mult = techBonus.fish;
+        else if(k==='stone' && def.id==='quarry') mult = techBonus.quarry;
+        else if(k==='wood' && def.id==='sawmill') mult = techBonus.wood;
+        else if(k==='clay' && def.id==='claypit') mult = techBonus.clay;
+        addRes(k, v*laborRatio*mult*roadBoost);
+      });
+    }
+  });
+
+  if(placedBuildings.some(b=>b.id==='fields') && [...FOOD_KEYS].some(k=>res[k]>0))
+    remember('first-harvest', 'The first harvest',
+      'The first crops were carried from the fields. For a moment the settlement could imagine another year.');
+  coin += tradeIncome;
+  payCivicMaintenance();
+
+  // docks bonus from boats
+  let dockCount = placedBuildings.filter(b=>b.id==='docks').length;
+  if(dockCount>0 && boats>0) addRes('fish', Math.min(boats,5)*0.3*techBonus.fish);
+
+  // food consumption
+  let need = pop.count * 0.12;
+  let have = totalFood();
+  if(have >= need){
+    let ratio = need/have;
+    FOOD_KEYS.forEach(k=> res[k] = Math.max(0,res[k]-res[k]*ratio));
+    happiness = Math.min(100, happiness + 0.15);
+    if(pop.count < pop.capacity && happiness>45 && Math.random()<0.06) pop.count++;
+  } else {
+    FOOD_KEYS.forEach(k=> res[k]=0);
+    happiness = Math.max(0, happiness - 1.2);
+    if(Math.random()<0.05 && pop.count>1) loseCitizens(1, 'hunger');
+  }
+
+  if(tickCount % 240 === 0 && pop.count > 1){
+    const has = id=>placedBuildings.some(b=>b.id===id);
+    const illnessRisk = 0.25 * (has('sewer') ? 0.55 : 1) *
+      (has('hospital') ? 0.15 : has('doctor') ? 0.45 : has('healer') ? 0.75 : 1);
+    if(Math.random() < illnessRisk) loseCitizens(1, 'illness');
+    else if(has('doctor') || has('hospital'))
+      remember('care-prevents-illness', 'The work of care',
+        'A season of illness passed. The town’s healers helped people remain.');
+  }
+
+  // happiness from services
+  let bonus = placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].happinessBonus||0), 0);
+  const sweetStock = res.honeyCake+res.fruitCake+res.dairyCake+res.jam;
+  const hasDentist = placedBuildings.some(b=>b.id==='dentist');
+  const dentalPenalty = Math.min(7, sweetStock*0.018) * (hasDentist ? 0.2 : 1);
+  let comfortBonus = Math.min(6, res.quilts*0.06) + Math.min(6, res.leatherGoods*0.05) +
+    Math.min(6, res.statues*0.08) +
+    Math.min(6, (res.wine+res.beer+res.mead)*0.05) +
+    Math.min(8, (res.honeyCake+res.fruitCake+res.dairyCake)*0.04);
+  let taxPenalty = taxRate * 400;
+  let target = Math.min(100, Math.max(0, 40 + bonus + comfortBonus + techHappinessBonus - taxPenalty - dentalPenalty));
+  happiness += (target-happiness)*0.02;
+  happiness = Math.max(0, Math.min(100, happiness));
+
+  if(droughtTicksLeft>0) droughtTicksLeft--;
+  driftTradeDemand();
+  if(famineGuardTicks>0) famineGuardTicks--;
+  if(fireGuardTicks>0) fireGuardTicks--;
+  if(floodGuardTicks>0) floodGuardTicks--;
+  if(divineFavourTicks>0) divineFavourTicks--;
+  maybeSendGodMessage();
+  maybeRollDiscovery();
+  maybeTriggerDisaster();
+  maybeTriggerChoiceEvent();
+  checkScenario();
+  checkQuests();
+
+  render();
+  renderRes();
+}
+// tick interval is started by grantAccess() once a paid session begins
+
+/* ---------------- CANVAS RENDER ---------------- */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let canvasScale = 1;
+let minimapDirty = true;
+
+function resizeCanvas(){
+  canvasScale = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = COLS*TS*canvasScale;
+  canvas.height = ROWS*TS*canvasScale;
+  canvas.style.width = `${COLS*TS}px`;
+  canvas.style.height = `${ROWS*TS}px`;
+  ctx.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
+  minimapDirty = true;
+  render();
+}
+
+const BUILDING_COLORS = {
+  Housing: ['#f3d9a6', '#a85d3b'],
+  Production: ['#e8c879', '#8b5a36'],
+  Mining: ['#c9c3b5', '#665f56'],
+  Infrastructure: ['#b9d0c2', '#3f766e'],
+  Knowledge: ['#d6c4df', '#684b78'],
+  Trade: ['#e0b56d', '#87502e'],
+  Military: ['#d79b8c', '#7e3931'],
+  Storage: ['#d3b88e', '#765439'],
+  Services: ['#e1b7a5', '#8a493c']
+};
+
+function drawBuildingIllustration(building, def, x, y){
+  const left = x*TS + 3;
+  const top = y*TS + 3;
+  const width = TS - 6;
+  const height = TS - 6;
+  if(building.id === 'road'){
+    const roadAt = (roadX, roadY) => inBounds(roadX, roadY) && grid[roadY][roadX].building?.id === 'road';
+    const connectsNorth = roadAt(x, y-1);
+    const connectsSouth = roadAt(x, y+1);
+    const connectsWest = roadAt(x-1, y);
+    const connectsEast = roadAt(x+1, y);
+    const roadWidth = 6;
+    ctx.fillStyle = '#76513a';
+    if(connectsNorth || connectsSouth){
+      ctx.fillRect(x*TS+9, y*TS+2, 6, TS-4);
+    }
+    if(connectsWest || connectsEast || !(connectsNorth || connectsSouth)){
+      ctx.fillRect(x*TS+2, y*TS+9, TS-4, roadWidth);
+    }
+    ctx.fillStyle = 'rgba(255,228,171,0.45)';
+    if(connectsWest || connectsEast || !(connectsNorth || connectsSouth)){
+      ctx.fillRect(x*TS+5, y*TS+11, TS-10, 2);
+    }
+    if(connectsNorth || connectsSouth){
+      ctx.fillRect(x*TS+11, y*TS+5, 2, TS-10);
+    }
+    return;
+  }
+  if(building.id === 'fields'){
+    ctx.fillStyle = '#8b9f52';
+    ctx.fillRect(left, top, width, height);
+    ctx.strokeStyle = '#d6bd63';
+    ctx.lineWidth = 1;
+    for(let row=5; row<TS-3; row+=5){
+      ctx.beginPath();
+      ctx.moveTo(left+2, y*TS+row);
+      ctx.lineTo(left+width-2, y*TS+row-2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#f5e4a1';
+    ctx.fillRect(left+4, top+3, 2, 3);
+    ctx.fillRect(left+width-6, top+height-6, 2, 3);
+    return;
+  }
+  if(building.id === 'wall'){
+    ctx.fillStyle = '#9a9186';
+    ctx.fillRect(x*TS+2, y*TS+7, TS-4, TS-14);
+    ctx.fillStyle = '#6d655c';
+    for(let bx=3; bx<TS-4; bx+=6) ctx.fillRect(x*TS+bx, y*TS+7, 4, 2);
+    return;
+  }
+  if(building.id === 'moat'){
+    ctx.fillStyle = '#3f8fa3';
+    ctx.fillRect(x*TS+2, y*TS+6, TS-4, TS-12);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fillRect(x*TS+4, y*TS+9, TS-8, 2);
+    return;
+  }
+  if(building.id === 'trap'){
+    ctx.fillStyle = '#4a3a29';
+    ctx.beginPath(); ctx.arc(x*TS+TS/2, y*TS+TS/2, 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#c9b183'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x*TS+TS/2, y*TS+TS/2, 6, 0, Math.PI*2); ctx.stroke();
+    return;
+  }
+  if(building.id === 'theatre' || building.id === 'gathering'){
+    ctx.fillStyle='#8a7355';
+    ctx.beginPath(); ctx.arc(x*TS+TS/2,y*TS+TS/2,9,0,Math.PI); ctx.fill();
+    ctx.fillStyle='#d7bb84';
+    ctx.fillRect(x*TS+4,y*TS+13,TS-8,3);
+    if(building.id==='theatre'){
+      ctx.fillStyle='#7b3951';
+      ctx.fillRect(x*TS+9,y*TS+5,TS-18,8);
+    }
+    return;
+  }
+  if(building.id === 'graveyard'){
+    ctx.fillStyle='#648167';
+    ctx.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);
+    ctx.fillStyle='#d2c7a9';
+    for(let i=0;i<3;i++) ctx.fillRect(x*TS+5+i*5,y*TS+7+(i%2)*3,3,7);
+    return;
+  }
+  const [wall, roof] = BUILDING_COLORS[def.cat] || ['#e3d2ad', '#76513a'];
+  ctx.fillStyle = 'rgba(35,28,22,0.24)';
+  ctx.fillRect(left+2, top+3, width-1, height-1);
+  ctx.fillStyle = wall;
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(left, top+4, width, height-4, 3);
+  else ctx.rect(left, top+4, width, height-4);
+  ctx.fill();
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(left-1, top+6);
+  ctx.lineTo(left+width/2, top);
+  ctx.lineTo(left+width+1, top+6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#5c4030';
+  ctx.fillRect(left+width/2-2, top+height-6, 4, 6);
+  ctx.fillStyle = '#dff1e5';
+  ctx.fillRect(left+4, top+height-8, 3, 3);
+  ctx.fillRect(left+width-7, top+height-8, 3, 3);
+  if(building.id==='largehouse' || building.id==='hospital'){
+    ctx.strokeStyle='#f2d594'; ctx.lineWidth=2;
+    ctx.strokeRect(left-2,top+2,width+4,height-1);
+  }
+  if(['quarry','marblequarry','goldmine','silvermine','coppermine','tinmine','saltmine'].includes(building.id)){
+    ctx.fillStyle = '#5b554c';
+    ctx.beginPath();
+    ctx.moveTo(left+width-5, top+2); ctx.lineTo(left+width+1, top+9); ctx.lineTo(left+width-8, top+9);
+    ctx.closePath(); ctx.fill();
+  } else if(['docks','fisherhut','boatbuilder'].includes(building.id)){
+    ctx.strokeStyle = '#3f8fa3'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(left+2, top+height-3); ctx.lineTo(left+width-2, top+height-3); ctx.stroke();
+  } else if(building.id === 'well'){
+    ctx.fillStyle = '#3f8fa3';
+    ctx.beginPath(); ctx.arc(left+width/2, top+height/2+1, 4, 0, Math.PI*2); ctx.fill();
+  } else if(['temple','library','school','scribe'].includes(building.id)){
+    ctx.fillStyle = '#f4ecdd';
+    ctx.fillRect(left+width/2-1, top+2, 2, 5);
+    ctx.fillRect(left+width/2-4, top+4, 8, 2);
+  }
+  if(building.id === 'sawmill'){
+    ctx.fillStyle = '#6b432d';
+    ctx.fillRect(left+1, top+height-4, 6, 2);
+    ctx.fillRect(left+2, top+height-7, 6, 2);
+    ctx.strokeStyle = '#d8c08c'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(left+width-4, top+height-5, 3, 0, Math.PI*2); ctx.stroke();
+  } else if(building.id === 'hunterlodge'){
+    ctx.strokeStyle = '#f0d6a3'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left+width-5, top+5); ctx.lineTo(left+width-7, top+2); ctx.lineTo(left+width-8, top+5);
+    ctx.moveTo(left+width-5, top+5); ctx.lineTo(left+width-3, top+2); ctx.lineTo(left+width-2, top+5);
+    ctx.stroke();
+  } else if(building.id === 'beekeeper'){
+    ctx.fillStyle = '#e0b52f';
+    ctx.fillRect(left+1, top+height-6, 4, 4);
+    ctx.fillRect(left+6, top+height-5, 4, 3);
+  } else if(['workshop','blacksmith','foundry'].includes(building.id)){
+    ctx.fillStyle = '#8b5a36';
+    ctx.fillRect(left+width-6, top+1, 4, 7);
+    ctx.fillStyle = 'rgba(244,236,221,0.65)';
+    ctx.fillRect(left+width-5, top, 2, 2);
+  } else if(['stockage','granary'].includes(building.id)){
+    ctx.fillStyle = '#a87843';
+    ctx.fillRect(left+1, top+height-6, 4, 4);
+    ctx.strokeStyle = '#f1d59a'; ctx.lineWidth = 1;
+    ctx.strokeRect(left+2, top+height-5, 2, 2);
+  } else if(['market','tradingpost','mint','taxoffice'].includes(building.id)){
+    ctx.fillStyle = '#b84f31';
+    ctx.fillRect(left+1, top+5, 4, 2);
+    ctx.fillRect(left+2, top+7, 2, 2);
+  } else if(['police','fire','doctor','dentist','bar'].includes(building.id)){
+    ctx.fillStyle = '#f4ecdd';
+    ctx.fillRect(left+width-5, top+2, 2, 6);
+    ctx.fillRect(left+width-7, top+4, 6, 2);
+  } else if(building.id === 'barracks'){
+    ctx.fillStyle = '#7e3931';
+    ctx.fillRect(left+1, top+2, 2, 7);
+    ctx.fillStyle = '#e8dcc8';
+    ctx.fillRect(left+3, top+2, 4, 3);
+  } else if(building.id === 'guardtower'){
+    ctx.fillStyle = '#7a736a';
+    ctx.fillRect(left+width/2-4, top-2, 8, 9);
+    ctx.fillStyle = '#4f4942';
+    for(let bx=0; bx<8; bx+=3) ctx.fillRect(left+width/2-4+bx, top-2, 2, 2);
+  } else if(building.id === 'fort'){
+    ctx.fillStyle = '#6f6860';
+    ctx.fillRect(left-1, top+1, width+2, 7);
+    ctx.fillStyle = '#3f3a34';
+    for(let bx=0; bx<width+2; bx+=4) ctx.fillRect(left-1+bx, top+1, 2, 3);
+    ctx.fillStyle = '#b84f31';
+    ctx.fillRect(left+width/2-1, top-4, 2, 5);
+  } else if(building.id === 'armourer'){
+    ctx.fillStyle = '#8a8f99';
+    ctx.fillRect(left+1, top+3, 5, 6);
+    ctx.fillStyle = '#d8dde4';
+    ctx.fillRect(left+2, top+4, 3, 2);
+  } else if(['templegrand','templemonument'].includes(building.id)){
+    ctx.fillStyle = '#f4ecdd';
+    ctx.fillRect(left+1, top+4, 2, height-6);
+    ctx.fillRect(left+width-3, top+4, 2, height-6);
+    ctx.fillRect(left+width/2-1, top+4, 2, height-6);
+  }
+}
+
+function render(){
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+    let t = grid[y][x];
+    ctx.fillStyle = TERRAIN_COLOR[t.terrain];
+    ctx.fillRect(x*TS,y*TS,TS,TS);
+    if(t.terrain==='sea' || t.terrain==='river'){
+      ctx.fillStyle='rgba(255,255,255,0.06)';
+      if((x+y)%3===0) ctx.fillRect(x*TS+4,y*TS+TS/2-1,TS-8,2);
+    }
+    if(t.terrain==='forest'){
+      ctx.fillStyle='rgba(0,0,0,0.15)';
+      ctx.beginPath(); ctx.arc(x*TS+TS/2,y*TS+TS/2,TS*0.28,0,7); ctx.fill();
+    }
+    if(t.deposit){
+      ctx.fillStyle = DEPOSIT_COLOR[t.deposit];
+      ctx.beginPath(); ctx.arc(x*TS+TS-8, y*TS+8, 4.5, 0, 7); ctx.fill();
+    }
+    ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.strokeRect(x*TS,y*TS,TS,TS);
+
+    if(t.building){
+      const def = BLD_BY_ID[t.building.id];
+      const pop = buildingPops.find(p=>p.x===x && p.y===y);
+      const scale = pop ? Math.min(1, (performance.now()-pop.startedAt)/240) : 1;
+      ctx.save();
+      ctx.translate(x*TS+TS/2, y*TS+TS/2);
+      ctx.scale(scale, scale);
+      ctx.translate(-(x*TS+TS/2), -(y*TS+TS/2));
+      const isRoad = t.building.id === 'road';
+      drawBuildingIllustration(t.building, def, x, y);
+      ctx.restore();
+    }
+  }
+  // Eligible-tile shading sits under the cursor layers so it can't wash them out.
+  if(selectedBuild && selectedBuild !== 'demolish'){
+    const selectedDef = BLD_BY_ID[selectedBuild];
+    if(selectedDef){
+      for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+        if(grid[y][x].building) continue;
+        if(!selectedDef.valid(x,y)) continue;
+        ctx.fillStyle = 'rgba(120,200,120,0.18)';
+        ctx.fillRect(x*TS,y*TS,TS,TS);
+      }
+    }
+  }
+  if(marshPrologue){
+    const targets = marshPrologue.phase==='wood' ? [marshPrologue.targets.sawmill] :
+      marshPrologue.phase==='stone' ? [marshPrologue.targets.quarry] :
+      marshPrologue.phase==='clay' ? [marshPrologue.targets.claypit] :
+      marshPrologue.phase==='roads' ? marshPrologue.targets.roads : [];
+    for(const [x,y] of targets){
+      if(grid[y][x].building) continue;
+      ctx.fillStyle=marshPrologue.phase==='roads' ? 'rgba(245,205,100,0.5)' : 'rgba(138,216,173,0.55)';
+      ctx.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);
+      ctx.strokeStyle='#ffe7a3';
+      ctx.strokeRect(x*TS+1,y*TS+1,TS-2,TS-2);
+    }
+  }
+  if(hoverTile && inBounds(hoverTile.x, hoverTile.y)){
+    const {x,y} = hoverTile;
+    ctx.fillStyle = selectedBuild ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)';
+    ctx.fillRect(x*TS,y*TS,TS,TS);
+    ctx.strokeStyle = 'rgba(255,244,190,0.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x*TS+1,y*TS+1,TS-2,TS-2);
+    ctx.lineWidth = 1;
+  }
+  if(selectedBuild && hoverTile){
+    const {x,y} = hoverTile;
+    if(selectedBuild === 'demolish'){
+      const hasBuilding = inBounds(x,y) && grid[y][x].building;
+      ctx.fillStyle = hasBuilding ? 'rgba(220,80,60,0.55)' : 'rgba(120,120,120,0.35)';
+      ctx.fillRect(x*TS,y*TS,TS,TS);
+    } else {
+      const def = BLD_BY_ID[selectedBuild];
+      if(def){
+        const ok = inBounds(x,y) && !grid[y][x].building && def.valid(x,y) && canAfford(def.cost);
+        ctx.fillStyle = ok ? 'rgba(120,200,120,0.45)' : 'rgba(220,80,60,0.45)';
+        ctx.fillRect(x*TS,y*TS,TS,TS);
+      }
+    }
+  }
+  if(minimapDirty) renderMinimap();
+}
+
+function renderMinimap(){
+  const mini = document.getElementById('minimap');
+  if(!mini || !grid.length) return;
+  const miniCtx = mini.getContext('2d');
+  const tileWidth = mini.width / COLS;
+  const tileHeight = mini.height / ROWS;
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+    const tile = grid[y][x];
+    miniCtx.fillStyle = TERRAIN_COLOR[tile.terrain];
+    miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.ceil(tileWidth),Math.ceil(tileHeight));
+    if(tile.deposit){
+      miniCtx.fillStyle = DEPOSIT_COLOR[tile.deposit];
+      miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.max(1,tileWidth),Math.max(1,tileHeight));
+    }
+    if(tile.building){
+      miniCtx.fillStyle = tile.building.id === 'road' ? '#6f4e30' : '#fff4d6';
+      miniCtx.fillRect(x*tileWidth,y*tileHeight,Math.max(2,tileWidth),Math.max(2,tileHeight));
+    }
+  }
+  minimapDirty = false;
+}
+
+/* ---------------- UI: RESOURCE BAR ---------------- */
+const RES_DISPLAY = [
+  ['wood','🪵'],['stone','🪨'],['clay','🧱'],['pottery','🏺'],['tools','🔧'],
+  ['goldOre','🟡'],['silverOre','⚪'],['copperOre','🟠'],['gold','💰'],['silver','🥈'],['copper','🥉'],['bronze','🟠'],
+  ['wheat','🌾'],['flour','🌾➡️'],['bread','🍞'],['olives','🫒'],['oliveOil','🛢️'],
+  ['chickpeas','🌱'],['grapes','🍇'],['barley','🌿'],['salt','🧂'],['fish','🐟'],['deer','🦌'],['scrolls','📜'],
+  ['marble','🪨'],['tin','🧲'],['honey','🍯'],['wax','�'],
+  ['sugarcane','🎋'],['fruit','🍏'],['feathers','🪶'],['hide','🪲'],['leather','👝'],
+  ['butter','🧈'],['cheese','🧀'],['cream','🍶'],['yoghurt','🥣'],['jam','🫙'],['candles','🕯️'],
+  ['quilts','🛏️'],['leatherGoods','👜'],['statues','🗿'],['meat','🥩'],['milk','🥛'],['eggs','🥚'],
+  ['honeyCake','🍰'],['fruitCake','🎂'],['dairyCake','🧁'],
+  ['wine','🍷'],['beer','🍺'],['mead','🍯']
+];
+const RES_ICON_BY_KEY = new Map(RES_DISPLAY);
+
+function renderRes(){
+  const bar = document.getElementById('resbar');
+  bar.replaceChildren();
+  const coinPill=document.createElement('div');
+  coinPill.className='res coin';
+  coinPill.textContent = `🪙 ${Math.floor(coin)}`;
+  bar.appendChild(coinPill);
+
+  RESOURCE_GROUPS.forEach(group=>{
+    const visibleKeys = group.keys.filter(k => res[k] >= 0.05 || ['wood','stone'].includes(k));
+    if(!visibleKeys.length) return;
+    const section = document.createElement('section');
+    section.className = 'resgroup';
+    section.setAttribute('aria-label', `${group.label} resources`);
+    const label = document.createElement('span');
+    label.className = 'resgroup-label';
+    label.textContent = group.label;
+    section.appendChild(label);
+    visibleKeys.forEach(k=>{
+      const v = res[k];
+      const d=document.createElement('button');
+      d.type='button';
+      d.className='res';
+      if(v > (previousResourceValues[k] ?? v)){
+        d.classList.add('resourceUp');
+        playTone('gather');
+        setTimeout(()=>d.classList.remove('resourceUp'), 550);
+      }
+      previousResourceValues[k] = v;
+      d.title = RESOURCE_INFO[k] || k;
+      d.setAttribute('aria-label', `${RESOURCE_INFO[k] || k}: ${Math.floor(v)}`);
+      d.textContent = `${RES_ICON_BY_KEY.get(k) || '•'} ${Math.floor(v)}`;
+      d.onclick = ()=> showToast(RESOURCE_INFO[k] || k);
+      section.appendChild(d);
+    });
+    bar.appendChild(section);
+  });
+  document.getElementById('popline').textContent = `👥 Population ${pop.count}/${pop.capacity}`;
+  document.getElementById('timeline').textContent =
+    `🙂 ${Math.round(happiness)}%  ·  🛶 ${Math.floor(boats)}  ·  📜 ${Math.floor(research)}`;
+  document.getElementById('tickline').textContent =
+    `Storage cap: general ${cap.general} · food ${cap.food}`;
+  renderResearchPanel();
+  renderCodexPanel();
+  renderQuestsPanel();
+  updateArmyPanel();
+  renderGoalsPanel();
+  updateTaxPanel();
+  renderTradePanel();
+  renderGuidance();
+}
+
+/* ---------------- UI: BUILD PANEL ---------------- */
+function renderPanel(){
+  const list = document.getElementById('buildingList');
+  if(!list){
+    console.error('Portus: buildingList missing');
+    return;
+  }
+  list.innerHTML='';
+
+  // Add Demolish button at the top
+  const toolLabel = document.createElement('div');
+  toolLabel.className = 'catlabel';
+  toolLabel.textContent = 'Tools';
+  list.appendChild(toolLabel);
+
+  const demoBtn = document.createElement('button');
+  demoBtn.className = 'bldbtn demolish';
+  demoBtn.dataset.id = 'demolish';
+  demoBtn.innerHTML = `
+    <span class="ic" aria-label="Demolish icon">🔨</span>
+    <span class="info">
+      Demolish Building
+      <div class="cost">Refunds 100% resources</div>
+    </span>
+  `;
+  demoBtn.onclick = () => selectBuild('demolish');
+  list.appendChild(demoBtn);
+
+  let matchCount = 0;
+  BUILDING_GROUPS.forEach(group=>{
+    const buildings = BUILDINGS.filter(b=>buildingGroup(b)===group.id && !b.upgradeOnly && matchesBuilding(b,buildingQuery,techName));
+    if(!buildings.length) return;
+    matchCount += buildings.length;
+    const section = document.createElement('details');
+    section.className = 'buildingGroup';
+    section.dataset.group = group.id;
+    section.open = !!buildingQuery || openBuildingGroups.has(group.id);
+    const label=document.createElement('summary');
+    label.textContent=`${group.icon} ${group.name} (${buildings.length})`;
+    section.appendChild(label);
+    section.ontoggle = ()=>{
+      if(buildingQuery || !section.isConnected) return;
+      if(section.open) openBuildingGroups.add(group.id);
+      else openBuildingGroups.delete(group.id);
+    };
+    buildings.forEach(b=>{
+      const btn=document.createElement('button');
+      const locked = b.requiresTech && !unlockedTechs.has(b.requiresTech);
+      btn.className='bldbtn'+(locked?' locked':'')+(selectedBuild===b.id?' selected':''); btn.dataset.id=b.id;
+      const resourceCost = Object.entries(b.cost).map(([k,v])=>`${v} ${k}`).join(', ');
+      const costStr = resourceCost + (b.coinCost ? `, ${b.coinCost} coin` : '');
+      const desc = b.desc || '';
+      const unlockNote = locked ? `Requires ${techName(b.requiresTech)}` : '';
+      btn.innerHTML =
+        `<span class="ic" aria-label="${b.name} icon">${b.ic}</span>
+         <span class="info">
+           ${b.name}
+           <div class="cost">${unlockNote || costStr}</div>
+         </span>`;
+      if(desc) btn.title = desc;
+      btn.onclick = ()=> locked ? focusResearch(b.requiresTech) : selectBuild(b.id);
+      section.appendChild(btn);
+    });
+    list.appendChild(section);
+  });
+  document.getElementById('buildingSearchCount').textContent = buildingQuery ? `${matchCount} matching buildings` : '';
+  if(!matchCount){
+    const empty=document.createElement('p');
+    empty.className='pnote buildingEmpty';
+    empty.textContent='No buildings found. Try a name, material or research topic.';
+    list.appendChild(empty);
+  }
+}
+
+document.getElementById('buildingSearch').oninput = event=>{
+  buildingQuery = event.target.value;
+  renderPanel();
+};
+function revealBuilding(id){
+  const group = buildingGroup(BLD_BY_ID[id]);
+  openBuildingGroups.add(group);
+  buildingQuery = '';
+  document.getElementById('buildingSearch').value = '';
+  renderPanel();
+  const button = document.querySelector(`.bldbtn[data-id="${id}"]`);
+  button?.scrollIntoView({block:'nearest'});
+  button?.focus({preventScroll:true});
+}
+
+function updateBuildPreview(id){
+  const titleEl = document.getElementById('buildPreviewTitle');
+  const bodyEl = document.getElementById('buildPreviewBody');
+  if(!id){
+    titleEl.textContent = 'No building selected';
+    bodyEl.textContent = 'Tap a building on the right, then tap the map to place it.';
+    return;
+  }
+  if(id === 'demolish'){
+    titleEl.textContent = '🔨 Demolish Building';
+    bodyEl.textContent = 'Refunds 100% of the cost. Tap any building on the map to demolish it.';
+    return;
+  }
+  const def = BLD_BY_ID[id];
+  titleEl.textContent = `${def.ic} ${def.name}`;
+  const resourceCost = Object.entries(def.cost).map(([k,v])=>`${v} ${k}`).join(', ');
+  const costStr = resourceCost + (def.coinCost ? `, ${def.coinCost} coin` : '');
+  const extra = def.desc ? ` — ${def.desc}` : '';
+  bodyEl.textContent = `Cost: ${costStr}${extra}`;
+}
+
+function selectBuild(id){
+  selectedBuild = (selectedBuild===id) ? null : id;
+  if(selectedBuild && selectedBuild!=='demolish' && (buildingQuery || !openBuildingGroups.has(buildingGroup(BLD_BY_ID[selectedBuild])))) revealBuilding(selectedBuild);
+  document.querySelectorAll('.bldbtn').forEach(el=> el.classList.toggle('selected', el.dataset.id===selectedBuild));
+  document.getElementById('cancelBtn').style.display = selectedBuild ? 'block':'none';
+  document.getElementById('cropbar').style.display = selectedBuild==='fields' ? 'flex':'none';
+  updateBuildPreview(selectedBuild);
+  const legend = document.getElementById('legend');
+  if(selectedBuild==='fields') legend.textContent = '👉 Pick a crop above, then tap the map to plant';
+  else if(selectedBuild==='demolish') legend.textContent = '👉 Tap any building on the map to demolish it';
+  else if(selectedBuild) legend.textContent = `Tap the map to place ${BLD_BY_ID[selectedBuild].name}`;
+  else legend.textContent = 'Tap a building, then tap the map to place it';
+  render();
+  if(id) playTone('click');
+}
+document.getElementById('cancelBtn').onclick = ()=> selectBuild(null);
+document.querySelectorAll('#cropbar button').forEach(b=>{
+  b.onclick = ()=>{
+    selectedCrop=b.dataset.crop;
+    document.querySelectorAll('#cropbar button').forEach(x=>x.classList.toggle('active', x===b));
+  };
+});
+
+/* ---------------- MAP INTERACTION ---------------- */
+let hoverTile = null;
+function tileFromEvent(e){
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const x = Math.floor((clientX-rect.left)/TS);
+  const y = Math.floor((clientY-rect.top)/TS);
+  return {x,y};
+}
+function currentLaborRatio(){
+  const needed = totalWorkersNeeded();
+  const civilianPop = Math.max(0, pop.count - military.soldiers);
+  return needed > 0 ? Math.min(1, civilianPop / needed) : 1;
+}
+
+function formatResourceAmount(value){
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function buildingProductionStatus(building){
+  const def = BLD_BY_ID[building.id];
+  if(!def) return '';
+  const laborRatio = currentLaborRatio();
+  if(def.workers && laborRatio <= 0) return 'Paused — no available workers';
+
+  if(def.special === 'dairy'){
+    const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
+    const missingExtras = missingInputsFrom(res, recipe?.inputs, laborRatio);
+    if(missingExtras.length) return `Paused — ${recipe.name} needs ${missingExtras.map(x=>x.key).join(', ')}`;
+    return res.milk > 0
+      ? `Producing ${recipe?.name || 'dairy goods'}`
+      : 'Paused — needs milk (available 0)';
+  }
+
+  if(def.special === 'bakery'){
+    const recipe = def.recipes.find(r=>r.id===(building.recipe || def.recipes[0].id));
+    if(res.flour <= 0) return 'Paused — needs flour (available 0)';
+    const missingRecipeInputs = missingInputsFrom(res, recipe?.inputs, laborRatio);
+    if(missingRecipeInputs.length){
+      return `Baking bread — ${recipe.name} needs ${missingRecipeInputs.map(x=>x.key).join(', ')}`;
+    }
+    return recipe ? `Baking bread and ${recipe.name}` : 'Baking bread';
+  }
+
+  const missing = missingInputsFrom(res, def.consume, laborRatio);
+  if(missing.length){
+    const detail = missing
+      .map(item=>`${formatResourceAmount(item.required)} ${item.key} (available ${formatResourceAmount(item.available)})`)
+      .join(', ');
+    return `Paused — needs ${detail}`;
+  }
+  if(def.produce) return 'Producing';
+  return '';
+}
+
+function updateBuildingTooltip(e){
+  const tooltip = document.getElementById('buildingTooltip');
+  const tile = tileFromEvent(e);
+  const building = inBounds(tile.x, tile.y) && grid[tile.y][tile.x].building;
+  if(!tooltip || !building){
+    if(tooltip) tooltip.classList.remove('show');
+    return;
+  }
+  const def = BLD_BY_ID[building.id];
+  let label = `${def ? def.ic : ''} ${def ? def.name : building.id}`.trim();
+  if(def && def.recipes){
+    const activeId = building.recipe || def.recipes[0].id;
+    const recipe = def.recipes.find(r=>r.id===activeId);
+    if(recipe) label += ` — making ${recipe.name} (tap to change)`;
+  }
+  const status = buildingProductionStatus(building);
+  if(status) label += `\n${status}`;
+  if(building.id==='road') label += '\nAdjacent production +15%; connected route to storage or market +20%.';
+  if(def.produce && connectedToStore(grid,building)) label += '\nRoad route reaches storage or market.';
+  tooltip.textContent = label;
+  tooltip.classList.add('show');
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  tooltip.style.left = `${Math.min(clientX+12, window.innerWidth-tooltip.offsetWidth-8)}px`;
+  tooltip.style.top = `${Math.min(clientY+12, window.innerHeight-tooltip.offsetHeight-8)}px`;
+}
+canvas.addEventListener('mousemove', e=>{
+  hoverTile=tileFromEvent(e);
+  updateBuildingTooltip(e);
+  if(selectedBuild==='road' && inBounds(hoverTile.x,hoverTile.y) && !grid[hoverTile.y][hoverTile.x].building)
+    document.getElementById('legend').textContent=roadPreview(hoverTile.x,hoverTile.y);
+  render();
+});
+canvas.addEventListener('mouseleave', ()=> document.getElementById('buildingTooltip').classList.remove('show'));
+let lastTouchActionTime = 0;
+canvas.addEventListener('click', e=>{
+  // Ignore the synthetic "ghost click" the browser fires ~300-500ms after a
+  // real touch tap already handled by touchend below — otherwise mobile
+  // taps double-fire (place twice, or open-then-close the trade panel).
+  if(Date.now() - lastTouchActionTime < 500) return;
+  const tile = tileFromEvent(e);
+  if(!selectedBuild){
+    handleBuildingTap(tile);
+    return;
+  }
+  placeAt(tile);
+});
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoved = false;
+
+canvas.addEventListener('touchstart', e=>{
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchMoved = false;
+  hoverTile = tileFromEvent(e);
+  updateBuildingTooltip(e);
+  render();
+}, {passive:true});
+canvas.addEventListener('touchmove', e=>{
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  if(Math.hypot(dx, dy) > 10){
+    touchMoved = true;
+  }
+}, {passive:true});
+canvas.addEventListener('touchend', e=>{
+  lastTouchActionTime = Date.now();
+  if(touchMoved || !hoverTile) return;
+  if(selectedBuild){
+    placeAt(hoverTile);
+  } else {
+    handleBuildingTap(hoverTile);
+  }
+}, {passive:true});
+
+// Tapping a placed building with no build tool selected opens whatever panel
+// applies to it: the Trading Post's trade panel, or a recipe picker for any
+// building with a `recipes` list (currently the Baker and the Dairy).
+function handleBuildingTap(tile){
+  if(!inBounds(tile.x, tile.y)) return;
+  const building = grid[tile.y][tile.x].building;
+  if(!building) return;
+  const def = BLD_BY_ID[building.id];
+  if(def?.upgradeTo){
+    const next = BLD_BY_ID[def.upgradeTo];
+    const cost = Object.entries(next.cost).map(([key,value])=>`${value} ${key}`).join(', ');
+    if(window.confirm(`Upgrade ${def.name} to ${next.name} for ${cost}?\nThe building stays on this tile.`)){
+      if(!canAfford(next.cost)){ showToast('Not enough resources for this upgrade'); return; }
+      pay(next.cost);
+      removeBuilding(building);
+      const upgraded = {id:next.id,x:tile.x,y:tile.y};
+      grid[tile.y][tile.x].building=upgraded;
+      placedBuildings.push(upgraded);
+      if(next.popCap) pop.capacity+=next.popCap;
+      minimapDirty=true;
+      remember(`upgrade-${next.id}`, 'What endured',
+        `The ${def.name} became a ${next.name}. The same ground now serves a different future.`);
+      logEvent(`🏛️ ${def.name} became ${next.name}.`);
+      showToast(`Upgraded to ${next.name}`);
+      render(); renderRes(); updateWorldMood();
+    }
+    return;
+  }
+  if(['market','tradingpost'].includes(building.id)){
+    openPanel('tradePanel');
+    playTone('click');
+  } else if(def && def.recipes){
+    openRecipePanel(building);
+    playTone('click');
+  } else if(def){
+    const status = buildingProductionStatus(building);
+    showToast(status ? `${def.name}: ${status}` : def.name);
+    playTone('click');
+  }
+}
+document.getElementById('minimap').addEventListener('click', e=>{
+  const rect = e.currentTarget.getBoundingClientRect();
+  const relX = (e.clientX-rect.left)/rect.width;
+  const relY = (e.clientY-rect.top)/rect.height;
+  const wrap = document.getElementById('mapwrap');
+  wrap.scrollTo({
+    left: Math.max(0, relX*canvas.clientWidth - wrap.clientWidth/2),
+    top: Math.max(0, relY*canvas.clientHeight - wrap.clientHeight/2),
+    behavior:'smooth'
+  });
+});
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> t.classList.remove('show'), 1600);
+}
+
+function demolishAt(x, y){
+  const tile = grid[y][x];
+  if(!tile.building){ showToast('No building here to demolish'); return; }
+  const b = tile.building;
+  const def = BLD_BY_ID[b.id];
+  if(def && def.cost){
+    Object.entries(def.cost).forEach(([k,v])=> {
+      if(k === 'coin'){
+        coin += v;
+      } else {
+        addRes(k, v);
+      }
+    });
+  }
+  removeBuilding(b);
+  minimapDirty = true;
+  showToast(`Demolished ${def ? def.name : b.id} and refunded resources`);
+  render(); renderRes(); updateWorldMood();
+}
+
+function placeAt({x,y}){
+  if(!selectedBuild) return;
+  if(!inBounds(x,y)) return;
+  if(marshPrologue && !marshPlacementAllowed(marshPrologue,selectedBuild,x,y)){
+    showToast('Follow the marked tile and the instruction beside the map'); return;
+  }
+  if(selectedBuild === 'demolish'){
+    demolishAt(x, y);
+    return;
+  }
+  const def = BLD_BY_ID[selectedBuild];
+  if(def.upgradeOnly){ showToast('Upgrade an existing building to create this'); return; }
+  const tile = grid[y][x];
+  if(tile.building){ showToast('Tile already occupied'); return; }
+  if(!def.valid(x,y)){ showToast(`Can't place ${def.name} here`); return; }
+  if(!canAfford(def.cost)){ showToast('Not enough resources'); return; }
+  if((def.coinCost||0) > coin){ showToast(`Not enough coin — ${def.name} needs ${def.coinCost}`); return; }
+  pay(def.cost);
+  coin -= def.coinCost||0;
+  const b = {id:def.id, x, y};
+  if(def.isField) b.crop = selectedCrop;
+  tile.building = b;
+  placedBuildings.push(b);
+  buildingPops.push({x,y,startedAt:performance.now()});
+  minimapDirty = true;
+  const animatePlacement = ()=>{
+    render();
+    if(performance.now() - buildingPops[buildingPops.length - 1].startedAt < 260){
+      requestAnimationFrame(animatePlacement);
+    } else {
+      buildingPops = buildingPops.filter(p=>p.x!==x || p.y!==y);
+      render();
+    }
+  };
+  requestAnimationFrame(animatePlacement);
+  if(def.popCap) pop.capacity += def.popCap;
+  if(def.militaryCap) military.cap += def.militaryCap;
+  if(def.capBonus){
+    if(def.capBonus.general) cap.general += def.capBonus.general;
+    if(def.capBonus.food) cap.food += def.capBonus.food;
+  }
+  let buildMessage = `Built ${def.name}`;
+  if(CIVIC_MESSAGES[def.id] && !civicMilestones.has(def.id)){
+    civicMilestones.add(def.id);
+    buildMessage = CIVIC_MESSAGES[def.id];
+    logEvent(buildMessage);
+  }
+  if(def.id==='road'){
+    buildMessage=roadPreview(x,y);
+    if(placedBuildings.some(b=>BLD_BY_ID[b.id].produce && connectedToStore(grid,b)))
+      remember('first-route', 'The first route',
+        'The settlement laid a path between work and storage. Goods now have a way through the town.');
+  }
+  if(def.id==='graveyard') remember('burial-ground', 'A place for names',
+    'The living set aside ground to remember those who will not see the city grow.');
+  if(def.id==='theatre') remember('theatre', 'Voices in the open air',
+    'The town gathered to tell its own story beneath the sky.');
+  showToast(buildMessage);
+  if(marshPrologue) progressMarshLesson(b);
+  playTone('build');
+  render(); renderRes(); updateWorldMood();
+}
+
+/* ---------------- MENU PANELS ---------------- */
+function closeAllPanels(){
+  document.querySelectorAll('.sidepanel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.menuBtn').forEach(b=>b.classList.remove('active'));
+}
+function openPanel(panelId){
+  const panel = document.getElementById(panelId);
+  if(!panel) return;
+  closeAllPanels();
+  panel.classList.add('open');
+  const btn = document.querySelector(`.menuBtn[data-panel="${panelId}"]`);
+  if(btn) btn.classList.add('active');
+  if(panelId === 'tradePanel') renderTradePanel();
+  if(panelId === 'productionPanel') renderProductionGuide();
+}
+
+function renderProductionGuide(){
+  const guide = document.getElementById('productionGuide');
+  if(!guide) return;
+  guide.replaceChildren();
+  const intro = document.createElement('p');
+  intro.className = 'pnote';
+  intro.textContent = 'Every active chain, from its inputs to its output. Tap buildings on the map to see live shortages.';
+  guide.appendChild(intro);
+  BUILDINGS.filter(def=>def.produce || def.special==='bakery' || def.special==='dairy' || def.special==='foundry').forEach(def=>{
+    const row = document.createElement('div');
+    row.className = 'tech';
+    let chain = '';
+    if(def.special==='bakery') chain = 'flour + recipe ingredients → bread + selected cake';
+    else if(def.special==='dairy') chain = 'milk (+ salt for cheese) → selected dairy product';
+    else if(def.special==='foundry') chain = 'metal ore → refined metal; copper + tin → bronze';
+    else {
+      const inputs = Object.keys(def.consume||{}).join(' + ') || 'workers / terrain';
+      const outputs = Object.keys(def.produce||{}).join(' + ');
+      chain = `${inputs} → ${outputs}`;
+    }
+    row.innerHTML = `<b>${def.ic} ${def.name}</b><div class="pnote">${chain}</div>`;
+    guide.appendChild(row);
+  });
+}
+
+// Which placed building instance the open recipePanel is currently editing.
+let recipePanelBuilding = null;
+function openRecipePanel(building){
+  recipePanelBuilding = building;
+  closeAllPanels();
+  document.getElementById('recipePanel').classList.add('open');
+  renderRecipePanel();
+}
+function renderRecipePanel(){
+  const b = recipePanelBuilding;
+  const list = document.getElementById('recipeList');
+  const title = document.getElementById('recipePanelTitle');
+  if(!b || !list) return;
+  const def = BLD_BY_ID[b.id];
+  if(!def || !def.recipes){ closeAllPanels(); return; }
+  title.textContent = `${def.ic} ${def.name}`;
+  list.replaceChildren();
+  if(def.id === 'baker'){
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Bread is always baked first. Pick which cake to bake with any flour left over.';
+    list.appendChild(note);
+  } else if(def.id === 'foundry'){
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Choose a metal to protect scarce copper, or use Automatic for mixed output.';
+    list.appendChild(note);
+  } else {
+    const note = document.createElement('p');
+    note.className = 'pnote';
+    note.textContent = 'Pick which product to churn from incoming milk.';
+    list.appendChild(note);
+  }
+  const activeId = b.recipe || def.recipes[0].id;
+  def.recipes.forEach(r=>{
+    const btn = document.createElement('button');
+    btn.className = 'actionbtn' + (r.id===activeId ? ' active' : '');
+    const inputs = r.inputs || (r.needs ? {[r.needs]:1} : {});
+    const inputText = Object.entries(inputs).map(([key,amount])=>`${amount} ${key} (${Math.floor(res[key]||0)} available)`).join(', ');
+    const stockNote = inputText ? `<span class="recipe-stock"> — needs ${inputText}</span>` : '';
+    btn.innerHTML = `${r.ic||''} ${r.name}${stockNote}`;
+    btn.onclick = ()=>{
+      b.recipe = r.id;
+      showToast(`${def.name} will now make ${r.name}`);
+      renderRecipePanel();
+    };
+    list.appendChild(btn);
+  });
+}
+// Keep panels outside the scrolling map so focusing a trade control cannot
+// scroll their heading and close button out of view.
+document.querySelectorAll('.sidepanel').forEach(panel=>document.getElementById('main').appendChild(panel));
+document.querySelectorAll('.menuBtn').forEach(btn=>{
+  btn.onclick = ()=>{
+    playTone('click');
+    const panelId = btn.dataset.panel;
+    const panel = document.getElementById(panelId);
+    const isOpen = panel.classList.contains('open');
+    if(isOpen) closeAllPanels();
+    else openPanel(panelId);
+  };
+});
+document.querySelectorAll('.closeP').forEach(btn=>{
+  btn.onclick = ()=> closeAllPanels();
+});
+
+const pathSelect = document.getElementById('researchPath');
+RESEARCH_PATHS.forEach(path=>{
+  const option=document.createElement('option');
+  option.value=path.id; option.textContent=path.name;
+  pathSelect.appendChild(option);
+});
+pathSelect.onchange = ()=>{
+  selectedResearchPath=pathSelect.value;
+  focusedTech=null;
+  renderResearchPanel();
+  renderGuidance();
+};
+['claypit','potter','scribe','library'].forEach(id=>{
+  const button=document.createElement('button');
+  button.type='button'; button.textContent=BLD_BY_ID[id].name;
+  button.onclick=()=>{ closeAllPanels(); selectBuild(null); selectBuild(id); };
+  document.getElementById('researchSetup').appendChild(button);
+});
+function focusResearch(id){
+  const belongs=path=>researchPath(path.targets).some(tech=>tech.id===id);
+  const path=RESEARCH_PATHS.find(path=>path.id===selectedResearchPath && belongs(path)) || RESEARCH_PATHS.find(belongs);
+  selectedResearchPath=path?.id||'';
+  pathSelect.value=selectedResearchPath;
+  focusedTech=id;
+  renderResearchPanel();
+  openPanel('researchPanel');
+  const row=document.getElementById(`tech-${id}`);
+  if(row) document.getElementById('researchPanel').scrollTop=Math.max(0,row.offsetTop-40);
+  (row?.querySelector('button:not(:disabled)') || row)?.focus({preventScroll:true});
+}
+function renderResearchPanel(){
+  document.getElementById('rpCount').textContent = Math.floor(research);
+  const key=JSON.stringify([Math.floor(research),res.scrolls>0,[...unlockedTechs],selectedResearchPath,focusedTech]);
+  if(researchRenderKey===key) return;
+  researchRenderKey=key;
+  const list = document.getElementById('researchList');
+  const focusId=list.contains(document.activeElement) ? document.activeElement.closest('.tech')?.id : null;
+  const scrollTop=document.getElementById('researchPanel').scrollTop;
+  list.innerHTML='';
+  const path=RESEARCH_PATHS.find(path=>path.id===selectedResearchPath);
+  const pathTechs=path ? researchPath(path.targets) : TECHS;
+  const remaining=pathTechs.filter(tech=>!unlockedTechs.has(tech.id));
+  document.getElementById('researchPathNote').textContent = path
+    ? `${path.why} ${pathTechs.length-remaining.length}/${pathTechs.length} discoveries completed; ${remaining.reduce((sum,tech)=>sum+tech.cost,0)} points still needed.`
+    : 'Choose a path for a focused list. Each discovery shows its prerequisites, benefits and buildings.';
+  [...new Set(pathTechs.map(tech=>tech.tier))].sort((a,b)=>a-b).forEach(tierNum=>{
+    const tierTechs = pathTechs.filter(t=>t.tier===tierNum);
+    if(!tierTechs.length) return;
+    const label=document.createElement('div');
+    label.className='catlabel'; label.textContent=`Tier ${tierNum}`;
+    list.appendChild(label);
+    tierTechs.forEach(t=>{
+      const done = unlockedTechs.has(t.id);
+      const reqMet = techRequirementsMet(t, unlockedTechs);
+      const row=document.createElement('div');
+      row.id=`tech-${t.id}`;
+      row.tabIndex=-1;
+      row.className='tech'+(done?' done':'')+(focusedTech===t.id?' researchFocus':'');
+      const reqLine = (!done && t.requires && t.requires.length)
+        ? `<div class="tdesc">Requires: ${t.requires.map(id=>`${unlockedTechs.has(id)?'✓ ':''}${techName(id)}`).join(', ')}</div>` : '';
+      const scrollCostNote = res.scrolls > 0 ? ' (1 scroll if available)' : '';
+      const unlocks=BUILDINGS.filter(b=>b.requiresTech===t.id).map(b=>b.name);
+      const canResearch=!done && reqMet && research>=t.cost;
+      const buttonText=done ? '✓ Researched' : !reqMet ? 'Research prerequisites first' : research<t.cost ? `Need ${Math.ceil(t.cost-research)} more points` : `Research — ${t.cost} pts${scrollCostNote}`;
+      row.innerHTML =
+        `<div class="tname">${t.name}</div>
+         <div class="tdesc">${t.cost} points · ${t.desc}</div>
+         ${unlocks.length?`<div class="tdesc"><b>Buildings:</b> ${unlocks.join(', ')}</div>`:''}
+         ${TECH_PURPOSE[t.id]?`<div class="tdesc">${TECH_PURPOSE[t.id]}</div>`:''}
+         ${reqLine}
+         <button ${canResearch?'':'disabled'}>${buttonText}</button>`;
+      if(canResearch){
+        row.querySelector('button').onclick = ()=>{
+          if(research < t.cost){
+            showToast('Not enough research points');
+            return;
+          }
+          research -= t.cost;
+          if(res.scrolls > 0){
+            res.scrolls -= 1;
+            showToast(`Researched ${t.name} using 1 scroll`);
+          } else {
+            showToast(`Researched ${t.name}`);
+          }
+          unlockedTechs.add(t.id);
+          applyTechEffects(t);
+          renderPanel();
+          renderRes();
+        };
+      }
+      list.appendChild(row);
+    });
+  });
+  document.getElementById('researchPanel').scrollTop=scrollTop;
+  if(focusId) document.getElementById(focusId)?.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
+}
+
+function renderCodexPanel(){
+  const list = document.getElementById('codexList');
+  if(!list) return;
+  list.replaceChildren();
+  if(!codexEntries.length && !townMemory.length){
+    const empty = document.createElement('p');
+    empty.className = 'pnote';
+    empty.textContent = 'No Codex entries unlocked yet.';
+    list.appendChild(empty);
+    return;
+  }
+  [...townMemory, ...codexEntries].forEach(entry=>{
+    const article = document.createElement('article');
+    article.className = 'codexEntry';
+    const title = document.createElement('h3');
+    title.className = 'codexTitle';
+    title.textContent = entry.title;
+    article.appendChild(title);
+    if(entry.content){
+      const text = document.createElement('pre');
+      text.className = 'codexText';
+      text.textContent = entry.content;
+      article.appendChild(text);
+    } else {
+      const unavailable = document.createElement('p');
+      unavailable.className = 'pnote';
+      unavailable.textContent = 'This entry has been discovered but its field notes are not available yet.';
+      article.appendChild(unavailable);
+    }
+    list.appendChild(article);
+  });
+}
+
+document.getElementById('marketAutoSell').onchange=event=>{
+  marketPolicy.autoSell=event.target.checked;
+  renderTradePanel();
+};
+document.getElementById('marketFoodReserve').onchange=event=>{
+  marketPolicy.foodReserveTurns=Number(event.target.value);
+  renderTradePanel();
+};
+document.getElementById('tradeSearch').oninput=event=>{
+  tradeQuery=event.target.value.trim().toLowerCase();
+  renderTradePanel();
+};
+document.getElementById('marketGoodsReserve').oninput=document.getElementById('marketGoodsReserve').onchange=event=>{
+  if(event.type==='input' && event.target.value==='') return;
+  const reserve=Number(event.target.value);
+  if(!Number.isSafeInteger(reserve)||reserve<0||reserve>100000){
+    event.target.value=String(marketPolicy.generalReserve);
+    showToast('Choose a reserve between 0 and 100000'); return;
+  }
+  marketPolicy.generalReserve=reserve;
+  renderTradePanel();
+};
+document.getElementById('tradeQuantity').onchange=event=>{
+  tradeQuantity=event.target.value;
+  renderTradePanel();
+};
+document.getElementById('marketCancelSale').onclick=()=>{
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+};
+document.getElementById('marketConfirmSale').onclick=()=>{
+  if(!pendingSale) return;
+  const {id,amount}=pendingSale;
+  const good=TRADE_GOODS.find(good=>good.id===id);
+  sellAtMarket(good,amount,true);
+};
+function sellAtMarket(good,amount,confirmed=false){
+  // Recheck access, stock, food and price at the final click, including after ticks.
+  if(!placedBuildings.some(b=>['market','tradingpost'].includes(b.id))){ showToast('Build a Market or Trading Post first'); return; }
+  const quote=saleQuote(res,good.id,amount,pop.count,marketPolicy);
+  if(!quote.ok){ pendingSale=null; document.getElementById('marketSaleWarning').hidden=true; showToast(quote.error); return; }
+  if(quote.warning && !confirmed){
+    pendingSale={id:good.id,amount};
+    document.getElementById('marketSaleText').textContent=`Sell ${amount} ${good.label}? ${quote.warning}`;
+    document.getElementById('marketSaleWarning').hidden=false;
+    document.getElementById('marketConfirmSale').disabled=false;
+    document.getElementById('tradePanel').scrollTop=Math.max(0,document.getElementById('marketSaleWarning').offsetTop-40);
+    document.getElementById('marketCancelSale').focus({preventScroll:true});
+    return;
+  }
+  const income=sellPriceOf(good)*amount;
+  res[good.id]-=amount;
+  coin+=income;
+  tradeDemand[good.id]=clampDemand(tradeDemand[good.id]-0.05*amount);
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+  showToast(`Sold ${amount} ${good.label} for ${income} coin`);
+  renderRes();
+}
+function renderTradePanel(){
+  const list = document.getElementById('tradeList');
+  if(!list) return;
+  list.replaceChildren();
+  const hasMarket = placedBuildings.some(b=>['market','tradingpost'].includes(b.id));
+  document.getElementById('marketControls').hidden=!hasMarket;
+  if(!hasMarket){
+    const empty = document.createElement('p');
+    empty.className = 'pnote';
+    empty.textContent = 'Build a Market or Trading Post to buy and sell goods.';
+    list.appendChild(empty);
+    return;
+  }
+
+  const turns=foodTurns(res,pop.count);
+  const status=document.getElementById('marketFoodStatus');
+  status.textContent=`Food stores: ${Math.floor(totalFood())} · ${Number.isFinite(turns)?`about ${Math.floor(turns)} turns without new production`:'no citizens to feed'}. Reserve: ${marketPolicy.foodReserveTurns} turns.`;
+  status.classList.toggle('foodWarning',turns<Math.max(1,marketPolicy.foodReserveTurns));
+  const reserveSelect=document.getElementById('marketFoodReserve');
+  if(![...reserveSelect.options].some(option=>Number(option.value)===marketPolicy.foodReserveTurns)){
+    const option=document.createElement('option'); option.value=String(marketPolicy.foodReserveTurns); option.textContent=`${marketPolicy.foodReserveTurns} turns`; reserveSelect.appendChild(option);
+  }
+  reserveSelect.value=String(marketPolicy.foodReserveTurns);
+  document.getElementById('marketAutoSell').checked=marketPolicy.autoSell;
+  document.getElementById('marketGoodsReserve').value=String(marketPolicy.generalReserve);
+  if(pendingSale){
+    const good=TRADE_GOODS.find(good=>good.id===pendingSale.id);
+    const quote=saleQuote(res,good.id,pendingSale.amount,pop.count,marketPolicy);
+    document.getElementById('marketSaleText').textContent=quote.ok?`Sell ${pendingSale.amount} ${good.label}? ${quote.warning||'Your food supply has recovered; you can confirm or keep the food.'}`:quote.error;
+    document.getElementById('marketConfirmSale').disabled=!quote.ok;
+  } else document.getElementById('marketConfirmSale').disabled=false;
+
+  const legend = document.createElement('div');
+  legend.className = 'trade-legend';
+  legend.innerHTML = '<span>Good / stock</span><span>Buy one</span><span>Sell</span>';
+  list.appendChild(legend);
+
+  const goods=TRADE_GOODS.filter(good=>`${good.label} ${good.id}`.toLowerCase().includes(tradeQuery));
+  if(!goods.length){ const empty=document.createElement('p'); empty.className='pnote'; empty.textContent='No goods match this search.'; list.appendChild(empty); }
+  goods.forEach((good)=>{
+    const row = document.createElement('div');
+    row.className = 'trade-row';
+    const stock = Math.floor(res[good.id] || 0);
+    const buyPrice = buyPriceOf(good);
+    const sellPrice = sellPriceOf(good);
+    const amount=tradeQuantity==='all'?stock:Number(tradeQuantity);
+    const surplus=Math.floor(sellableSurplus(res,good.id,pop.count,marketPolicy));
+    const [demandText, demandClass] = demandLabel(good);
+    row.innerHTML = `
+      <span class="good">${good.label} · ${stock}<small class="${demandClass}">${demandText}</small></span>
+      <button class="actionbtn secondary trade-buy" data-good="${good.id}" aria-label="Buy 1 ${good.label} for ${buyPrice} coin" ${coin<buyPrice||storageRoom(res,cap,good.id)<1?'disabled':''}>${buyPrice}🪙</button>
+      <span class="trade-sales">
+        <button class="actionbtn trade-sell" data-good="${good.id}" ${amount<=0||stock<amount?'disabled':''}>Sell ${amount} · +${sellPrice*amount}🪙</button>
+        <button class="actionbtn secondary trade-surplus" ${surplus<=0?'disabled':''}>Sell surplus (${surplus})</button>
+      </span>
+    `;
+    row.querySelector('.trade-buy').onclick = ()=>{
+      const price = buyPriceOf(good);
+      if(coin < price){ showToast('Not enough coin'); return; }
+      if(!placedBuildings.some(b=>['market','tradingpost'].includes(b.id))){ showToast('Build a Market or Trading Post first'); return; }
+      if(storageRoom(res,cap,good.id)<1){ showToast('Storage is full — make room before buying'); return; }
+      coin -= price;
+      addRes(good.id, 1);
+      tradeDemand[good.id] = clampDemand(tradeDemand[good.id] + 0.06);
+      showToast(`Bought ${good.label} for ${price} coin`);
+      renderRes();
+    };
+    row.querySelector('.trade-buy').title=storageRoom(res,cap,good.id)<1 ? 'Storage full — make room before buying' : coin<buyPrice ? 'Not enough coin' : `Buy one ${good.label}`;
+    row.querySelector('.trade-sell').onclick = ()=>{
+      sellAtMarket(good,tradeQuantity==='all'?Math.floor(res[good.id]||0):Number(tradeQuantity));
+    };
+    row.querySelector('.trade-surplus').onclick=()=>{
+      const available=Math.floor(sellableSurplus(res,good.id,pop.count,marketPolicy));
+      sellAtMarket(good,available);
+    };
+    list.appendChild(row);
+  });
+}
+
+/* ---------------- PAYWALL / SESSION ---------------- */
+let accessExpiresAt = 0;
+let balanceExpiresAt = 0;
+let tickInterval = null;
+let sessionInterval = null;
+let currentUser = null; // {email, captainName}
+let hasFreeAccess = false;
+
+let csrfPromise = null;
+async function getCsrf(){
+  if(!csrfPromise) csrfPromise = fetch('/api/csrf-token',{credentials:'include'}).then(r=>r.json()).then(d=>d.csrfToken);
+  return csrfPromise;
+}
+async function api(path, opts={}){
+  const method=(opts.method||'GET').toUpperCase();
+  const headers=Object.assign({'Content-Type':'application/json'},opts.headers||{});
+  if(method!=='GET' && method!=='HEAD') headers['X-CSRF-Token']=await getCsrf();
+  const res=await fetch(path,Object.assign({credentials:'include',headers},opts));
+  let data={}; try{data=await res.json();}catch(e){}
+  if(!res.ok) throw new Error(data.error||'request failed');
+  return data;
+}
+
+function showAuthBox(msg){
+  document.getElementById('authBox').style.display = 'block';
+  document.getElementById('payBox').style.display = 'none';
+  document.getElementById('authMsg').textContent = msg || '';
+}
+function showPayBox(){
+  document.getElementById('authBox').style.display = 'none';
+  document.getElementById('payBox').style.display = 'block';
+  document.getElementById('whoami').textContent = `Signed in as ${currentUser.email}`;
+  const payCardBtn = document.getElementById('payCardBtn');
+  const payPaypalBtn = document.getElementById('payPaypalBtn');
+  if(hasFreeAccess){
+    document.getElementById('verifyBanner').style.display = 'none';
+    payCardBtn.style.display = 'none';
+    payPaypalBtn.style.display = 'none';
+    return;
+  }
+  payCardBtn.style.display = '';
+  payPaypalBtn.style.display = '';
+  const verified = !!currentUser.emailVerified;
+  document.getElementById('verifyBanner').style.display = verified ? 'none' : 'block';
+  payCardBtn.disabled = !verified;
+  payPaypalBtn.disabled = !verified;
+  payCardBtn.style.opacity = verified ? '1' : '0.5';
+  payPaypalBtn.style.opacity = verified ? '1' : '0.5';
+}
+
+async function refreshFromServer(){
+  selectBuild(null);
+  try{
+    const me = await api('/api/me');
+    currentUser = me;
+    if(me.captainName){
+      captainName = me.captainName;
+      document.getElementById('captainInput').value = captainName;
+    }
+    const s = await api('/api/access');
+    hasFreeAccess = !!s.freeAccess;
+    showPayBox();
+    if(s.canPlay){
+      const discoveries = await api('/api/discoveries');
+      codexEntries = discoveries.codexEntries || [];
+      renderCodexPanel();
+    }
+    if(hasFreeAccess){
+      accessExpiresAt = Infinity;
+      startPlaying();
+      return;
+    }
+    accessExpiresAt = s.accessExpiresAt || 0;
+    if(s.canPlay){
+      const heartbeat = await api('/api/access/heartbeat',{method:'POST'});
+      hasFreeAccess = !!heartbeat.freeAccess;
+      if(hasFreeAccess){
+        accessExpiresAt = Infinity;
+        startPlaying();
+        return;
+      }
+      accessExpiresAt = Date.now()+(heartbeat.playWindowMs || 0);
+      balanceExpiresAt = Date.now()+((heartbeat.remainingSeconds || 0)*1000);
+      startPlaying();
+    }
+    else pausePlaying();
+  } catch(e){
+    currentUser = null;
+    hasFreeAccess = false;
+    showAuthBox();
+  }
+}
+
+function startPlaying(){
+  document.getElementById('paywall').style.display = 'none';
+  if(!tickInterval) tickInterval = setInterval(tick, 2500);
+  if(!sessionInterval) sessionInterval = setInterval(checkSession, 1000);
+  heartbeatAccess();
+  checkSession();
+}
+function pausePlaying(){
+  if(hasFreeAccess){
+    document.getElementById('paywall').style.display = 'none';
+    document.getElementById('timeline').textContent = '';
+    return;
+  }
+  clearInterval(tickInterval); tickInterval = null;
+  clearInterval(sessionInterval); sessionInterval = null;
+  document.getElementById('timeline').textContent = '';
+  document.getElementById('paywall').style.display = 'flex';
+  document.getElementById('pwTitle').textContent = accessExpiresAt ? "🏛️ Your hour's up" : '🏛️ Portus Pass';
+  document.getElementById('pwDesc').textContent = accessExpiresAt ? 'Buy another hour to keep building.' : 'Sign in, then buy a Portus pass to play.';
+  if(currentUser) showPayBox(); else showAuthBox();
+}
+
+async function heartbeatAccess(){
+  if(!currentUser) return;
+  try{
+    const a=await api('/api/access/heartbeat',{method:'POST'});
+    hasFreeAccess = !!a.freeAccess;
+    if(hasFreeAccess){
+      accessExpiresAt = Infinity;
+      document.getElementById('timeline').textContent = '';
+      return;
+    }
+    accessExpiresAt = Date.now()+(a.playWindowMs || 0);
+    balanceExpiresAt = Date.now()+((a.remainingSeconds || 0)*1000);
+    if(!a.canPlay || !a.playWindowMs) pausePlaying();
+  }
+  catch(e){ console.warn('access heartbeat failed',e); }
+}
+
+function checkSession(){
+  if(hasFreeAccess){
+    document.getElementById('timeline').textContent = '';
+    return;
+  }
+  if(accessExpiresAt <= Date.now()){ pausePlaying(); return; }
+  const msLeft = Math.max(0, balanceExpiresAt - Date.now());
+  const mins = Math.floor(msLeft/60000), secs = Math.floor((msLeft%60000)/1000);
+  document.getElementById('timeline').textContent = `⏳ ${mins}:${secs.toString().padStart(2,'0')} left`;
+}
+setInterval(()=>{ if(currentUser && tickInterval) heartbeatAccess(); }, 3000);
+
+document.getElementById('signupBtn').onclick = async ()=>{
+  try{
+    await api('/api/signup', {method:'POST', body: JSON.stringify({
+      email: document.getElementById('authEmail').value,
+      password: document.getElementById('authPassword').value,
+      captainName: captainName || ''
+    })});
+    await refreshFromServer();
+    showToast('Account created — check your email to verify it');
+  } catch(e){ showAuthBox(e.message); }
+};
+document.getElementById('loginBtn').onclick = async ()=>{
+  try{
+    await api('/api/login', {method:'POST', body: JSON.stringify({
+      email: document.getElementById('authEmail').value,
+      password: document.getElementById('authPassword').value
+    })});
+    await refreshFromServer();
+  } catch(e){ showAuthBox(e.message); }
+};
+document.getElementById('logoutBtn').onclick = async ()=>{
+  await api('/api/access/stop', {method:'POST'}).catch(()=>{});
+  await api('/api/logout', {method:'POST'});
+  currentUser = null; accessExpiresAt = 0; hasFreeAccess = false;
+  pausePlaying();
+};
+document.getElementById('payCardBtn').onclick = async ()=>{
+  try{ const {url} = await api('/api/checkout/stripe', {method:'POST', body: JSON.stringify({productId:'hour'})}); window.location.href = url; }
+  catch(e){ showToast(e.message); }
+};
+document.getElementById('payPaypalBtn').onclick = async ()=>{
+  try{ const {url} = await api('/api/checkout/paypal', {method:'POST', body: JSON.stringify({productId:'hour'})}); window.location.href = url; }
+  catch(e){ showToast(e.message); }
+};
+document.getElementById('resendBtn').onclick = async ()=>{
+  try{
+    const r = await api('/api/resend-verification', {method:'POST'});
+    showToast(r.alreadyVerified ? 'Already verified!' : 'Verification email sent — check your inbox');
+  } catch(e){ showToast(e.message); }
+};
+document.getElementById('forgotBtn').onclick = ()=>{ location.href='/reset-request.html'; };
+
+const paymentParams = new URLSearchParams(window.location.search);
+const paidParam = paymentParams.get('paid');
+if(paymentParams.get('provider') === 'paypal' && paymentParams.get('status') === 'return' && paymentParams.get('token')){
+  api('/api/checkout/paypal/capture', {
+    method:'POST',
+    body: JSON.stringify({orderId: paymentParams.get('token')})
+  }).then(()=>{
+    history.replaceState({}, '', '/game');
+    refreshFromServer();
+    showToast('PayPal payment confirmed — your time has been added.');
+  }).catch(e=> showToast(e.message));
+}
+if(paidParam === 'stripe' || paidParam === 'paypal') showToast('Payment received — welcome back!');
+else if(paidParam === 'error') showToast('Payment could not be confirmed — please try again');
+
+const verifyParam = new URLSearchParams(window.location.search).get('verify');
+if(verifyParam === 'success') showToast('Email verified — you can now buy a pass!');
+else if(verifyParam === 'invalid') showToast('That verification link is invalid or expired — resend a new one below');
+else if(verifyParam === 'missing') showToast('Verification link was incomplete');
+
+/* ---------------- DISASTERS ---------------- */
+function logEvent(msg){
+  eventLog.unshift(`[${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] ${msg}`);
+  eventLog = eventLog.slice(0,20);
+  renderChronicle();
+}
+
+function loseCitizens(number, cause){
+  const lost = Math.min(Math.max(0, pop.count - 1), number);
+  if(!lost) return;
+  pop.count -= lost;
+  const sheltered = placedBuildings.some(b=>b.id==='graveyard');
+  const tended = sheltered && placedBuildings.some(b=>b.id==='undertaker');
+  happiness = Math.max(0, happiness - lost * (tended ? 0.8 : sheltered ? 1.5 : 3));
+  const message = `🕯️ ${lost} ${lost===1?'person was':'people were'} lost to ${cause}.` +
+    (sheltered ? ' The burial ground remembers.' : ' The town has no burial ground.');
+  logEvent(message);
+  remember(`loss-${tickCount}-${townMemory.length}`, 'Those we lost',
+    `On turn ${tickCount}, ${lost} ${lost===1?'resident died':'residents died'} from ${cause}. ${sheltered?'Their story rests in the burial ground.':'The settlement still seeks a place to remember them.'}`);
+}
+
+function maybeSendGodMessage(){
+  if(tickCount === 0 || tickCount % 24 !== 0 || Math.random() > 0.7) return;
+  const blessing = GOD_MESSAGES[rnd(GOD_MESSAGES.length)];
+  blessing.grant({ addRes, addResearch: (n)=>{ research += n; } });
+  logEvent(`✨ ${blessing.text}`);
+  showToast(`✨ ${blessing.text}`);
+}
+
+function discoveryActivity(){
+  if(placedBuildings.some(b=>['docks','fisherhut'].includes(b.id))) return 'fishing';
+  if(placedBuildings.some(b=>['quarry','mine','goldmine','silvermine','coppermine'].includes(b.id))) return 'mining';
+  if(placedBuildings.some(b=>b.id==='fields')) return 'farming';
+  if(placedBuildings.some(b=>b.id==='claypit')) return 'clay_pit';
+  return 'turn';
+}
+
+async function maybeRollDiscovery(){
+  if(!currentUser || discoveryRollInFlight || tickCount === 0 || tickCount % 12 !== 0) return;
+  discoveryRollInFlight = true;
+  try{
+    const result = await api('/api/discoveries/roll', {
+      method:'POST',
+      body: JSON.stringify({ activity: discoveryActivity(), turnNumber: Math.floor(tickCount / 12) })
+    });
+    if(result.discovery){
+      const discovery = result.discovery;
+      const detail = discovery.type === 'archaeological_find' && !discovery.assembled
+        ? `fragment ${discovery.fragmentIndex}/${discovery.fragmentCount}`
+        : 'Codex entry unlocked';
+      const message = `🔎 Discovery: ${discovery.title} — ${detail}.`;
+      logEvent(message);
+      showToast(message);
+      const discoveries = await api('/api/discoveries');
+      codexEntries = discoveries.codexEntries || [];
+      renderCodexPanel();
+    }
+  } catch(e){
+    console.warn('discovery roll failed', e);
+  } finally {
+    discoveryRollInFlight = false;
+  }
+}
+
+function renderChronicle(){
+  const el = document.getElementById('chronicle');
+  if(!el) return;
+  el.replaceChildren();
+  for(const event of (eventLog.length ? eventLog : ['Quiet so far…'])){
+    const row = document.createElement('div');
+    row.textContent = event;
+    el.appendChild(row);
+  }
+}
+
+function nearTerrainOfBuilding(b, terrain){
+  return grid[b.y][b.x].terrain===terrain || nearTerrain(b.x,b.y,[terrain],1);
+}
+
+function removeBuilding(b){
+  const def = BLD_BY_ID[b.id];
+  grid[b.y][b.x].building = null;
+  placedBuildings = placedBuildings.filter(x=>x!==b);
+  if(def.popCap) pop.capacity = Math.max(0, pop.capacity-def.popCap);
+  if(def.militaryCap) military.cap = Math.max(0, military.cap-def.militaryCap);
+  if(def.capBonus){
+    if(def.capBonus.general) cap.general = Math.max(100, cap.general-def.capBonus.general);
+    if(def.capBonus.food) cap.food = Math.max(100, cap.food-def.capBonus.food);
+  }
+}
+
+function damageRandomBuildings(count, filterFn){
+  // A flooded track remains a track; generic disasters damage structures,
+  // without making players rebuild every segment of a long road.
+  let candidates = placedBuildings.filter(b=>b.id!=='road' && (!filterFn || filterFn(b)));
+  let destroyed = 0;
+  for(let i=0;i<count && candidates.length>0;i++){
+    const idx = rnd(candidates.length);
+    const b = candidates.splice(idx,1)[0];
+    removeBuilding(b);
+    destroyed++;
+  }
+  return destroyed;
+}
+
+function totalDefense(){
+  return placedBuildings.reduce((s,b)=> s + (BLD_BY_ID[b.id].defense||0), 0);
+}
+
+// Armed and armoured soldiers fight harder than bare levies.
+function armyStrength(){
+  const armedRatio = military.soldiers>0
+    ? Math.min(1, (res.weapons + res.armour) / (military.soldiers*2))
+    : 0;
+  return military.soldiers * (1 + armedRatio*0.5);
+}
+
+function resolveInvasion(){
+  const enemyStrength = 4 + rnd(10) + Math.floor(coin/40);
+  const defense = totalDefense();
+  const myStrength = armyStrength() + defense;
+  if(myStrength*techBonus.raid >= enemyStrength && myStrength>0){
+    const lost = Math.floor(military.soldiers*0.1*Math.random());
+    military.soldiers -= lost;
+    res.weapons = Math.max(0, res.weapons - lost);
+    res.armour = Math.max(0, res.armour - lost);
+    const loot = 5+rnd(15);
+    coin += loot;
+    const wallNote = defense>0 ? ` Your defences (${defense}) held firm.` : '';
+    return `⚔️ Raiders attacked but your defence of ${Math.round(myStrength)} repelled them!${wallNote} Lost ${lost} soldiers, seized ${loot} coin.`;
+  } else {
+    const mitigation = defense>0 ? Math.min(0.7, defense/25) : 0;
+    const hit = damageRandomBuildings(Math.max(0, Math.round((1+rnd(3))*(1-mitigation))));
+    const goldLoss = Math.min(coin, Math.round((10+rnd(30))*(1-mitigation)));
+    coin -= goldLoss;
+    military.soldiers = Math.floor(military.soldiers*0.5);
+    happiness = Math.max(0, happiness-12*(1-mitigation));
+    return `⚔️ Invasion! Your defences were overwhelmed — ${hit} building(s) destroyed, ${Math.floor(goldLoss)} coin looted.`;
+  }
+}
+
+// DISASTER_TYPES/pickDisaster live in protected/js/disasters.js; this ctx
+// wires their stateless resolve() logic to game.html's mutable state.
+function disasterCtx(){
+  return {
+    rnd, damageRandomBuildings, nearTerrainOfBuilding, resolveInvasion,
+    sewerRelief: placedBuildings.some(b=>b.id==='sewer') ? 0.7 : 1,
+    hasMountainBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'mountain')),
+    hasCoastalBuild: placedBuildings.some(b=>['docks','fisherhut','boatbuilder'].includes(b.id)),
+    hasRiverBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'river')),
+    hasFields: placedBuildings.some(b=>BLD_BY_ID[b.id].isField),
+    droughtTicksLeft, coin, ageTicks:tickCount,
+    floodRelief: placedBuildings.some(b=>b.id==='floodbarrier') ? 0.3 : 1,
+    addHappiness: (delta)=>{ happiness = Math.max(0, happiness+delta); },
+    reducePop: (n)=>loseCitizens(n, 'the mountain eruption'),
+    reduceBoats: (n)=>{ boats = Math.max(0, boats-n); },
+    waterlogStores: (relief=1)=>{ res.wheat *= 1-0.4*relief; res.wood *= 1-0.2*relief; res.clay *= 1-0.2*relief; },
+    startDrought: (ticks)=>{ droughtTicksLeft = ticks; },
+  };
+}
+
+function triggerDisaster(disaster, ctx){
+  const msg = disaster.resolve(ctx);
+  logEvent(msg);
+  remember(`disaster-${disaster.id}-${tickCount}`, 'After the ' + disaster.id,
+    `On turn ${tickCount}, ${msg} The town must decide what to rebuild and what to remember.`);
+  showToast(msg);
+  if(happiness >= 20) scenarioState.disastersSurvived = (scenarioState.disastersSurvived||0) + 1;
+  else scenarioState.disastersSurvived = 0;
+}
+
+function maybeTriggerDisaster(){
+  const ctx = disasterCtx();
+  const disaster = pickDisaster(ctx);
+  if(!disaster) return;
+  // Guards won from choice events hold off the matching disaster.
+  if(disaster.id === 'flood' && floodGuardTicks > 0) return;
+  if(disaster.id === 'drought' && famineGuardTicks > 0) return;
+  if(divineFavourTicks > 0 && Math.random() < 0.5){
+    logEvent('🕯️ The gods turned aside a misfortune.');
+    return;
+  }
+  triggerDisaster(disaster, ctx);
+}
+
+/* ---------------- PLAYER CHOICE EVENTS ---------------- */
+function choiceEventCtx(){
+  return {
+    rnd, coin,
+    totalFood: totalFood(),
+    buildingCount: placedBuildings.length,
+    hasRiverBuild: placedBuildings.some(b=>nearTerrainOfBuilding(b,'river')),
+    hasTemple: placedBuildings.some(b=>['temple','templegrand','templemonument'].includes(b.id)),
+    chance: (p)=> Math.random() < p,
+    nearRiver: (b)=> nearTerrainOfBuilding(b,'river'),
+    damageBuildings: (n, filterFn)=> damageRandomBuildings(n, filterFn),
+    addHappiness: (delta)=>{ happiness = Math.max(0, Math.min(100, happiness+delta)); },
+    reducePop: (n)=>loseCitizens(n, 'disaster'),
+    scaleFood: (mult)=> FOOD_KEYS.forEach(k=> res[k] *= mult),
+    waterlogStores: ()=>{ res.wheat *= 0.6; res.wood *= 0.8; res.clay *= 0.8; },
+    payWood: (n)=>{ res.wood = Math.max(0, res.wood-n); },
+    payStone: (n)=>{ res.stone = Math.max(0, res.stone-n); },
+    payCoin: (n)=>{ if(coin < n) return false; coin -= n; return true; },
+    stealCoin: (n)=>{ const taken = Math.min(coin, n); coin -= taken; return Math.floor(taken); },
+    addSoldiers: (n)=>{ military.cap += n; military.soldiers += n; },
+    setFamineGuard: (t)=>{ famineGuardTicks = t; },
+    setFireGuard: (t)=>{ fireGuardTicks = t; },
+    setFloodGuard: (t)=>{ floodGuardTicks = t; },
+    setDivineFavour: (t)=>{ divineFavourTicks = t; },
+  };
+}
+
+function maybeTriggerChoiceEvent(){
+  if(choiceEventOpen || tickCount < 8) return;
+  const ctx = choiceEventCtx();
+  const event = pickChoiceEvent(ctx);
+  if(event) showChoiceEvent(event);
+}
+
+function showChoiceEvent(event){
+  const overlay = document.getElementById('eventOverlay');
+  const choicesEl = document.getElementById('eventChoices');
+  if(!overlay || !choicesEl) return;
+  choiceEventOpen = true;
+  document.getElementById('eventTitle').textContent = event.title;
+  document.getElementById('eventText').textContent = event.text;
+  choicesEl.replaceChildren();
+  event.choices.forEach(choice=>{
+    const btn = document.createElement('button');
+    btn.className = 'eventChoice';
+    btn.type = 'button';
+    const label = document.createElement('b');
+    label.textContent = choice.label;
+    const detail = document.createElement('small');
+    detail.textContent = choice.detail;
+    btn.append(label, detail);
+    btn.onclick = ()=>{
+      const message = choice.resolve(choiceEventCtx());
+      overlay.classList.remove('show');
+      choiceEventOpen = false;
+      logEvent(message);
+      showToast(message);
+      playTone('click');
+      render(); renderRes();
+    };
+    choicesEl.appendChild(btn);
+  });
+  overlay.classList.add('show');
+  playTone('gather');
+}
+
+/* ---------------- ARMY UI ---------------- */
+function updateArmyPanel(){
+  document.getElementById('soldierCount').textContent = military.soldiers;
+  document.getElementById('soldierCap').textContent = military.cap;
+  const defenseEl = document.getElementById('defenseValue');
+  if(defenseEl) defenseEl.textContent = totalDefense();
+  renderChronicle();
+}
+document.getElementById('recruitBtn').onclick = ()=>{
+  if(military.soldiers >= military.cap){ showToast('Build more Barracks first'); return; }
+  if(pop.count <= military.soldiers){ showToast('Not enough population to spare'); return; }
+  if(!canAfford({tools:4})){ showToast('Not enough tools'); return; }
+  pay({tools:4});
+  military.soldiers++;
+  showToast('Soldier recruited');
+  updateArmyPanel();
+};
+document.getElementById('disbandBtn').onclick = ()=>{
+  if(military.soldiers<=0){ showToast('No soldiers to disband'); return; }
+  military.soldiers--;
+  showToast('Soldier returned to civic life');
+  updateArmyPanel();
+};
+document.querySelectorAll('.actionbtn.raid').forEach(btn=>{
+  btn.onclick = ()=>{
+    const tier = RAID_TIERS[btn.dataset.tier];
+    if(military.soldiers < tier.soldiers){ showToast('Not enough soldiers for this raid'); return; }
+    const armedBonus = armyStrength() > military.soldiers ? 1.15 : 1;
+    const result = resolveRaid(tier, { rnd, raidBonus: techBonus.raid * armedBonus });
+    coin += result.loot;
+    military.soldiers -= result.losses;
+    logEvent(result.message);
+    showToast(result.toast);
+    updateArmyPanel(); renderRes();
+  };
+});
+
+/* ---------------- QUESTS ---------------- */
+// Quest definitions live in protected/js/quests.js; this builds the ctx
+// they check/reward against and applies rewards to local state.
+function questCtx(){
+  return {
+    placedBuildings, BLD_BY_ID, res, unlockedTechs, scenarioState,
+    addRes,
+    addCoin: (n)=>{ coin += n; },
+    addResearch: (n)=>{ research += n; },
+    addTechHappiness: (n)=>{ techHappinessBonus += n; },
+  };
+}
+
+function checkQuests(){
+  const ctx = questCtx();
+  QUESTS.forEach((q,idx)=>{
+    if(questsCompleted.has(q.id)) return;
+    if(q.check(ctx)){
+      questsCompleted.add(q.id);
+      q.reward(ctx);
+      logEvent(`🧭 Quest complete: ${q.name} — ${q.rewardText}`);
+      showToast(`🧭 Quest complete: ${q.name}`);
+      rollQuestDiscovery(idx);
+    }
+  });
+}
+
+async function rollQuestDiscovery(questIndex){
+  if(!currentUser) return;
+  try{
+    const result = await api('/api/discoveries/roll', {
+      method:'POST',
+      body: JSON.stringify({ activity: 'quest', turnNumber: questIndex })
+    });
+    if(result.discovery){
+      const message = `🔎 Your quest uncovered: ${result.discovery.title}.`;
+      logEvent(message);
+      showToast(message);
+      const discoveries = await api('/api/discoveries');
+      codexEntries = discoveries.codexEntries || [];
+      renderCodexPanel();
+    }
+  } catch(e){ console.warn('quest discovery roll failed', e); }
+}
+
+function renderQuestsPanel(){
+  const list = document.getElementById('questsList');
+  if(!list) return;
+  list.replaceChildren();
+  QUESTS.forEach(q=>{
+    const done = questsCompleted.has(q.id);
+    const row=document.createElement('div');
+    row.className='tech'+(done?' done':'');
+    row.innerHTML =
+      `<div class="tname">${q.name}${done?' ✓':''}</div>
+       <div class="tdesc">${q.desc}</div>
+       <div class="tdesc">Reward: ${q.rewardText}</div>`;
+    list.appendChild(row);
+  });
+}
+
+/* ---------------- SCENARIOS / GOALS ---------------- */
+// Scenario definitions live in protected/js/scenarios.js.
+let scenarioState = { disastersSurvived:0, failed:false };
+
+function scenarioCtx(){
+  return { pop, coin, placedBuildings, scenarioState };
+}
+
+function checkScenario(){
+  if(!scenarioId) return;
+  const sc = SCENARIOS.find(s=>s.id===scenarioId);
+  if(!sc) return;
+  const val = sc.progress(scenarioCtx());
+  if(val >= sc.target && !scenarioState.completed){
+    scenarioState.completed = true;
+    logEvent(`🎯 Goal complete: ${sc.name}!`);
+    showToast(`🎯 Goal complete — ${sc.name}!`);
+  }
+}
+function renderGoalsPanel(){
+  const list = document.getElementById('scenarioList');
+  if(!list) return;
+  list.innerHTML = '';
+  const ctx = scenarioCtx();
+  SCENARIOS.forEach(sc=>{
+    const active = scenarioId===sc.id;
+    const val = sc.progress(ctx);
+    const pct = Math.min(100, Math.round((val/sc.target)*100));
+    const row = document.createElement('div');
+    row.className = 'tech' + (active && scenarioState.completed ? ' done' : '');
+    row.innerHTML =
+      `<div class="tname">${sc.ic} ${sc.name}${active?' (tracking)':''}</div>
+       <div class="tdesc">${sc.desc}</div>
+       <div class="tdesc">${sc.format(val)} — ${pct}%</div>
+       <button>${active ? (scenarioState.completed?'✓ Complete':'Tracking') : 'Track this goal'}</button>`;
+    if(!active){
+      row.querySelector('button').onclick = ()=>{
+        scenarioId = sc.id;
+        scenarioState = { disastersSurvived:0, completed:false };
+        showToast(`Now tracking: ${sc.name}`);
+        renderGoalsPanel();
+      };
+    } else {
+      row.querySelector('button').disabled = true;
+    }
+    list.appendChild(row);
+  });
+}
+
+/* ---------------- TAXES ---------------- */
+function updateTaxPanel(){
+  const hasOffice = placedBuildings.some(b=>b.id==='taxoffice');
+  document.getElementById('taxNote').style.display = hasOffice ? 'none' : 'block';
+  document.getElementById('taxButtons').style.display = hasOffice ? 'block' : 'none';
+  document.querySelectorAll('.actionbtn.taxrate').forEach(btn=>{
+    btn.classList.toggle('secondary', Number(btn.dataset.rate) !== taxRate);
+  });
+}
+document.querySelectorAll('.actionbtn.taxrate').forEach(btn=>{
+  btn.onclick = ()=>{
+    taxRate = Number(btn.dataset.rate);
+    showToast(`Tax rate set — ${btn.textContent.split('—')[0].trim()}`);
+    updateTaxPanel();
+  };
+});
+
+/* ---------------- SAVE / LOAD ---------------- */
+function getState(){
+  return {
+    v:1,
+    captain: captainName,
+    res, cap, pop, happiness, boats, coin, research, marketPolicy,
+    unlockedTechs: Array.from(unlockedTechs),
+    techBonus, techHappinessBonus,
+    questsCompleted: Array.from(questsCompleted),
+    military,
+    droughtTicksLeft, tickCount, civicMilestones:Array.from(civicMilestones), townMemory,
+    taxRate, scenarioId, scenarioState,
+    grid: grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit}))),
+    buildings: placedBuildings.map(b=>({id:b.id, x:b.x, y:b.y, crop:b.crop||undefined, recipe:b.recipe||undefined})),
+  };
+}
+let importedDiscoveries = null;
+function getPortableState(){
+  return importedDiscoveries ? {...getState(),offlineDiscoveries:importedDiscoveries} : getState();
+}
+function encodeState(s){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(s))));
+}
+function decodeState(code){
+  try { return JSON.parse(decodeURIComponent(escape(atob(code.trim())))); }
+  catch(e){ return null; }
+}
+function applyState(s){
+  // Validate before changing the town, selection, discoveries or visible UI.
+  try {
+    s = migrateSave(s);
+    if(!validateSave(s).ok){ showToast('That save code looks invalid'); return; }
+  } catch {
+    showToast('That save code looks invalid'); return;
+  }
+  dismissVoice();
+  adviceSnoozedUntil.clear();
+  marketPolicy={...s.marketPolicy};
+  pendingSale=null;
+  document.getElementById('marketSaleWarning').hidden=true;
+  document.getElementById('marketAutoSell').checked=marketPolicy.autoSell;
+  document.getElementById('marketFoodReserve').value=String(marketPolicy.foodReserveTurns);
+  importedDiscoveries = s.offlineDiscoveries || null;
+  // Saves predating a resource omit its key entirely; zero-fill so the arithmetic
+  // below can't turn into NaN.
+  const zeroedResources = Object.fromEntries([...FOOD_KEYS, ...GENERAL_KEYS].map(k=>[k,0]));
+  res = { ...zeroedResources, ...s.res };
+  cap = s.cap; pop = s.pop; happiness = s.happiness; boats = s.boats;
+  coin = s.coin; research = s.research; droughtTicksLeft = s.droughtTicksLeft||0;
+  tickCount = s.tickCount||0;
+  civicMilestones = new Set(s.civicMilestones||[]);
+  townMemory = s.townMemory || [];
+  remembered.clear();
+  townMemory.forEach(entry=>remembered.add(entry.id));
+  unlockedTechs = new Set(s.unlockedTechs||[]);
+  Object.assign(techBonus, s.techBonus||{});
+  techHappinessBonus = s.techHappinessBonus || 0;
+  questsCompleted = new Set(s.questsCompleted||[]);
+  military = s.military || {soldiers:0,cap:0};
+  taxRate = s.taxRate || 0;
+  scenarioId = s.scenarioId || null;
+  scenarioState = s.scenarioState || { disastersSurvived:0, completed:false };
+  captainName = s.captain||'';
+  document.getElementById('captainInput').value = captainName;
+  setGrid(s.grid.map(row=>row.map(t=>({terrain:t.terrain, deposit:t.deposit, building:null}))));
+  placedBuildings = [];
+  s.buildings.forEach(b=>{
+    const bld = {id:b.id, x:b.x, y:b.y};
+    if(b.crop) bld.crop = b.crop;
+    if(b.recipe) bld.recipe = b.recipe;
+    grid[b.y][b.x].building = bld;
+    placedBuildings.push(bld);
+  });
+  minimapDirty = true;
+  render(); renderRes(); renderPanel(); renderCodexPanel(); updateWorldMood();
+  showToast(`Game Loaded. Welcome back${captainName? ', '+captainName:''}`);
+  playTone('click');
+  logEvent('📜 City loaded from a save code.');
+}
+
+document.getElementById('captainInput').oninput = e=> captainName = e.target.value;
+document.getElementById('genSaveBtn').onclick = ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
+  const code = encodeState(getPortableState());
+  document.getElementById('saveOut').value = code;
+  showToast('Game Saved. Save code generated — copy it now');
+  playTone('click');
+};
+document.getElementById('loadBtn').onclick = ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before loading'); return; }
+  const code = document.getElementById('loadIn').value;
+  if(!code.trim()){ showToast('Paste a save code first'); return; }
+  const state = decodeState(code);
+  applyState(state);
+};
+document.getElementById('cloudSaveBtn').onclick = async ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before saving'); return; }
+  if(!currentUser){ showToast('Log in first to save to your account'); return; }
+  try{
+    const state = getPortableState();
+    await api('/api/save', {
+      method:'POST',
+      body: JSON.stringify({ state: JSON.stringify(state), captain: state.captain })
+    });
+    showToast('Game Saved.');
+    playTone('click');
+  } catch(e){ showToast(e.message); }
+};
+document.getElementById('cloudLoadBtn').onclick = async ()=>{
+  if(marshPrologue){ showToast('Finish the practice settlement before loading'); return; }
+  if(!currentUser){ showToast('Log in first to load from your account'); return; }
+  try{
+    const {state} = await api('/api/save');
+    if(!state){ showToast('No cloud save found yet'); return; }
+    applyState(state);
+    showToast('Game Loaded.');
+  } catch(e){ showToast(e.message); }
+};
+
+/* ---------------- INIT ---------------- */
+function fitCanvas(){
+  // keep canvas native size; container scrolls
+}
+genMap();
+resizeCanvas();
+renderPanel();
+renderRes();
+updateWorldMood();
+fitCanvas();
+window.addEventListener('resize', resizeCanvas, {passive:true});
+
+refreshFromServer();
+
+function marshNarration(title,text,task){
+  const story=document.getElementById('marshStory');
+  story.hidden=false;
+  document.getElementById('marshStoryTitle').textContent=title;
+  document.getElementById('marshStoryText').textContent=text;
+  document.getElementById('marshStoryTask').textContent=task;
+  document.getElementById('legend').textContent=task;
+  const nextId=({wood:'sawmill',stone:'quarry',clay:'claypit',roads:'road'})[marshPrologue?.phase];
+  if(nextId) revealBuilding(nextId);
+  document.querySelectorAll('.bldbtn').forEach(button=>{
+    button.classList.toggle('lesson-next',button.dataset.id===nextId);
+  });
+}
+function marshSound(kind){
+  if(!marshPrologue?.sound) return;
+  try{
+    const AudioContext=window.AudioContext || window.webkitAudioContext;
+    if(!AudioContext) return;
+    audioState.context ||= new AudioContext();
+    audioState.context.resume();
+    const context=audioState.context, now=context.currentTime;
+    const oscillator=context.createOscillator(), gain=context.createGain();
+    oscillator.type=kind==='flood'?'sine':'triangle';
+    oscillator.frequency.setValueAtTime(({wood:130,stone:95,road:180,flow:240,flood:75})[kind]||120,now);
+    if(kind==='flood') oscillator.frequency.exponentialRampToValueAtTime(45,now+2);
+    gain.gain.setValueAtTime(0.0001,now);
+    gain.gain.exponentialRampToValueAtTime(0.035,now+0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001,now+(kind==='flood'?2.3:0.7));
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now+(kind==='flood'?2.4:0.8));
+  }catch(e){ /* Sound is optional. */ }
+}
+function startMarshPrologue(){
+  dismissVoice();
+  if(marshPrologue) return;
+  const saved=structuredClone(getState());
+  const oldEvents=eventLog.slice();
+  const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
+  const targets=marshTargets(cx,cy);
+  const map=saved.grid.map(row=>row.map(tile=>({...tile,building:null})));
+  for(let y=cy-4;y<=cy+2;y++) for(let x=cx-4;x<=cx+4;x++)
+    map[y][x]={terrain:y===cy+2?'river':'grass',deposit:null,building:null};
+  map[cy-1][cx-2]={terrain:'forest',deposit:null,building:null};
+  map[cy][cx+2]={terrain:'mountain',deposit:null,building:null};
+  map[cy-1][cx+3]={terrain:'grass',deposit:'clay',building:null};
+  setGrid(map);
+  placedBuildings=[];
+  pop={count:6,capacity:10};
+  res={...createResources(),stone:35,wheat:12,wood:100};
+  const add=(id,[x,y])=>{
+    const b={id,x,y};
+    if(id==='fields') b.crop='wheat';
+    grid[y][x].building=b;
+    placedBuildings.push(b);
+    return b;
+  };
+  add('fields',targets.field);
+  const mill=add('mill',targets.mill);
+  add('stockage',targets.storage);
+  marshPrologue={saved,oldEvents,targets,mill,phase:'wood',sound:false};
+  document.getElementById('marshSoundBtn').textContent='Sound off';
+  document.getElementById('marshSoundBtn').setAttribute('aria-pressed','false');
+  document.getElementById('main').classList.add('marsh-active');
+  selectBuild(null);
+  marshNarration('The reedbank',
+    'Grain waits by the mill. Beyond it, the first trees lean over wet ground. The settlers need timber before the rain returns.',
+    'Choose Raw materials → 🪓 Woodcutter, then click the green marked grass beside the forest. Woodcutters need nearby trees.');
+  const wrap=document.getElementById('mapwrap');
+  wrap.scrollTo({left:Math.max(0,cx*TS-wrap.clientWidth/2),top:Math.max(0,cy*TS-wrap.clientHeight/2),behavior:'smooth'});
+  logEvent('🌫️ On the reedbank, a mill waited for a road and the first trees were felled.');
+  render(); renderRes();
+}
+function progressMarshLesson(building){
+  const lesson=marshPrologue;
+  if(!lesson) return;
+  const cue=advanceMarshLesson(lesson,building,grid);
+  if(cue==='wood'){
+    marshSound('wood');
+    selectBuild(null);
+    marshNarration('The first timber',
+      'Axes sound at the edge of the reeds. The wood is cut, but no cart can reach the store. Across the clearing, stone shows through the earth.',
+      'Choose Raw materials → Quarry, then click the marked mountain seam. A Quarry needs stone terrain.');
+  } else if(cue==='stone'){
+    marshSound('stone');
+    selectBuild(null);
+    marshNarration('Stone in the ground',
+      'The quarry opens. The coloured dot nearby marks a clay deposit; deposits show where certain buildings can be placed.',
+      'Choose Raw materials → Claypit, then click the marked clay dot. Claypits must sit directly on clay.');
+  } else if(cue==='clay'){
+    selectBuild(null);
+    marshNarration('Clay beneath the grass',
+      'The claypit opens. Other coloured dots mark other deposits, each with its own matching extractor. Work still needs a route to storage.',
+      'Choose Trade & transport → Road, then click the three amber tiles to connect the mill, Woodcutter, and Quarry to storage.');
+  } else if(cue==='road'){
+    marshSound('road');
+    const done=lesson.targets.roads.filter(([x,y])=>grid[y][x].building?.id==='road').length;
+    marshNarration('A way through',
+      'Feet and carts mark the wet ground. Each connected workplace can now send its goods to the store.',
+      `${done}/3 road links laid. Connect all three workplaces to storage.`);
+  } else if(cue==='flow'){
+    marshSound('flow');
+    res.wheat-=2;
+    addRes('flour',1.6*roadProductionBoost(grid,lesson.mill));
+    addRes('wood',3*roadProductionBoost(grid,lesson.sawmill));
+    addRes('stone',2.2*roadProductionBoost(grid,lesson.quarry));
+    marshNarration('The settlement breathes',
+      'The field gives wheat. The mill makes flour. Timber and stone reach the store along the new paths. Clay can be shaped by a Potter. For one clear morning, the town works.',
+      'Watch the resource bar: wheat becomes flour; wood and stone arrive. The water is rising.');
+    logEvent('🌾 Wheat → flour; timber and stone reached storage along the new roads.');
+    renderRes();
+    setTimeout(()=>{if(marshPrologue===lesson && lesson.phase==='flow') finishMarshPrologue();},6500);
+  }
+  render();
+}
+function restoreMarshPrologue(completed){
+  const lesson=marshPrologue;
+  if(!lesson) return;
+  marshPrologue=null;
+  document.getElementById('main').classList.remove('marsh-active','marsh-flood');
+  document.getElementById('marshStory').hidden=true;
+  document.querySelectorAll('.bldbtn.lesson-next').forEach(button=>button.classList.remove('lesson-next'));
+  applyState(lesson.saved);
+  eventLog=lesson.oldEvents;
+  if(completed){
+    remember('marsh-prologue','What the marsh kept',
+      'A Woodcutter, Quarry, Claypit, field, and mill worked together. Roads carried timber, stone, and flour to storage. The water took the first settlement, but not what its people learned.');
+    logEvent('📖 The reedbank is gone. Its lesson remains in the Codex.');
+  } else renderChronicle();
+  selectBuild(null);
+  document.getElementById('legend').textContent='Build freely; roads help nearby work and routes to storage.';
+}
+document.getElementById('marshSoundBtn').onclick=()=>{
+  if(!marshPrologue) return;
+  marshPrologue.sound=!marshPrologue.sound;
+  const button=document.getElementById('marshSoundBtn');
+  button.textContent=marshPrologue.sound?'Sound on':'Sound off';
+  button.setAttribute('aria-pressed',String(marshPrologue.sound));
+  marshSound('wood');
+};
+document.getElementById('marshLeaveBtn').onclick=()=>restoreMarshPrologue(false);
+const marshMobileScreen=window.matchMedia('(pointer: coarse) and (max-width: 900px)');
+function updateMarshAvailability(){
+  for(const id of ['marshPrologueBtn','marshLessonMenu']){
+    const button=document.getElementById(id);
+    button.disabled=marshMobileScreen.matches;
+    button.title=marshMobileScreen.matches?'The marsh lesson needs a larger screen':'';
+  }
+}
+updateMarshAvailability();
+marshMobileScreen.addEventListener('change',updateMarshAvailability);
+document.getElementById('marshLessonMenu').onclick=()=>{
+  if(marshMobileScreen.matches) return;
+  if(marshPrologue){ showToast('The marsh lesson is already underway'); return; }
+  closeAllPanels();
+  startMarshPrologue();
+};
+function finishMarshPrologue(){
+  const lesson=marshPrologue;
+  if(!lesson || lesson.phase!=='flow') return;
+  lesson.phase='flood';
+  document.getElementById('main').classList.add('marsh-flood');
+  for(let y=lesson.mill.y-3;y<=lesson.mill.y+1;y++)
+    for(let x=lesson.mill.x-3;x<=lesson.mill.x+3;x++)
+      grid[y][x].terrain='river';
+  marshSound('flood');
+  marshNarration('The marsh remembers',
+    'Water crosses the roads, fills the quarry, and reaches the doors. The first town cannot be kept. Its pattern can.',
+    'Your original settlement will return. This place will remain in the Codex.');
+  logEvent('🌊 The marsh rose. The practice town disappeared beneath the water.');
+  render();
+  setTimeout(()=>{if(marshPrologue===lesson) restoreMarshPrologue(true);},4500);
+}
+
+/* tutorial overlay: show once on first load */
+(function(){
+  const overlay = document.getElementById('tutorialOverlay');
+  const btn = document.getElementById('tutorialCloseBtn');
+  document.getElementById('marshPrologueBtn').onclick=()=>{
+    if(marshMobileScreen.matches) return;
+    overlay.style.display='none';
+    startMarshPrologue();
+  };
+  const showTutorial = ()=>{
+    overlay.style.display = 'flex';
+    btn.onclick = ()=>{
+      overlay.style.display = 'none';
+      showToast('Tap a building, then tap the map to begin.');
+    };
+  };
+
+  /* starting difficulty: seed a few buildings depending on the chosen level */
+  const STARTER_SETS = { 1:['house','fields','sawmill'], 2:['house'], 3:[] };
+  function seedStarterBuildings(level){
+    const starters = STARTER_SETS[level] || [];
+    if(!starters.length) return;
+    const cx = Math.floor(COLS/2), cy = Math.floor(ROWS/2);
+    const spots = [];
+    for(let r=0; r<8 && spots.length<starters.length*3; r++){
+      for(let dy=-r; dy<=r; dy++){
+        for(let dx=-r; dx<=r; dx++){
+          const x=cx+dx, y=cy+dy;
+          if(inBounds(x,y) && !grid[y][x].building && !spots.some(s=>s.x===x&&s.y===y)) spots.push({x,y});
+        }
+      }
+    }
+    starters.forEach(id=>{
+      const def = BLD_BY_ID[id];
+      const spotIdx = spots.findIndex(s=> !grid[s.y][s.x].building && def.valid(s.x,s.y));
+      if(spotIdx===-1) return;
+      const {x,y} = spots[spotIdx];
+      const b = {id, x, y};
+      if(def.isField) b.crop = 'wheat';
+      grid[y][x].building = b;
+      placedBuildings.push(b);
+    });
+    minimapDirty = true;
+    render(); renderRes();
+  }
+
+  const lOverlay = document.getElementById('levelOverlay');
+  const levelRememberKey = 'portus_level_choice';
+  const levelRememberBox = document.getElementById('levelRemember');
+  const showLevelSelect = ()=>{
+    const remembered = localStorage.getItem(levelRememberKey);
+    if(remembered){
+      seedStarterBuildings(Number(remembered));
+      showTutorial();
+      return;
+    }
+    lOverlay.style.display = 'flex';
+    document.querySelectorAll('.levelOption').forEach(opt=>{
+      opt.onclick = ()=>{
+        if(levelRememberBox.checked) localStorage.setItem(levelRememberKey, opt.dataset.level);
+        seedStarterBuildings(Number(opt.dataset.level));
+        lOverlay.style.display = 'none';
+        showTutorial();
+      };
+    });
+  };
+
+  /* info bubbles: important notices, each dismissible independently */
+  const bubbles = [
+    {
+      id:'terms',
+      title:'Before you begin',
+      html:'By playing Portus you agree to the <a href="/terms.html" target="_blank" style="color:#2b6777;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:#2b6777;">Privacy Policy</a>.',
+      checkLabel:'I agree to the terms',
+      require:true
+    },
+    {
+      id:'sawmill-first',
+      title:'Getting started',
+      html:'Building a <b>Woodcutter</b> is the essential first step, followed by a <b>Quarry</b> — without them your production chain stalls and the game will block further progress.',
+      checkLabel:"I've read this — don't show again",
+      require:false
+    },
+    {
+      id:'gods-resources',
+      title:'A word of caution',
+      html:'The gods may grant you resources from time to time as favour — but don\'t count on it.',
+      checkLabel:"I've read this — don't show again",
+      require:false
+    }
+  ];
+
+  const bOverlay = document.getElementById('bubbleOverlay');
+  const bTitle = document.getElementById('bubbleTitle');
+  const bText = document.getElementById('bubbleText');
+  const bProgress = document.getElementById('bubbleProgress');
+  const bCheck = document.getElementById('bubbleDontShow');
+  const bCheckLabel = document.getElementById('bubbleCheckLabel');
+  const bNextBtn = document.getElementById('bubbleNextBtn');
+
+  const dismissedKey = id => `portus_bubble_${id}_dismissed`;
+  const pending = bubbles.filter(b => localStorage.getItem(dismissedKey(b.id)) !== 'true');
+
+  const runQueue = (index)=>{
+    if(index >= pending.length){
+      bOverlay.style.display = 'none';
+      showLevelSelect();
+      return;
+    }
+    const b = pending[index];
+    bTitle.textContent = b.title;
+    bText.innerHTML = b.html;
+    bCheckLabel.textContent = b.checkLabel;
+    bProgress.textContent = `${index + 1} of ${pending.length}`;
+    bCheck.checked = false;
+    bNextBtn.disabled = b.require;
+    bNextBtn.textContent = index === pending.length - 1 ? 'Got it — continue' : 'Next';
+
+    bCheck.onchange = ()=>{
+      if(b.require) bNextBtn.disabled = !bCheck.checked;
+    };
+    bNextBtn.onclick = ()=>{
+      if(bCheck.checked) localStorage.setItem(dismissedKey(b.id), 'true');
+      runQueue(index + 1);
+    };
+    bOverlay.style.display = 'flex';
+  };
+
+  if(pending.length){
+    runQueue(0);
+  } else {
+    showLevelSelect();
+  }
+})();
+
+const titleOverlay = document.getElementById('titleOverlay');
+const closeTitle = ()=>{
+  titleOverlay.style.display = 'none';
+  playTone('click');
+};
+document.getElementById('newGameBtn').onclick = closeTitle;
+document.getElementById('continueBtn').onclick = closeTitle;
+document.getElementById('titleCodexBtn').onclick = ()=>{
+  closeTitle();
+  document.querySelector('[data-panel="codexPanel"]').click();
+};
+document.getElementById('creditsBtn').onclick = ()=>{
+  document.getElementById('creditsPanel').hidden = false;
+  playTone('click');
+};
+document.getElementById('creditsCloseBtn').onclick = ()=>{
+  document.getElementById('creditsPanel').hidden = true;
+  playTone('click');
+};
+createPortusMusic(document.getElementById('musicBtn'));
+createPortusMusic(document.getElementById('musicToggle'));
+titleOverlay.style.display = 'flex';

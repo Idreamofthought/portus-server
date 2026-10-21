@@ -1,6 +1,6 @@
 export const ROUTES = Object.freeze({
+  signup: "/signup.html",
   login: "/login.html",
-  portusInfo: "/portus-info",
   game: "/game",
   portus: "/portus",
   portusSlash: "/portus/"

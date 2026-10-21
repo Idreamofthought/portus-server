@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { loadShootItems, renderShoots } from "./new-shoots.js";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -13,12 +14,16 @@ import {
   ACTIVITY_DISCOVERY_CHANCES,
   ARCHAEOLOGICAL_FINDS,
   ARTIFACTS,
+  FOUNDATION_CODEX_ENTRIES,
   RARITY_WEIGHTS
 } from "./data/discovery_catalog.js";
 
 import {
   normalizeEmail,
   validCredentials,
+  validPassword,
+  PASSWORD_REQUIREMENTS,
+  getJwtSecret,
   hashToken,
   issueAuthCookie,
   authenticateRequest,
@@ -34,12 +39,22 @@ import {
   requireVerified,
   requirePaid,
   hasFreeAccess,
+  playAccess,
   authLimiter,
+  loginLimiter,
   passwordResetLimiter,
   checkoutLimiter,
   webhookLimiter,
   generalApiLimiter
 } from "./middleware.js";
+
+import {
+  recordAuditEvent,
+  recordFailedLogin,
+  clearFailedLogins,
+  isLoginLocked,
+  requireAdmin
+} from "./security.js";
 
 import { PRODUCTS } from "./products.js";
 import {
@@ -54,10 +69,12 @@ import {
   confirmStripeCheckout,
   handleStripeWebhook,
   verifyPayPalWebhookSignature,
-  creditPayment
+  handlePayPalWebhookEvent
 } from "./payments.js";
-import { validateSave } from "./save-validation.js";
+import { validateSave, migrateSave } from "./save-validation.js";
 import { ROUTES } from "./routes-config.js";
+import { renderWritingArchive } from "./writing-archive.js";
+import { TREE_LEAVES, TREE_BRANCHES, TREE_CROSS_BRANCHES } from "./tree-leaf-catalog.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,13 +83,17 @@ export const app = express();
 const PORT = Number(process.env.PORT || 8080);
 const SITE_URL = process.env.SITE_URL || "https://www.idreamofthought.org";
 const MAX_SAVE_BYTES = 512 * 1024;
-const HEARTBEAT_MAX_GAP_MS = 30_000;
 
 export function startServer(port = PORT) {
   if (app.locals.server) return app.locals.server;
+  getJwtSecret();
   app.locals.server = app.listen(port, () => {
     console.log("Server running on port", port);
   });
+  // periodic cleanup (5 minutes)
+  cleanupExpired();
+  app.locals.cleanupExpiredTimer = setInterval(cleanupExpired, 5 * 60 * 1000);
+  app.locals.cleanupExpiredTimer.unref();
   return app.locals.server;
 }
 
@@ -92,6 +113,31 @@ export function closeServer() {
   });
 }
 
+let shuttingDown = false;
+
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}; shutting down gracefully`);
+
+  const timeout = setTimeout(() => process.exit(1), 10_000);
+  try {
+    await (closeServer() || Promise.resolve());
+    if (typeof db.close === "function") {
+      await db.close();
+    }
+    clearTimeout(timeout);
+    process.exit(0);
+  } catch (error) {
+    console.error("Graceful shutdown failed", error);
+    clearTimeout(timeout);
+    process.exit(1);
+  }
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -107,11 +153,12 @@ function rollRarity() {
 
 const CODEX_ENTRY_IDS = new Set([
   ...ARTIFACTS.map((item) => item.codexEntry),
-  ...ARCHAEOLOGICAL_FINDS.map((item) => item.codexEntry)
+  ...ARCHAEOLOGICAL_FINDS.map((item) => item.codexEntry),
+  ...FOUNDATION_CODEX_ENTRIES
 ]);
 
 function readCodexEntry(entryId) {
-  if (!CODEX_ENTRY_IDS.has(entryId) || !/^[a-z0-9_/-]+$/.test(entryId)) return null;
+  if (!CODEX_ENTRY_IDS.has(entryId) || !/^[a-z0-9_\/-]+$/.test(entryId)) return null;
   const filePath = path.join(__dirname, "portus", "codex", `${entryId}.md`);
   try {
     const content = fs.readFileSync(filePath, "utf8");
@@ -131,16 +178,20 @@ app.set("trust proxy", 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
+const cspHeaderName = process.env.CSP_REPORT_ONLY === "1"
+  ? "Content-Security-Policy-Report-Only"
+  : "Content-Security-Policy";
+
 app.use((req, res, next) => {
   res.setHeader(
-    "Content-Security-Policy",
+    cspHeaderName,
     [
       "default-src 'self'",
       `connect-src 'self' ${SITE_URL} https://plausible.io`,
-      "img-src 'self' data:",
-      "script-src 'self' 'unsafe-inline' https://plausible.io",
+      "img-src 'self' data: https://idreamofthought.wordpress.com",
+      "script-src 'self' https://plausible.io",
       "style-src 'self' 'unsafe-inline'",
-      "form-action 'self' https://buttondown.email",
+      "form-action 'self' https://buttondown.com",
       "object-src 'none'",
       "frame-ancestors 'none'"
     ].join("; ")
@@ -148,11 +199,12 @@ app.use((req, res, next) => {
   next();
 });
 
+const allowedOrigin = SITE_URL || "http://localhost:8080";
 app.use(cookieParser());
-app.use(cors({ origin: SITE_URL, credentials: true }));
+app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // ============================================================
-// STRIPE WEBHOOK
+// STRIPE WEBHOOK (raw body)
 // ============================================================
 
 app.post(
@@ -173,9 +225,15 @@ app.post(
   }
 );
 
-app.use(express.json({ limit: "600kb" }));
+// JSON body (for normal APIs & PayPal)
+app.use(express.json({ limit: "1mb", verify: (req, _res, buffer) => {
+  if (req.path === "/api/webhooks/paypal") req.rawPayPalBody = buffer.toString("utf8");
+} }));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+// Historical posts and bookmarks used this game address.
+app.get("/game.html", (_req, res) => res.redirect(301, ROUTES.game));
 
 // ============================================================
 // STATIC FILES
@@ -185,21 +243,162 @@ app.get(["/portus", "/portus/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/portus/index.html"))
 );
 
-// /tree used to be a separate homepage; its content is now merged into
-// the real homepage (homepage/index.html). Redirect old links/bookmarks.
 app.get(["/tree", "/tree/", "/tree/index.html"], (_req, res) =>
-  res.redirect(301, "/#branches")
+  res.sendFile(path.join(__dirname, "homepage/tree/index.html"))
 );
 
+const treeLeafBySourceUrl = new Map(
+  TREE_LEAVES.map((leaf) => [`/${leaf.source}`, leaf])
+);
+const treeLeafByAddress = new Map(
+  TREE_LEAVES.map((leaf) => [`${leaf.branch}/${leaf.slug}`, leaf])
+);
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function treeLeafUrl(leaf) {
+  return `/tree/leaves/${leaf.branch}/${encodeURIComponent(leaf.slug)}.html`;
+}
+
+function leafBranches(leaf) {
+  return [leaf.branch, ...(TREE_CROSS_BRANCHES[`${leaf.branch}/${leaf.slug}`] || [])];
+}
+
+function leavesForBranch(branch) {
+  return TREE_LEAVES
+    .filter((leaf) => leafBranches(leaf).includes(branch))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+// The old writing URLs remain useful as catalogue references, but the work now
+// lives at a leaf address inside the Great Tree.
+app.get("/writing/:archive/:slug.html", generalApiLimiter, (req, res, next) => {
+  const leaf = treeLeafBySourceUrl.get(req.path);
+  if (!leaf) return next();
+  res.redirect(301, treeLeafUrl(leaf));
+});
+
+app.get("/tree/leaves/:branch/:slug.html", generalApiLimiter, (req, res, next) => {
+  const leaf = treeLeafByAddress.get(`${req.params.branch}/${req.params.slug}`);
+  if (!leaf) return next();
+
+  const sourcePath = path.join(__dirname, "public", leaf.source);
+  let html;
+  try {
+    html = renderWritingArchive(fs.readFileSync(sourcePath, "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") return next();
+    return next(error);
+  }
+
+  const canonical = `<link rel="canonical" href="${SITE_URL}${treeLeafUrl(leaf)}">`;
+  if (/<link rel="canonical"[^>]*>/i.test(html)) {
+    html = html.replace(/<link rel="canonical"[^>]*>/i, canonical);
+  } else {
+    html = html.replace("</head>", `  ${canonical}\n</head>`);
+  }
+  html = html.replaceAll('href="/#branches"', 'href="/tree/"');
+  html = html.replace(/href="\/writing\/[^"]+\/index\.html"/i, `href="/tree/leaves/${leaf.branch}/"`);
+
+  const branches = leafBranches(leaf);
+  const siblings = leavesForBranch(leaf.branch);
+  const position = siblings.findIndex((item) => item.slug === leaf.slug);
+  const previous = position > 0 ? siblings[position - 1] : null;
+  const nextLeaf = position >= 0 && position < siblings.length - 1 ? siblings[position + 1] : null;
+  const alsoGrows = branches.slice(1).map((branch) =>
+    `<a href="/tree/leaves/${encodeURIComponent(branch)}/">${escapeHtml(TREE_BRANCHES[branch] || branch)}</a>`
+  ).join("");
+
+  const context = `<aside class="leaf-context" aria-label="Continue exploring">
+    <p><a href="/tree/leaves/${encodeURIComponent(leaf.branch)}/">← ${escapeHtml(TREE_BRANCHES[leaf.branch])} leaves</a></p>
+    ${alsoGrows ? `<p class="also-grows"><span>Also grows on</span> ${alsoGrows}</p>` : ""}
+    <nav class="leaf-pagination" aria-label="Adjacent leaves">
+      ${previous ? `<a rel="prev" href="${treeLeafUrl(previous)}">← ${escapeHtml(previous.title)}</a>` : "<span></span>"}
+      ${nextLeaf ? `<a rel="next" href="${treeLeafUrl(nextLeaf)}">${escapeHtml(nextLeaf.title)} →</a>` : "<span></span>"}
+    </nav>
+  </aside>`;
+
+  const articleData = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: leaf.title,
+    url: `${SITE_URL}${treeLeafUrl(leaf)}`,
+    author: { "@type": "Person", name: "Richard Jenkins" },
+    isPartOf: { "@type": "CollectionPage", name: TREE_BRANCHES[leaf.branch], url: `${SITE_URL}/tree/leaves/${leaf.branch}/` }
+  }).replaceAll("<", "\\u003c");
+  html = html.replace("</head>", `<script type="application/ld+json">${articleData}</script>\n</head>`);
+  html = html.replace("</body>", `${context}</body>`);
+  res.type("html").send(html);
+});
+
+app.get("/tree/leaves/:branch/", generalApiLimiter, (req, res, next) => {
+  const branchTitle = TREE_BRANCHES[req.params.branch];
+  if (!branchTitle) return next();
+
+  const leaves = leavesForBranch(req.params.branch);
+  const displayCount = leaves.length + (req.params.branch === "health" ? 1 : 0);
+  let cards = leaves.map((leaf) => `
+    <article class="leaf-card" data-title="${escapeHtml(leaf.title.toLocaleLowerCase())}">
+      <p class="leaf-number">${escapeHtml(leaf.category)}${leaf.branch !== req.params.branch ? " · Cross-pollinated" : ""}</p>
+      <h2><a href="${treeLeafUrl(leaf)}">${escapeHtml(leaf.title)}</a></h2>
+    </article>`).join("");
+  if (req.params.branch === "health") {
+    cards = `<article class="leaf-card" data-title="the borrowed kidney"><p class="leaf-number">Health · Transplant and recovery</p><h2><a href="/tree/leaves/health/the-borrowed-kidney.html">The Borrowed Kidney</a></h2></article>${cards}`;
+  }
+
+  res.type("html").send(`<!doctype html>
+<html lang="en"><head>
+<link rel="stylesheet" href="/nav.css"><link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(branchTitle)} Leaves | The Great Tree</title>
+<meta name="description" content="${displayCount} leaves growing on the ${escapeHtml(branchTitle)} branch of I Dream of Thought.">
+<link rel="canonical" href="${SITE_URL}/tree/leaves/${encodeURIComponent(req.params.branch)}/">
+<link rel="stylesheet" href="/tree/css/tree.css"></head><body>
+<nav class="idot-topnav" aria-label="Site navigation"><a class="idot-brand" href="/">I Dream of Thought</a><a href="/tree/">Tree</a><a href="/writing/index.html">Catalogue</a><a href="/what-is">About</a><a href="/contact">Contact</a><a class="idot-play" href="/game">Play Portus</a></nav>
+<main class="tree-page"><a class="site-link" href="/tree/branches/${encodeURIComponent(req.params.branch)}.html">← ${escapeHtml(branchTitle)} branch</a>
+<header class="tree-header"><p class="eyebrow">${displayCount} leaves</p><h1>${escapeHtml(branchTitle)}</h1><p class="intro">Individual works growing on this branch of the Great Tree.</p></header>
+<section class="leaf-tools" aria-label="Find a leaf"><label for="leaf-search">Search this branch</label><input id="leaf-search" type="search" placeholder="Type a title or word"><label for="leaf-sort">Sort</label><select id="leaf-sort"><option value="az">A–Z</option><option value="za">Z–A</option></select><output id="leaf-count">${displayCount} leaves</output></section>
+<section id="leaf-list" class="idea-leaves" aria-label="${escapeHtml(branchTitle)} writing">${cards}</section><p id="leaf-empty" class="leaf-empty" hidden>No leaves match that search.</p>
+${req.params.branch === "poems" ? "<section class=\"tree-container\" aria-labelledby=\"poetry-connections\"><h2 id=\"poetry-connections\">Connections</h2><p><a href=\"https://maisondelapoesie-nantes.com/\" target=\"_blank\" rel=\"noopener noreferrer\">Maison de la Poésie de Nantes</a> — contemporary poetry, readings and workshops in Nantes.</p></section>" : req.params.branch === "art" ? '<p><a href="/writing/discworld-mud/cooking/">Discworld MUD Cooking Corner →</a></p>' : ""}
+<footer><a href="/tree/">The Great Tree</a><a href="/writing/">Catalogue</a></footer></main><script src="/tree/js/leaves.js" defer></script></body></html>`);
+});
+
+// Leaves exist from publication; New Shoots is a one-calendar-month feature.
+const shootItems = loadShootItems(TREE_LEAVES, __dirname);
+const writingTemplate = fs.readFileSync(path.join(__dirname, "homepage/writing/index.html"), "utf8");
+app.get(["/writing", "/writing/", "/writing/index.html"], (req, res) => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  res.set("Cache-Control", "no-cache").type("html").send(writingTemplate.replace(/<!-- NEW_SHOOTS_START -->[\s\S]*?<!-- NEW_SHOOTS_END -->/, renderShoots(shootItems, today)));
+});
+
 app.use(express.static(path.join(__dirname, "homepage")));
-app.use("/homepage", express.static(path.join(__dirname, "homepage")));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================================================
 // PORTUS GAME ROUTING
 // ============================================================
 
-app.use("/portus", express.static(path.join(__dirname, "public")));
+app.use(
+  "/game-assets",
+  authenticateRequest,
+  requireVerified,
+  requirePaid,
+  express.static(path.join(__dirname, "protected/js"))
+);
+app.use(
+  "/game-assets",
+  authenticateRequest,
+  requireVerified,
+  requirePaid,
+  express.static(path.join(__dirname, "protected/css"))
+);
 
 // ============================================================
 // HOMEPAGE ROUTES
@@ -227,9 +426,7 @@ app.get("/fragments", (_req, res) =>
 app.get(["/writing", "/writing/"], (_req, res) =>
   res.sendFile(path.join(__dirname, "homepage/writing/index.html"))
 );
-app.get("/portus-info", (_req, res) =>
-  res.sendFile(path.join(__dirname, "homepage/portus-info.html"))
-);
+app.get("/portus-info", (_req, res) => res.redirect(301, "/portus/"));
 app.get("/legal", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/legal.html"))
 );
@@ -251,6 +448,9 @@ app.get("/cgv", generalApiLimiter, (_req, res) =>
 app.get("/privacy", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/privacy.html"))
 );
+app.get("/ai-use", (_req, res) =>
+  res.sendFile(path.join(__dirname, "homepage/ai-use.html"))
+);
 app.get("/cookies", generalApiLimiter, (_req, res) =>
   res.sendFile(path.join(__dirname, "public/cookies.html"))
 );
@@ -262,9 +462,6 @@ app.get("/cookies", generalApiLimiter, (_req, res) =>
 app.get("/game", authenticateRequest, requireVerified, requirePaid, (_req, res) =>
   res.sendFile(path.join(__dirname, "protected/game.html"))
 );
-// /text-game needs no explicit route -- public/ is already mounted as
-// static at root, and Express serves public/text-game/index.html for
-// both /text-game and /text-game/ automatically.
 
 // ============================================================
 // API ROUTES
@@ -283,7 +480,7 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
   if (!validCredentials(email, password))
     return res
       .status(400)
-      .json({ error: "invalid email or password (min 8 characters)" });
+      .json({ error: `Invalid email or password. ${PASSWORD_REQUIREMENTS}` });
 
   const passwordHash = await hashPassword(password);
 
@@ -322,12 +519,19 @@ app.post("/api/signup", authLimiter, requireCsrf, async (req, res) => {
 });
 
 // Login
-app.post("/api/login", authLimiter, requireCsrf, async (req, res) => {
+app.post("/api/login", loginLimiter, authLimiter, requireCsrf, async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = req.body.password;
 
   if (!validCredentials(email, password))
-    return res.status(400).json({ error: "invalid credentials" });
+    return res.status(400).json({ error: `Invalid credentials. ${PASSWORD_REQUIREMENTS}` });
+
+  if (isLoginLocked(email)) {
+    recordAuditEvent({ eventType: "login_locked_out", ip: req.ip });
+    return res.status(429).json({
+      error: "Too many failed attempts — please wait before trying again."
+    });
+  }
 
   const user = db
     .prepare(`SELECT id,password_hash,email_verified FROM users WHERE email=?`)
@@ -337,33 +541,45 @@ app.post("/api/login", authLimiter, requireCsrf, async (req, res) => {
     "$2a$12$C6UzMDM.H6dfI/f/IKco.aH0uP.tX3XLE5X8y5X8y5X8y5X8y5X8y";
   const ok = await verifyPassword(password, user?.password_hash || dummy);
 
-  if (!user || !ok)
+  if (!user || !ok) {
+    recordFailedLogin(email, req.ip);
+    recordAuditEvent({
+      userId: user ? user.id : null,
+      eventType: "login_failed",
+      ip: req.ip
+    });
     return res.status(400).json({ error: "invalid credentials" });
+  }
 
   if (!user.email_verified)
     return res
       .status(403)
       .json({ error: "please verify your email before logging in" });
 
+  clearFailedLogins(email);
   issueAuthCookie(res, user.id);
+  recordAuditEvent({ userId: user.id, eventType: "login_succeeded", ip: req.ip });
   res.json({ ok: true });
 });
 
 // Logout
-app.post("/api/logout", requireCsrf, (req, res) => {
-  try {
-    const token = req.cookies.auth;
-    if (token) {
-      const payload = JSON.parse(
-        Buffer.from(token.split(".")[1], "base64url").toString()
-      );
-      revokeSession(payload.sid);
-    }
-  } catch {}
+app.post(
+  "/api/logout",
+  authenticateRequest,
+  requireCsrf,
+  (req, res) => {
+    revokeSession(req.sessionId);
 
-  res.clearCookie("auth", { path: "/" });
-  res.json({ ok: true });
-});
+    recordAuditEvent({
+      userId: req.user.uid,
+      eventType: "logout",
+      ip: req.ip
+    });
+
+    res.clearCookie("auth", { path: "/" });
+    res.json({ ok: true });
+  }
+);
 
 // Me
 app.get("/api/me", authenticateRequest, (req, res) => {
@@ -477,11 +693,9 @@ app.post("/api/reset-password", passwordResetLimiter, async (req, res) => {
 
   if (
     typeof token !== "string" ||
-    typeof password !== "string" ||
-    password.length < 8 ||
-    password.length > 200
+    !validPassword(password)
   )
-    return res.status(400).json({ error: "invalid request" });
+    return res.status(400).json({ error: `Invalid request. ${PASSWORD_REQUIREMENTS}` });
 
   const row = db
     .prepare(`SELECT * FROM password_reset_tokens WHERE token_hash=?`)
@@ -493,16 +707,27 @@ app.post("/api/reset-password", passwordResetLimiter, async (req, res) => {
   const hash = await hashPassword(password);
 
   const tx = db.transaction(() => {
+    // Hashing yields to other requests. Claim inside this transaction so only
+    // one request can use the token, even after parallel password hashes.
+    const claim = db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE token_hash=? AND used=0 AND expires_at>?`)
+      .run(row.token_hash, Date.now());
+    if (claim.changes !== 1) return false;
     db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(
       hash,
       row.user_id
     );
-    db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE token_hash=?`)
-      .run(row.token_hash);
+    db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE user_id=?`).run(row.user_id);
     revokeAllSessions(row.user_id);
+    return true;
   });
 
-  tx();
+  if (!tx()) return res.status(400).json({ error: "invalid or expired token" });
+  recordAuditEvent({
+    userId: row.user_id,
+    eventType: "password_reset_completed",
+    ip: req.ip,
+    metadata: { sessionsRevoked: true }
+  });
   res.json({ ok: true });
 });
 
@@ -518,11 +743,9 @@ app.post(
 
     if (
       typeof oldPassword !== "string" ||
-      typeof newPassword !== "string" ||
-      newPassword.length < 8 ||
-      newPassword.length > 200
+      !validPassword(newPassword)
     )
-      return res.status(400).json({ error: "invalid password" });
+      return res.status(400).json({ error: PASSWORD_REQUIREMENTS });
 
     const user = db
       .prepare(`SELECT password_hash FROM users WHERE id=?`)
@@ -531,19 +754,32 @@ app.post(
     if (!user || !(await verifyPassword(oldPassword, user.password_hash)))
       return res.status(400).json({ error: "current password is incorrect" });
 
-    db.prepare(`UPDATE users SET password_hash=? WHERE id=?`).run(
-      await hashPassword(newPassword),
-      req.user.uid
-    );
-
-    revokeAllSessions(req.user.uid);
+    const replacementHash = await hashPassword(newPassword);
+    const changed = db.transaction(() => {
+      // A password reset or session revocation during hashing wins over this
+      // older request; it must not overwrite the newly secured password.
+      const update = db.prepare(`UPDATE users SET password_hash=? WHERE id=? AND password_hash=?
+        AND EXISTS (SELECT 1 FROM sessions WHERE id=? AND user_id=? AND expires_at>?)`)
+        .run(replacementHash, req.user.uid, user.password_hash, req.sessionId, req.user.uid, Date.now());
+      if (update.changes !== 1) return false;
+      revokeAllSessions(req.user.uid);
+      db.prepare(`UPDATE password_reset_tokens SET used=1 WHERE user_id=?`).run(req.user.uid);
+      return true;
+    })();
+    if (!changed) return res.status(409).json({ error: "Account credentials changed; sign in again before retrying." });
+    recordAuditEvent({
+      userId: req.user.uid,
+      eventType: "password_changed",
+      ip: req.ip,
+      metadata: { sessionsRevoked: true }
+    });
     res.clearCookie("auth", { path: "/" });
 
     res.json({ ok: true });
   }
 );
 
-// Delete account while retaining anonymized purchase records for reconciliation.
+// Delete account
 app.post("/api/delete-account", requireCsrf, authenticateRequest, generalApiLimiter, async (req, res) => {
   const userId = req.user.uid;
   const now = Date.now();
@@ -583,17 +819,7 @@ app.get("/api/access", authenticateRequest, (req, res) => {
     });
   }
 
-  const row = db
-    .prepare(`SELECT remaining_seconds FROM time_tracking WHERE user_id=?`)
-    .get(req.user.uid);
-
-  const seconds = Math.max(0, Math.floor(row?.remaining_seconds || 0));
-
-  res.json({
-    remainingSeconds: seconds,
-    canPlay: seconds > 0,
-    accessExpiresAt: Date.now() + seconds * 1000
-  });
+  res.json(playAccess.read(req.user.uid));
 });
 
 // Heartbeat
@@ -607,56 +833,16 @@ app.post("/api/access/heartbeat", requireCsrf, authenticateRequest, generalApiLi
     });
   }
 
-  const now = Date.now();
-  let remaining;
-
-  const tx = db.transaction(() => {
-    let row = db
-      .prepare(
-        `SELECT remaining_seconds,last_active_at FROM time_tracking WHERE user_id=?`
-      )
-      .get(req.user.uid);
-
-    if (!row) {
-      db.prepare(
-        `INSERT INTO time_tracking (user_id,remaining_seconds,last_active_at,updated_at) VALUES (?,0,?,?)`
-      ).run(req.user.uid, now, now);
-      remaining = 0;
-      return;
-    }
-
-    let elapsed = row.last_active_at ? now - row.last_active_at : 0;
-
-    if (elapsed > HEARTBEAT_MAX_GAP_MS) elapsed = 0;
-
-    const debit = Math.max(0, Math.floor(elapsed / 1000));
-
-    remaining = Math.max(0, row.remaining_seconds - debit);
-
-    db.prepare(
-      `UPDATE time_tracking SET remaining_seconds=?,last_active_at=?,updated_at=? WHERE user_id=?`
-    ).run(remaining, now, now, req.user.uid);
-  });
-
-  tx();
-
-  res.json({
-    remainingSeconds: remaining,
-    canPlay: remaining > 0,
-    accessExpiresAt: now + remaining * 1000
-  });
+  res.json(playAccess.grant(req.user.uid, { renew: true }));
 });
 
 // Stop access
 app.post("/api/access/stop", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
-  db.prepare(
-    `UPDATE time_tracking SET last_active_at=NULL,updated_at=? WHERE user_id=?`
-  ).run(Date.now(), req.user.uid);
-
+  playAccess.stop(req.user.uid);
   res.json({ ok: true });
 });
 
-// Artifact and archaeological discovery
+// Discoveries
 app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (req, res) => {
   const discoveries = db.prepare(
     `SELECT discovery_id, discovery_type, category, rarity, activity,
@@ -668,12 +854,16 @@ app.get("/api/discoveries", authenticateRequest, requireVerified, requirePaid, (
      WHERE user_id=? ORDER BY unlocked_at DESC`
   ).all(req.user.uid);
 
-  const codexEntries = codexUnlocks
+  const foundationEntries = FOUNDATION_CODEX_ENTRIES
+    .map((entryId) => readCodexEntry(entryId))
+    .filter(Boolean)
+    .map((entry) => ({ ...entry, source: "foundation" }));
+  const codexEntries = [...foundationEntries, ...codexUnlocks
     .map((unlock) => {
       const entry = readCodexEntry(unlock.entry_id);
       return entry ? { ...entry, unlockedAt: unlock.unlocked_at, source: unlock.source } : null;
     })
-    .filter(Boolean);
+    .filter(Boolean)];
 
   res.json({ discoveries, codexUnlocks, codexEntries });
 });
@@ -775,11 +965,13 @@ app.post(
   authenticateRequest,
   requireVerified,
   async (req, res) => {
+    if (req.body?.withdrawalConsent !== true) return res.status(400).json({ error: "withdrawal consent is required before checkout" });
     try {
       res.json(
         await createPayPalOrder({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: true,
           siteUrl: SITE_URL
         })
       );
@@ -821,11 +1013,13 @@ app.post(
   authenticateRequest,
   requireVerified,
   async (req, res) => {
+    if (req.body?.withdrawalConsent !== true) return res.status(400).json({ error: "withdrawal consent is required before checkout" });
     try {
       res.json(
         await createStripeCheckout({
           userId: req.user.uid,
           productId: req.body.productId,
+          withdrawalConsent: true,
           siteUrl: SITE_URL
         })
       );
@@ -857,55 +1051,47 @@ app.post(
   }
 );
 
-// PayPal webhook
-app.post("/api/webhooks/paypal", webhookLimiter, async (req, res) => {
-  try {
-    const valid = await verifyPayPalWebhookSignature(req.headers, req.body);
-    if (!valid) {
-      return res.status(400).json({ error: "invalid signature" });
+// PayPal webhook (JSON body)
+app.post(
+  "/api/webhooks/paypal",
+  webhookLimiter,
+  async (req, res) => {
+    try {
+      const isValid = await verifyPayPalWebhookSignature(req.headers, req.rawPayPalBody);
+      if (!isValid) {
+        console.warn("PayPal webhook signature invalid");
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
+
+      // Complete durable credit inside this try/catch before acknowledging.
+      // A 500 lets PayPal retry; no exception escapes into an unguarded timer.
+      const result = handlePayPalWebhookEvent(req.body);
+      res.status(200).json({ received: true, ...result });
+    } catch (err) {
+      console.error("PayPal webhook error:", err.message);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    if (req.body.event_type !== "PAYMENT.CAPTURE.COMPLETED") {
-      return res.json({ ok: true, ignored: true });
-    }
-
-    const capture = req.body.resource;
-    const orderId =
-      capture?.supplementary_data?.related_ids?.order_id;
-    const eventId = req.body?.id || capture?.id;
-    const capturedAmount = capture?.amount?.value;
-    const capturedCurrency = capture?.amount?.currency_code;
-
-    if (!orderId || !eventId || !capturedAmount || !capturedCurrency) {
-      return res.status(400).json({ error: "malformed event" });
-    }
-
-    const pending = db
-      .prepare(
-        `SELECT * FROM pending_orders WHERE order_id=? AND provider='paypal'`
-      )
-      .get(orderId);
-
-    if (!pending) {
-      return res.json({ ok: true, unknownOrder: true });
-    }
-
-    const result = creditPayment({ pending, eventId, capturedAmount, capturedCurrency });
-    return res.json({ ok: true, ...result });
-  } catch (err) {
-    console.error("paypal webhook error", err);
-    return res.status(400).json({ error: "webhook error" });
   }
-});
+);
 
 // Save game state
 app.post("/api/save", requireCsrf, authenticateRequest, generalApiLimiter, (req, res) => {
-  const json = JSON.stringify(req.body ?? {});
+  const json = req.body?.state;
+  if (typeof json !== "string") {
+    return res.status(400).json({ error: "invalid_save" });
+  }
   if (Buffer.byteLength(json, "utf8") > MAX_SAVE_BYTES) {
     return res.status(413).json({ error: "save too large" });
   }
 
-  const validation = validateSave(req.body);
+  let migrated;
+  try {
+    migrated = migrateSave(JSON.parse(json));
+  } catch {
+    return res.status(400).json({ error: "invalid_save" });
+  }
+
+  const validation = validateSave(migrated);
   if (!validation.ok) {
     return res.status(400).json({ error: validation.error || "invalid_save" });
   }
@@ -935,7 +1121,7 @@ app.get("/api/save", authenticateRequest, (req, res) => {
 
   let state = null;
   try {
-    state = row ? JSON.parse(row.state) : null;
+    state = row ? migrateSave(JSON.parse(row.state)) : null;
   } catch {
     state = null;
   }
@@ -949,12 +1135,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "internal server error" });
 });
 
-// Cleanup expired tokens / orders
-cleanupExpired();
-app.locals.cleanupExpiredTimer = setInterval(cleanupExpired, 24 * 60 * 60 * 1000);
-app.locals.cleanupExpiredTimer.unref();
-
 // Start server when launched directly.
-if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])
+) {
   startServer(PORT);
 }
