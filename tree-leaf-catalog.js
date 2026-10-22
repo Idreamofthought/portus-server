@@ -20,6 +20,7 @@ export const TREE_LEAVES = [
   {"title": "The Woods Fed the Furnace", "branch": "philosophy-ideas", "category": "Essay · Science, history & ecology", "slug": "the-woods-fed-the-furnace", "source": "writing/opinions/the-woods-fed-the-furnace.html", "published": "2026-10-09"},
   {"title":"Mackerel Skies","branch":"short-stories","category":"Fiction · Folk horror · Halloween","slug":"mackerel-skies","source":"writing/prose/mackerel-skies.html","published":"2026-10-14"},
   {"title":"The Thinning Veil","branch":"history-memory","category":"Reflection · Autumn & memory","slug":"the-thinning-veil","source":"writing/prose/the-thinning-veil.html","published":"2026-10-07"},
+  {"title":"The Mystery on Blue Bell Hill","branch":"short-stories","category":"True memory · Halloween","slug":"blue-bell-hill","source":"writing/prose/blue-bell-hill.html","published":"2026-10-22"},
   {"title":"The Boundary Keeper","branch":"short-stories","category":"Fiction · Rural horror","slug":"the-boundary-keeper","source":"writing/prose/the-boundary-keeper.html","published":"2026-10-07"},
   {"title": "Leçons de République — Quatre caricatures", "branch": "politics", "category": "Caricatures politiques · Français", "slug": "lecons-de-republique", "source": "writing/opinions/lecons-de-republique.html", "published": "2026-10-05"},
   {"title":"Peut mieux faire — Leçon de priorités","branch":"politics","category":"Caricature politique · Français","slug":"peut-mieux-faire","source":"writing/opinions/peut-mieux-faire.html"},
