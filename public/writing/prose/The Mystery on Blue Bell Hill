@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Mystery on Blue Bell Hill</title>
+<meta name="description" content="A true memory from the late 1980s: a night on Blue Bell Hill, a field of stones, and a friend who ran.">
+<style>
+  :root {
+    --page: #ecede6;
+    --ink: #1b2330;
+    --muted: #5a6270;
+    --bluebell: #3f4596;
+    --rule: #c9cbc2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #121722;
+      --ink: #dfe1dc;
+      --muted: #98a0ae;
+      --bluebell: #9aa0e6;
+      --rule: #2b3344;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 1.125rem;
+    line-height: 1.7;
+  }
+  main {
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.25rem 4rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 7vw, 2.9rem);
+    line-height: 1.15;
+    font-weight: normal;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.6rem;
+  }
+  .byline {
+    color: var(--muted);
+    font-style: italic;
+    margin: 0 0 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  p { margin: 0 0 1.25rem; }
+  .beat { margin-bottom: 0.5rem; }
+  .turn {
+    font-size: 1.3rem;
+    margin: 2rem 0 1.25rem;
+    color: var(--bluebell);
+  }
+  .said { margin: 1.5rem 0; padding-left: 1rem; border-left: 3px solid var(--bluebell); }
+  .last {
+    margin-top: 2rem;
+    font-style: italic;
+  }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  a { color: var(--bluebell); }
+</style>
+</head>
+<body>
+<main>
+<article>
+  <h1>The Mystery on Blue Bell Hill</h1>
+  <p class="byline">A true memory, late 1980s</p>
+
+  <p>This happened sometime between 1986 and 1989, before the tunnel carved its way under the North Downs near Blue Bell Hill, when the hill still felt a little wilder at night. Back then, darkness was darker.</p>
+
+  <p>If you climbed Lower Warren Road after sunset, the lights of the Medway towns quickly disappeared behind the folds of the land. The road wound steeply through the trees towards Lower Bell House. Branches arched overhead, and the chalk banks glowed faintly in the moonlight. Somewhere below, hidden in the dark, lay the ancient Pilgrims’ Way.</p>
+
+  <p>A group of us, teenagers, students, all in jeans, were wandering near the White Horse Stone. Craig had his leather jacket on, his long curly hair hanging over the collar. Oliver was there too, short blond hair, a strange, oddball lad, the sort you never quite worked out. It was his house we were heading back towards.</p>
+
+  <p>We called the stones there the Hengest and Horsa Stones. Two of them stood close together at the bottom edge of a field, and in the middle of the field was an old well. Beyond the field stood Westfield Wood.</p>
+
+  <p>Even by day the place felt old. At night it felt ancient. Pilgrims had passed that way for centuries, and travellers and drovers had climbed the hill long before motorcars existed. Places like that gather stories, and Blue Bell Hill has always had more than its share.</p>
+
+  <p>We were talking and laughing, probably louder than we should have been. We’d had a few drinks. Someone was telling a ghost story and someone else was taking the mickey out of it. The stones stood pale in the darkness, and the well sat unseen somewhere in the field.</p>
+
+  <p class="turn">Then Oliver froze.</p>
+
+  <p>I noticed his face before anything else. He was staring into the darkness beyond the stones. For a second nobody spoke.</p>
+
+  <p>Then he turned and ran. Not a nervous walk, not a prank. He ran flat out, and the sound of his shoes on the ground shattered the silence.</p>
+
+  <p>We stared after him for a moment. Then instinct took over. One of us followed, then another, then all of us.</p>
+
+  <p>The night exploded into noise: feet hammering on hard chalk, loose stones skittering behind us, branches snapping, breath tearing in and out of our lungs. Nobody shouted. Nobody asked questions. We ran because he ran.</p>
+
+  <p>Every shadow became a shape, and every movement among the trees became something watching. The black mass of Westfield Wood felt as though it was leaning towards us. I remember the desperate pounding of feet, somebody stumbling and recovering, the cold air in my throat. I remember the absurd, overwhelming feeling that if I looked behind me I might see something close enough to touch.</p>
+
+  <p>I never looked. I just ran.</p>
+
+  <p>We ran up the hill towards Lower Bell House, and the farther we ran the more desperately I wanted to see lights. Then they appeared through the trees, golden rectangles shining in the darkness. Oliver’s house. Home. Safety. Other people.</p>
+
+  <p>Only then did we stop, bent over, gasping, sweating despite the cold. For a while all we could hear was our own breathing.</p>
+
+  <p>At last somebody found enough breath to ask, “What were you running from?”</p>
+
+  <p>Oliver looked back down the track, towards the field, the stones and the darkness beneath Westfield Wood. His face was still pale.</p>
+
+  <p class="said">“I don’t know,” he said.</p>
+
+  <p>That was the end of it. No ghost appeared and no explanation followed. Nobody ever discovered what had frightened him.</p>
+
+  <p>Almost forty years later, I still can’t tell you what happened on that hillside. Perhaps it was nothing more than fear passing from one person to another. Perhaps.</p>
+
+  <p>Yet every Halloween I find myself thinking about that field, those stones, the forgotten well and the woods beyond. I remember the sound of our feet running through the darkness of Blue Bell Hill.</p>
+
+  <p class="last">Not because we knew what was there, but because, for one unforgettable moment, none of us wanted to find out.</p>
+</article>
+
+<footer>
+  <p>Richard Jenkins</p>
+</footer>
+</main>
+</body>
+</html>
