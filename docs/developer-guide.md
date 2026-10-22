@@ -1,43 +1,29 @@
 # Developer Guide
 
-## Running Locally
+## Scope
+This folder contains the design and system documentation for Portus. It is intended to help maintainers and contributors preserve the project’s tone, structure, and design logic.
 
-```bash
-npm install
-npm start
-```
+## Important principles
+- Keep the project emotionally coherent
+- Favor atmosphere and meaning over generic gameplay mechanics
+- Treat systems as part of a shared lore logic
+- Preserve modularity while supporting connection across systems
 
-The server runs at `http://localhost:8080` by default. Copy `.env.example` to
-`.env` and provide local values as needed; never commit `.env`.
+## Recommended workflow
+1. Read the design bible before changing game systems
+2. Check related docs for the affected domain
+3. Keep edits aligned with project tone and structure
+4. Verify runtime behavior with the project’s check scripts
+5. Update docs when gameplay or world logic changes
 
-## Running Tests
+## Key docs
+- [artifacts.md](artifacts.md)
+- [codex.md](codex.md)
+- [world.md](world.md)
+- [disasters.md](disasters.md)
+- [favour-system.md](favour-system.md)
+- [design-bible.md](design-bible.md)
+- [game-loop.md](game-loop.md)
 
-```bash
-npm test
-npm run test:integration
-npm run validate:structure
-```
-
-The launch sandbox is opt-in:
-
-```bash
-npm run test:launch-sandbox
-```
-
-## Editing Files
-
-Open the repository in VS Code with `code .`. Keep server logic in the root
-modules and `routes/`, browser game code in `protected/`, runtime content in
-`portus/` and `data/`, and tests in `test/`.
-
-## Git Workflow
-
-```bash
-git status
-git add path/to/changed-file
-git commit -m "Describe your change"
-git push origin main
-```
-
-Review the diff before committing and do not add credentials or generated
-database files.
+## Notes
+This project benefits from deliberate design decisions. The docs are meant to prevent drift toward generic mechanical systems or cold abstract interfaces.

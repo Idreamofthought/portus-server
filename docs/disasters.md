@@ -1,26 +1,38 @@
-# Disaster System
+# Disasters
 
-Disasters are not punishments; they are messages from the world.
+## Purpose
+Disasters are not simply negative events. In Portus, they are moments of existential friction that force the settlement to adapt, remember, or reinterpret its priorities.
 
-## Types
+## Roles
+- Create urgency and consequence
+- Shake up resource allocation or city rhythm
+- Reveal systemic weaknesses
+- Add narrative tension to the settlement’s survival story
 
-- Flood
-- Storm
-- Quake
-- Drought
-- Beast omen
-- River shift
-- Stone fracture
+## Types of disasters
+### Environmental stress
+Floods, fires, blight, storms, or sudden shifts in terrain quality.
 
-## Behaviour
+### Cultural rupture
+Loss of goodwill, ritual instability, or fracture between factions or traditions.
 
-Each disaster has a trigger, a warning, an effect, a recovery path, and one or
-more possible Codex consequences. Implemented event rules live under
-[`portus/events/`](../portus/events/README.md) and in the protected game modules.
+### Dream instability
+Unreliable memory, temporal distortions, or haunting events that affect settlement logic.
 
-## Example: Flood
+### Economic collapse
+Food shortages, production failures, or sudden scarcity leading to social strain.
 
-- Trigger: heavy rain combined with low favour
-- Warning: rising river sound
-- Effect: resource loss or terrain pressure
-- Recovery: ritual and rebuilding
+## Design rules
+- Disasters should be readable before they hit
+- Their effects should be understandable to the player
+- They must create choices, not just negative penalties
+- They should tie into broader world themes, not feel random
+
+## Example outcomes
+- Temporary loss of key resources
+- Debuffs to worker morale or productivity
+- Unlocking codex content related to the cause
+- Triggering new research or cultural reaction paths
+
+## Player experience
+When handled well, disasters make the city feel alive. They should feel like mythic events with mechanical consequences.

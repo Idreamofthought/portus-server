@@ -1,14 +1,118 @@
-# Artifacts of Portus
+# The 7 Artifact Categories — Full Lore Notes
 
-Artifacts are remnants of forgotten ages, each carrying echoes of ritual,
-memory, and deep-time knowledge.
+## 1. Celestial Instruments
+Ancient tools carved to read the sky, track the seasons, and measure the breath of time.
 
-Portus has seven artifact categories: Celestial Instruments, Ritual Implements,
-Tools of the Ancients, Tokens of Authority, Mystic Containers, Beast-Marked
-Relics, and Echoes of the Deep.
+Notes:
+- Found near high ground, cairns, or farming terraces.
+- Often made of polished stone with faint spiral markings.
+- Some pieces align with the sun or moon when placed correctly.
+- When held, players feel a subtle “pull” toward the next season.
+- Unlock Codex entries about early astronomer-priests.
+- Increase Time’s favour; reduce uncertainty in disaster timing.
 
-The complete category notes, discovery contexts, examples, and intended effects
-are maintained in [The Seven Artifact Categories](ARTIFACT-CATEGORIES.md).
-Runtime discovery rules and the current catalog are maintained in
-[`portus/items/artifact_discovery.md`](../portus/items/artifact_discovery.md)
-and [`data/discovery_catalog.js`](../data/discovery_catalog.js).
+Examples:
+- Horizon Disk
+- Dawn-Pointer Rod
+- Star-Counting Pebbles
+
+## 2. Ritual Implements
+Objects used in ceremonies, offerings, or appeasement rites.
+
+Notes:
+- Found near old fire pits, riverbanks, or abandoned shrines.
+- Often decorated with ash, ochre, or animal fat residues.
+- Some hum faintly when placed near water or fire.
+- Unlock Codex entries about the First Ceremonies.
+- Reduce Chaos disasters; increase ritual effectiveness.
+
+Examples:
+- Ember Bowl
+- Bone-Thread Needle
+- River-Blessing Ladle
+
+## 3. Tools of the Ancients
+Functional tools from early engineers, builders, and stone-workers.
+
+Notes:
+- Found in mining, clay pits, or collapsed structures.
+- Made of bronze, obsidian, or river-polished stone.
+- Some show wear patterns that reveal forgotten techniques.
+- Unlock Codex entries about early construction methods.
+- Reduce building costs; increase crafting speed.
+
+Examples:
+- Obsidian Edge
+- Bronze Chisel
+- Stone-Weight Counter
+
+## 4. Tokens of Authority
+Symbols of leadership, judgement, and social order.
+
+Notes:
+- Found in meeting places, longhouses, or burial mounds.
+- Often carved with clan marks or early proto-writing.
+- Some glow faintly when held during population events.
+- Unlock Codex entries about early councils and disputes.
+- Increase morale; reduce revolt chance.
+
+Examples:
+- Clan-Mark Seal
+- Speaker’s Ring
+- Judgment Stone
+
+## 5. Mystic Containers
+Jars, boxes, urns, and reliquaries that once held sacred or dangerous things.
+
+Notes:
+- Found in riverbeds, caves, or ritual sites.
+- Often sealed with resin, wax, or clay plugs.
+- Some still contain dust, seeds, or fragments of unknown origin.
+- Unlock Codex entries about preservation rituals.
+- Increase storage capacity; reveal hidden lore fragments.
+
+Examples:
+- Resin-Sealed Jar
+- Whisper-Box
+- Ash-Keeper Urn
+
+## 6. Beast-Marked Relics
+Carvings, bones, or tokens tied to mythic animals and their spirits.
+
+Notes:
+- Found in hunting grounds, forests, or near animal dens.
+- Often etched with claw-marks or stylised silhouettes.
+- Some vibrate faintly when predators are nearby.
+- Unlock Codex entries about animal myths and omens.
+- Increase hunting yield; reveal creature lore threads.
+
+Examples:
+- Antler-Rune Fragment
+- Wolf-Bone Charm
+- River-Beast Tooth
+
+## 7. Echoes of the Deep
+Artifacts dredged from rivers, lakes, or the sea — remnants of drowned settlements.
+
+Notes:
+- Found during fishing, river-gathering, or coastal exploration.
+- Often water-worn, cracked, or covered in silt.
+- Some contain trapped air bubbles from ancient floods.
+- Unlock Codex entries about the Drowned Civilisation.
+- Boost fishing; reveal water-rituals and flood prophecies.
+
+Examples:
+- Silt-Glass Bead
+- Flood-Tablet Shard
+- River-Stone Idol
+
+## Relationship to the wider world
+Artifact notes feed directly into the game’s lore and systems:
+- Artifact notes → [artifacts.md](artifacts.md)
+- Codex entries → [codex.md](codex.md)
+- Worldbuilding → [world.md](world.md)
+- Disaster system → [disasters.md](disasters.md)
+- Favour system → [favour-system.md](favour-system.md)
+- Design bible → [design-bible.md](design-bible.md)
+- Game loop → [game-loop.md](game-loop.md)
+- Developer guide → [developer-guide.md](developer-guide.md)
