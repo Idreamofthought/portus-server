@@ -1,6 +1,7 @@
 // Generated from the 250-post category master and supplemented by newer writing.
 // The writing files remain the source text; these routes give every work a home on the Tree.
 export const TREE_LEAVES = [
+  {"title":"A New Deal for Europe","branch":"politics","category":"Discussion paper · Politics & Society · Europe","slug":"a-new-deal-for-europe","source":"writing/opinions/a-new-deal-for-europe.html","published":"2026-11-11"},
     {"title":"Une dette de gratitude, un devoir d\u0027avenir","branch":"politics","category":"Essai · Politique et société · Français","slug":"une-dette-de-gratitude-un-devoir-davenir","source":"writing/opinions/une-dette-de-gratitude-un-devoir-davenir.html","published":"2026-10-26"},
 {"title":"Condamner les violences sans faire le jeu des extrêmes","branch":"politics","category":"Essai · Politique et société · Français","slug":"condamner-les-violences-sans-faire-le-jeu-des-extremes","source":"writing/opinions/condamner-les-violences-sans-faire-le-jeu-des-extremes.html","published":"2026-10-19"},
   {"title":"France Needs a Call for Calm, Not Scapegoats","branch":"politics","category":"Opinion · Politics & Society · English","slug":"france-needs-a-call-for-calm","source":"writing/opinions/france-needs-a-call-for-calm.html","published":"2026-10-20"},
